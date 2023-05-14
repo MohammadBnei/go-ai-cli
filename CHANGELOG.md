@@ -1,5 +1,12 @@
 
 
+# [0.2.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.1.1...0.2.0) (2023-05-14)
+
+
+### Features
+
+* **release:** testing automated release ([a0b300a](https://github.com/MohammadBnei/go-openai-cli/commit/a0b300ad54d93eeb6fbf3b2c2e13eca1b9a17418))
+
 ## [0.1.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.1.0...0.1.1) (2023-05-14)
 
 # 0.1.0 (2023-05-14)
