@@ -1,5 +1,7 @@
 
 
+## [0.1.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.1.0...0.1.1) (2023-05-14)
+
 # 0.1.0 (2023-05-14)
 
 
