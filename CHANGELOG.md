@@ -1,5 +1,12 @@
 
 
+# [0.3.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.2.0...0.3.0) (2023-05-14)
+
+
+### Features
+
+* **openai.go:** add ClearMessages function ([3c84b06](https://github.com/MohammadBnei/go-openai-cli/commit/3c84b06cc434d12d51c87bf7df322849bab5f17d))
+
 # [0.2.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.1.1...0.2.0) (2023-05-14)
 
 
