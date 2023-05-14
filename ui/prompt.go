@@ -20,6 +20,8 @@ func OpenAiPrompt() {
 		q: quit
 		h: help
 		s: save the response to a file
+		f: add a file to the messages (won't send to openAi until you send a prompt)
+		c: clear message list
 		
 		any other text will be sent to openAI
 		`
@@ -133,6 +135,11 @@ PromptLoop:
 
 			f.WriteString(previousRes)
 			fmt.Println("saved to", filename)
+
+		case "c":
+			service.ClearMessages()
+			fmt.Println("cleared messages")
+
 		default:
 			response, err := service.SendPrompt(context.Background(), userPrompt, os.Stdout)
 			if err != nil {

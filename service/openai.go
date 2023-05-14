@@ -80,6 +80,9 @@ func AddMessage(msg openai.ChatCompletionMessage) {
 	}
 }
 
+func ClearMessages() {
+	messages = []openai.ChatCompletionMessage{}
+}
 func GetModelList() ([]string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 	models, err := c.ListModels(context.Background())
