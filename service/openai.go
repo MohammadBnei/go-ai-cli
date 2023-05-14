@@ -19,14 +19,20 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
 	s.Start()
 
-	addMessage(openai.ChatCompletionMessage{
-		Role:    "user",
+	AddMessage(openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
 		Content: text,
 	})
+	model := viper.GetString("model")
+
+	if model == "" {
+		model = openai.GPT3Dot5Turbo
+	}
+
 	resp, err := c.CreateChatCompletionStream(
 		ctx,
 		openai.ChatCompletionRequest{
-			Model:    viper.GetString("model"),
+			Model:    model,
 			Messages: messages,
 			Stream:   true,
 		},
@@ -56,7 +62,7 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 		}
 	}
 
-	addMessage(openai.ChatCompletionMessage{
+	AddMessage(openai.ChatCompletionMessage{
 		Content: fullMsg,
 		Role:    role,
 	})
@@ -66,7 +72,7 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 	return fullMsg, nil
 }
 
-func addMessage(msg openai.ChatCompletionMessage) {
+func AddMessage(msg openai.ChatCompletionMessage) {
 	messages = append(messages, msg)
 
 	if len(messages) > 10 {
