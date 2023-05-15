@@ -1,5 +1,18 @@
 
 
+# [0.4.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.3.2...0.4.0) (2023-05-15)
+
+
+### Bug Fixes
+
+* **config:** create config directory if it does not exist ([61f20b8](https://github.com/MohammadBnei/go-openai-cli/commit/61f20b84013929d01c940a738dcdc48b41c035e5))
+
+
+### Features
+
+* add zsh completion script ([5895130](https://github.com/MohammadBnei/go-openai-cli/commit/5895130b23d1838f68c89197237c17dfd036f7dd))
+* add zsh completion script ([8b2708b](https://github.com/MohammadBnei/go-openai-cli/commit/8b2708ba048c7f910743a6ddfe63c54194fa4efe))
+
 ## [0.3.2](https://github.com/MohammadBnei/go-openai-cli/compare/0.3.1...0.3.2) (2023-05-15)
 
 ## [0.3.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.3.0...0.3.1) (2023-05-15)
