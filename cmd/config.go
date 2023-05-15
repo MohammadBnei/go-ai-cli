@@ -4,6 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -41,9 +42,16 @@ var configCmd = &cobra.Command{
 		}
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
+		path := home + "/config/go-openai-cli"
+		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+			err := os.MkdirAll(path, os.ModePerm)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 
-		viper.AddConfigPath(home)
-		if err := viper.WriteConfigAs(home + "/.go-openai-cli.yaml"); err != nil {
+		viper.AddConfigPath(path)
+		if err := viper.WriteConfigAs(path + "/config.yaml"); err != nil {
 			fmt.Printf("Error creating config file: %s", err)
 		}
 	},
