@@ -11,7 +11,7 @@ import (
 // promptCmd represents the prompt command
 var promptCmd = &cobra.Command{
 	Use:   "prompt",
-	Short: "Send a prompt to OpenAI",
+	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.OpenAiPrompt()
 	},
