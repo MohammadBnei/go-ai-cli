@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/briandowns/spinner v1.23.0
+	github.com/disiqueira/gotree v1.0.0
 	github.com/ktr0731/go-fuzzyfinder v0.7.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/sashabaranov/go-openai v1.9.4
