@@ -15,7 +15,7 @@ import (
 
 func OpenAiPrompt() {
 
-	label := "What do you want to ask ? "
+	var label string
 	help := `
 		q: quit
 		h: help
@@ -31,8 +31,18 @@ func OpenAiPrompt() {
 	previousRes := ""
 	previousPrompt := ""
 
+	fileNumber := 0
 PromptLoop:
 	for {
+		label = "prompt"
+		if fileNumber != 0 {
+			label = fmt.Sprintf("%d💾 %s ", fileNumber, label)
+		}
+		messagesCount := len(service.GetMessages())
+		if messagesCount != 0 {
+			label = fmt.Sprintf("%d🐦%s ", messagesCount, label)
+		}
+
 		prompt := promptui.Prompt{
 			Label:     label,
 			AllowEdit: false,
@@ -115,6 +125,7 @@ PromptLoop:
 				Content: string(fileContent),
 				Role:    openai.ChatMessageRoleUser,
 			})
+			fileNumber++
 
 			fmt.Println("added file:", selected.Name())
 
@@ -147,9 +158,9 @@ PromptLoop:
 				return
 			}
 			previousRes = response
+			fileNumber = 0
 		}
 
-		label = "prompt again "
 		previousPrompt = userPrompt
 	}
 }
