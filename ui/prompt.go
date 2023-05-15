@@ -99,7 +99,7 @@ PromptLoop:
 				}
 				switch selection {
 				case "abort":
-					break FileLoop
+					continue PromptLoop
 				case "..":
 					cwd = filepath.Dir(cwd)
 				default:
