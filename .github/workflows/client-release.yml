@@ -16,6 +16,7 @@ jobs:
             goos: darwin
           - goarch: arm64
             goos: windows
+      fail-fast: false
     steps:
     - uses: actions/checkout@v3
     - uses: wangyoucao577/go-release-action@v1
