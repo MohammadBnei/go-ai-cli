@@ -1,7 +1,10 @@
-FROM golang:1.20-alpine
-
-WORKDIR /app
+FROM golang:1.20-bullseye
 
 RUN go install github.com/MohammadBnei/go-openai-cli@latest
 
-ENTRYPOINT ["go-openai-cli"]
+VOLUME /config.yaml
+
+ENV CONFIG=/config.yaml
+
+CMD ["go-openai-cli", "prompt"]
+
