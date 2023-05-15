@@ -48,12 +48,14 @@ var configCmd = &cobra.Command{
 			if err != nil {
 				fmt.Println(err)
 			}
+			fmt.Println("Created config directory : " + path)
 		}
 
 		viper.AddConfigPath(path)
 		if err := viper.WriteConfigAs(path + "/config.yaml"); err != nil {
 			fmt.Printf("Error creating config file: %s", err)
 		}
+		fmt.Println("Created config file : " + path + "/config.yaml")
 	},
 }
 
