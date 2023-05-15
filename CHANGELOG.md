@@ -1,5 +1,17 @@
 
 
+# [0.7.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.6.0...0.7.0) (2023-05-15)
+
+
+### Bug Fixes
+
+* **prompt-help:** updated the help section ([55a2cf9](https://github.com/MohammadBnei/go-openai-cli/commit/55a2cf954ef86eb9d5ff93d7066a6505f04ddfc8))
+
+
+### Features
+
+* **config:** add support for environment variable CONFIG ([48dedf1](https://github.com/MohammadBnei/go-openai-cli/commit/48dedf113387436e3ec6d1f9a1a99eef6106c183))
+
 # [0.6.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.5.0...0.6.0) (2023-05-15)
 
 
