@@ -11,7 +11,7 @@ import (
 // promptCmd represents the prompt command
 var promptCmd = &cobra.Command{
 	Use:   "prompt",
-	Short: "Send a prompt to OpenAI",
+	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
 		ui.OpenAiPrompt()
 	},
@@ -19,4 +19,6 @@ var promptCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(promptCmd)
+
+	promptCmd.PersistentFlags().IntP("depth", "d", 2, "the depth of the tree view, when in file mode")
 }
