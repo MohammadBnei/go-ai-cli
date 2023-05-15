@@ -23,7 +23,7 @@ go-openai-cli config --OPENAI_KEY=<YOUR_API_KEY>
 
 To send a prompt to OpenAI GPT, run:
 ```sh
-go-openai-cli prompt
+go-openai-cli
 ```
 
 You will be prompted to enter your text. After submitting your prompt, OpenAI will process your input and generate a response.
