@@ -1,5 +1,13 @@
 
 
+# [0.6.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.5.0...0.6.0) (2023-05-15)
+
+
+### Features
+
+* **client-release.yml:** add fail-fast option to matrix strategy ([b53e021](https://github.com/MohammadBnei/go-openai-cli/commit/b53e02147fd201e5068ccca55f1fa936625e782e))
+* **prompt.go:** add support for fuzzy file search and multi-file selection ([de9e24a](https://github.com/MohammadBnei/go-openai-cli/commit/de9e24a260c896d5403887a42a8edb22d2b357ce))
+
 # [0.5.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.4.0...0.5.0) (2023-05-15)
 
 
