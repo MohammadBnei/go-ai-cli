@@ -14,6 +14,11 @@ go install github.com/MohammadBnei/go-openai-cli@latest
 
 To install the compiled binaries, go to the the [release page](https://github.com/MohammadBnei/go-openai-cli/releases/) and select the exec matching your operating system. 
 
+Lastly, there is an unstable docker image. To run it, here is the code :
+```sh
+docker run -e OPENAI_KEY=<YOUR_OPENAI_KEY> -it mohammaddocker/go-openai-cli prompt
+```
+
 ## Usage
 
 First, set up your OpenAI API key :
