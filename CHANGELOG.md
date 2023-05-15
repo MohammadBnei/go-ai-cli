@@ -1,5 +1,13 @@
 
 
+# [0.8.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.7.0...0.8.0) (2023-05-15)
+
+
+### Features
+
+* **file:** tree view when hovering folder ([97f122c](https://github.com/MohammadBnei/go-openai-cli/commit/97f122cbd99fab8bba85914ddd8a072e638c8872))
+* **test.yml:** add paths filter for Go files ([3336ee9](https://github.com/MohammadBnei/go-openai-cli/commit/3336ee95418b045e23481c93c84a03595236fe45))
+
 # [0.7.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.6.0...0.7.0) (2023-05-15)
 
 
