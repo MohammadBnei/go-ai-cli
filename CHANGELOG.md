@@ -1,5 +1,12 @@
 
 
+## [0.3.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.3.0...0.3.1) (2023-05-15)
+
+
+### Bug Fixes
+
+* **node_modules:** removed node modules and pnpm.lock ([c487bd5](https://github.com/MohammadBnei/go-openai-cli/commit/c487bd5b037148572e609e8f2e6ae3a968af70cf))
+
 # [0.3.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.2.0...0.3.0) (2023-05-14)
 
 
