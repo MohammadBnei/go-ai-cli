@@ -1,5 +1,12 @@
 
 
+# [0.5.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.4.0...0.5.0) (2023-05-15)
+
+
+### Features
+
+* add Dockerfile and GitHub Actions workflow for building and pushing Docker image ([d58cebc](https://github.com/MohammadBnei/go-openai-cli/commit/d58cebc12c5dddefffd763dfce55ef9a358771fb))
+
 # [0.4.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.3.2...0.4.0) (2023-05-15)
 
 
