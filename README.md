@@ -16,24 +16,19 @@ To install the compiled binaries, go to the the [release page](https://github.co
 
 ## Usage
 
-First, set up your OpenAI API key and default model by running:
-```
-go-openai-cli config --OPENAI_KEY=<YOUR_API_KEY> --model=<DEFAULT_MODEL>
-```
-
-To get a list of available models, run:
-```
-go-openai-cli config -l
+First, set up your OpenAI API key :
+```sh
+go-openai-cli config --OPENAI_KEY=<YOUR_API_KEY>
 ```
 
 To send a prompt to OpenAI GPT, run:
-```
+```sh
 go-openai-cli prompt
 ```
 
-You will be prompted to enter your text prompt. After submitting your prompt, OpenAI will process your input and generate a response.
+You will be prompted to enter your text. After submitting your prompt, OpenAI will process your input and generate a response.
 
-### Command in prompt 
+### Available command in prompt 
 ```
 q: quit
 h: help
@@ -45,8 +40,13 @@ c: clear message list
 ## Configuration
 
 To store your OpenAI API key and model, run the following command:
-```
+```sh
 go-openai-cli config --OPENAI_KEY=<YOUR_API_KEY> --model=<MODEL>
+```
+
+To get a list of available models, run:
+```sh
+go-openai-cli config -l
 ```
 
 ### Flags
