@@ -22,8 +22,8 @@ func OpenAiPrompt() {
 		q: quit
 		h: help
 		s: save the response to a file
-		f: add a file to the messages (won't send to openAi until you send a prompt)
-		c: clear message list
+		f: add files to the messages (won't send to openAi until you send a prompt)
+		c: clear messages and files
 		
 		any other text will be sent to openAI
 		`
