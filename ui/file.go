@@ -123,13 +123,14 @@ FileLoop:
 	}
 }
 
-func SaveToFile(previousRes string) {
+func SaveToFile(content []byte) string {
 	filePrompt := promptui.Prompt{
 		Label: "specify a filename (with extension)",
 	}
 	filename, err := filePrompt.Run()
 	if err != nil {
-		return
+		fmt.Println(err)
+		return ""
 	}
 
 	if strings.Contains(filename, "/") {
@@ -154,22 +155,24 @@ func SaveToFile(previousRes string) {
 		i, _, err := replaceSelect.Run()
 		if err != nil {
 			fmt.Println(err)
-			return
+			return ""
 		}
 
 		if i == 1 {
 			fmt.Println("abort")
-			return
+			return ""
 		}
 	}
 
 	f, err := os.Create(filename)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return ""
 	}
 	defer f.Close()
 
-	f.WriteString(previousRes)
+	f.Write(content)
 	fmt.Println("saved to", filename)
+
+	return filename
 }

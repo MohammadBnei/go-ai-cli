@@ -29,6 +29,8 @@ func OpenAiPrompt() {
 	previousRes := ""
 	previousPrompt := ""
 
+	// lastImagePath := ""
+
 	fileNumber := 0
 PromptLoop:
 	for {
@@ -62,7 +64,14 @@ PromptLoop:
 			fmt.Println(help)
 
 		case "s":
-			SaveToFile(previousRes)
+			SaveToFile([]byte(previousRes))
+
+		case "i":
+			// lastImagePath = AskForImage()
+			AskForImage()
+
+		// case "e":
+		// 	lastImagePath = AskForEditImage(lastImagePath)
 
 		case "c":
 			service.ClearMessages()
