@@ -6,13 +6,13 @@ This project is useful for quickly generating text for various purposes such as 
 
 ## Installation
 
-To install and use the Go-OpenAI-CLI, follow these steps:
+To install and use the Go-OpenAI-CLI with golang :
 
-1. Install [Go](https://golang.org/doc/install) on your computer.
-2. Clone this repository.
-3. Run `go mod download` in the project directory to install all required dependencies.
-4. Create an OpenAI account and [get an API key](https://beta.openai.com/signup/).
-5. Set the environment variable OPENAI_KEY to your API key, or use the -k flag when running the CLI.
+```sh
+go install github.com/MohammadBnei/go-openai-cli@latest
+```
+
+To install the compiled binaries, go to the the [release page](https://github.com/MohammadBnei/go-openai-cli/releases/) and select the exec matching your operating system. 
 
 ## Usage
 
