@@ -77,9 +77,10 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	configCmd.PersistentFlags().StringP("model", "m", openai.GPT3Dot5Turbo, "the model to use")
 	configCmd.PersistentFlags().BoolP("list-model", "l", false, "list the avalaible models")
+
+	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	rootCmd.PersistentFlags().IntP("messages-length", "d", 10, "the number of messages to remember (all messages will be sent for every requests)")
 
 	// Cobra supports local flags which will only run when this command
