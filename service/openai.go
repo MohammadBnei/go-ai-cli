@@ -75,7 +75,7 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 func AddMessage(msg openai.ChatCompletionMessage) {
 	messages = append(messages, msg)
 
-	if len(messages) > 10 {
+	if len(messages) > viper.GetInt("messages-length") {
 		messages = messages[1:]
 	}
 }
