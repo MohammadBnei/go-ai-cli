@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 	"github.com/sashabaranov/go-openai"
 	"github.com/thoas/go-funk"
@@ -72,6 +73,14 @@ PromptLoop:
 
 		// case "e":
 		// 	lastImagePath = AskForEditImage(lastImagePath)
+
+		case "copy":
+			if clipboard.Unsupported {
+				fmt.Println("clipboard is not avalaible on this os")
+			} else {
+				clipboard.WriteAll(previousRes)
+				fmt.Println("copied to clipboard")
+			}
 
 		case "c":
 			service.ClearMessages()
