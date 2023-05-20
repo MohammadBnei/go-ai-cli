@@ -82,6 +82,17 @@ func initConfig() {
 		viper.SetConfigName("config")
 	}
 
+	err := viper.BindPFlag("OPENAI_KEY", rootCmd.Flags().Lookup("OPENAI_KEY"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = viper.BindPFlag("messages-length", rootCmd.Flags().Lookup("messages-length"))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.

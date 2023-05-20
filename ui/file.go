@@ -114,7 +114,7 @@ FileLoop:
 			return
 		}
 		service.AddMessage(openai.ChatCompletionMessage{
-			Content: string(fileContent),
+			Content: fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent),
 			Role:    openai.ChatMessageRoleUser,
 		})
 		*fileNumber++
