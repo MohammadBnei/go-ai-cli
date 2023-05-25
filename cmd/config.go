@@ -40,22 +40,33 @@ var configCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
+		err = viper.BindPFlag("messages-length", cmd.Flags().Lookup("messages-length"))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 		path := home + "/config/go-openai-cli"
+		created := false
 		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 			err := os.MkdirAll(path, os.ModePerm)
 			if err != nil {
 				fmt.Println(err)
 			}
 			fmt.Println("Created config directory : " + path)
+			created = true
 		}
 
 		viper.AddConfigPath(path)
 		if err := viper.WriteConfigAs(path + "/config.yaml"); err != nil {
 			fmt.Printf("Error creating config file: %s", err)
 		}
-		fmt.Println("Created config file : " + path + "/config.yaml")
+		if created {
+			fmt.Println("Created config file : " + path + "/config.yaml")
+		} else {
+			fmt.Println("Updated config file : " + path + "/config.yaml")
+		}
 	},
 }
 
@@ -66,9 +77,11 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	configCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	configCmd.PersistentFlags().StringP("model", "m", openai.GPT3Dot5Turbo, "the model to use")
 	configCmd.PersistentFlags().BoolP("list-model", "l", false, "list the avalaible models")
+
+	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
+	rootCmd.PersistentFlags().IntP("messages-length", "d", 10, "the number of messages to remember (all messages will be sent for every requests)")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

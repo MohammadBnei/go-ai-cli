@@ -20,5 +20,5 @@ var promptCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(promptCmd)
 
-	promptCmd.PersistentFlags().IntP("depth", "d", 2, "the depth of the tree view, when in file mode")
+	promptCmd.PersistentFlags().Int("depth", 2, "the depth of the tree view, when in file mode")
 }
