@@ -18,6 +18,7 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
 	s.Start()
+	defer s.Stop()
 
 	AddMessage(openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
