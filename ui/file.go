@@ -35,6 +35,16 @@ FileLoop:
 			return
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
+		files = funk.Filter(files, func(f os.FileInfo) bool {
+			if f.IsDir() {
+				return true
+			}
+			fileContent, err := os.ReadFile(cwd + "/" + f.Name())
+			if err != nil {
+				return false
+			}
+			return strings.Contains(http.DetectContentType(fileContent), "text/plain")
+		}).([]os.FileInfo)
 
 		idx, err := fuzzyfinder.FindMulti(
 			files,
@@ -69,10 +79,11 @@ FileLoop:
 				if err != nil {
 					return fmt.Sprintf("Error while reading file: %s\n", err)
 				}
-				return fmt.Sprintf("File: %s\nType: %s\nLength: %d",
+				return fmt.Sprintf("File: %s\nType: %s\nLength: %d\nContent: %s\n",
 					files[i].Name(),
 					http.DetectContentType(fileContent),
 					len(string(fileContent)),
+					string(fileContent),
 				)
 			}))
 
@@ -159,7 +170,6 @@ func SaveToFile(content []byte) string {
 		}
 
 		if i == 1 {
-			fmt.Println("abort")
 			return ""
 		}
 	}
