@@ -1,5 +1,12 @@
 
 
+# [0.10.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.9.0...0.10.0) (2023-05-26)
+
+
+### Features
+
+* **main.go:** add support for debugging with pprof ([f29a2e1](https://github.com/MohammadBnei/go-openai-cli/commit/f29a2e1b2bf90f17710baa966a05541d9ad42a5a))
+
 # [0.9.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.8.0...0.9.0) (2023-05-25)
 
 
