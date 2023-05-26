@@ -21,8 +21,22 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/MohammadBnei/go-openai-cli/cmd"
+import (
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"strconv"
+
+	"github.com/MohammadBnei/go-openai-cli/cmd"
+)
 
 func main() {
+	debugStr := os.Getenv("DEBUG")
+	debug, _ := strconv.ParseBool(debugStr)
+	if debug {
+		go func() {
+			http.ListenAndServe(":1234", nil)
+		}()
+	}
 	cmd.Execute()
 }
