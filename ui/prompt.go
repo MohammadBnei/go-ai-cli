@@ -86,10 +86,15 @@ PromptLoop:
 		case "copy":
 			if clipboard.Unsupported {
 				fmt.Println("clipboard is not avalaible on this os")
-			} else {
-				clipboard.WriteAll(previousRes)
-				fmt.Println("copied to clipboard")
+				continue PromptLoop
 			}
+			if previousRes == "" {
+				fmt.Println("nothing to copy")
+				continue PromptLoop
+			}
+
+			clipboard.WriteAll(previousRes)
+			fmt.Println("copied to clipboard")
 
 		case "c":
 			service.ClearMessages()
@@ -124,18 +129,5 @@ PromptLoop:
 		}
 
 		previousPrompt = userPrompt
-	}
-}
-
-func keyPressListenerLoop(fn func()) {
-	consoleReader := bufio.NewReaderSize(os.Stdin, 1)
-	input, _ := consoleReader.ReadByte()
-	ascii := input
-
-	fmt.Println(ascii)
-
-	// ESC = 27 and Ctrl-C = 3
-	if ascii == 27 {
-		fn()
 	}
 }
