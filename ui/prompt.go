@@ -1,33 +1,34 @@
 package ui
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
-	"github.com/mattn/go-tty"
 	"github.com/sashabaranov/go-openai"
 	"github.com/thoas/go-funk"
 )
 
-func OpenAiPrompt() {
+const help = `
+q: quit
+h: help
+s: save the response to a file
+f: add files to the messages (won't send to openAi until you send a prompt)
+c: clear messages and files
+c (while getting a response): cancel response
+copy: copy the last response to the clipboard
 
+any other text will be sent to openAI
+`
+
+func OpenAiPrompt() {
 	var label string
-	help := `
-		q: quit
-		h: help
-		s: save the response to a file
-		f: add files to the messages (won't send to openAi until you send a prompt)
-		c: clear messages and files
-		c (while getting a response): cancel response
-		copy: copy the last response to the clipboard
-		
-		any other text will be sent to openAI
-		`
 
 	fmt.Println("for help type 'h'")
 
@@ -54,11 +55,15 @@ PromptLoop:
 			Label:     label,
 			AllowEdit: false,
 			Default:   previousPrompt,
+			IsVimMode: true,
 		}
 
 		userPrompt, err := prompt.Run()
 		if err != nil {
 			fmt.Println(err)
+			if err == promptui.ErrInterrupt {
+				os.Exit(0)
+			}
 			continue PromptLoop
 		}
 
@@ -66,7 +71,7 @@ PromptLoop:
 		case "q":
 			break PromptLoop
 		case "h":
-			fmt.Println(help)
+			fmt.Print(help)
 
 		case "s":
 			SaveToFile([]byte(previousRes))
@@ -96,33 +101,17 @@ PromptLoop:
 
 		default:
 			ctx, cancel := context.WithCancel(context.Background())
-			go func(ctx context.Context, cancel context.CancelFunc) {
-				tty, err := tty.Open()
-				if err != nil {
-					fmt.Println(err)
-					return
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func() {
+				_, ok := <-c
+				if ok {
+					cancel()
 				}
-				defer tty.Close()
-
-				for {
-					select {
-					case <-ctx.Done():
-						return
-					default:
-						r, err := tty.ReadRune()
-						if err != nil {
-							fmt.Println(err)
-							return
-						}
-						if r == 'c' {
-							cancel()
-							return
-						}
-					}
-				}
-			}(ctx, cancel)
+			}()
 
 			response, err := service.SendPrompt(ctx, userPrompt, os.Stdout)
+			close(c)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
 					fmt.Println(err)
@@ -135,5 +124,18 @@ PromptLoop:
 		}
 
 		previousPrompt = userPrompt
+	}
+}
+
+func keyPressListenerLoop(fn func()) {
+	consoleReader := bufio.NewReaderSize(os.Stdin, 1)
+	input, _ := consoleReader.ReadByte()
+	ascii := input
+
+	fmt.Println(ascii)
+
+	// ESC = 27 and Ctrl-C = 3
+	if ascii == 27 {
+		fn()
 	}
 }
