@@ -54,7 +54,6 @@ PromptLoop:
 			Label:     label,
 			AllowEdit: false,
 			Default:   previousPrompt,
-			IsVimMode: true,
 		}
 
 		userPrompt, err := prompt.Run()
