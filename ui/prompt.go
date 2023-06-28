@@ -10,20 +10,27 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
-	"github.com/sashabaranov/go-openai"
-	"github.com/thoas/go-funk"
+	"github.com/samber/lo"
 )
 
 const help = `
-q: quit
-h: help
-s: save the response to a file
-f: add files to the messages (won't send to openAi until you send a prompt)
-c: clear messages and files
-c (while getting a response): cancel response
-copy: copy the last response to the clipboard
+Available options:
 
-any other text will be sent to openAI
+q: quit - Exit the prompt.
+h: help - Show this help section.
+s: save the response to a file - Save the last response from OpenAI to a file.
+f: add files to the messages - Add files to be included in the conversation messages. These files will not be sent to OpenAI until you send a prompt.
+c: clear messages and files - Clear all conversation messages and files.
+copy: copy the last response to the clipboard - Copy the last response from OpenAI to the clipboard.
+
+Commands that can be used as the prompt:
+
+Any other text will be sent to OpenAI as the prompt.
+
+Additional commands:
+
+\system - Specify that the next message should be sent as a system message.
+\filter - Filter messages - Remove messages from the conversation history.
 `
 
 func OpenAiPrompt() {
@@ -40,7 +47,7 @@ func OpenAiPrompt() {
 PromptLoop:
 	for {
 		label = "prompt"
-		totalCharacters := funk.Reduce(service.GetMessages(), func(acc int, elem openai.ChatCompletionMessage) int {
+		totalCharacters := lo.Reduce[service.ChatMessage, int](service.GetMessages(), func(acc int, elem service.ChatMessage, _ int) int {
 			return acc + len(elem.Content)
 		}, 0)
 		if totalCharacters != 0 {
@@ -102,6 +109,18 @@ PromptLoop:
 		case "f":
 			FileSelectionFzf(&fileNumber)
 
+		case "\\system":
+			err := SendAsSystem()
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		case "\\filter":
+			err := FilterMessages()
+			if err != nil {
+				fmt.Println(err)
+			}
+
 		default:
 			ctx, cancel := context.WithCancel(context.Background())
 			c := make(chan os.Signal, 1)
@@ -114,6 +133,7 @@ PromptLoop:
 			}()
 
 			response, err := service.SendPrompt(ctx, userPrompt, os.Stdout)
+			signal.Stop(c)
 			close(c)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {

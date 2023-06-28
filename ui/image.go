@@ -11,8 +11,8 @@ import (
 	"github.com/disiqueira/gotree"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/manifoldco/promptui"
+	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
-	"github.com/thoas/go-funk"
 )
 
 func AskForImage() string {
@@ -111,7 +111,7 @@ func fuzzHandleDir(file os.FileInfo, cwd string) string {
 	if err != nil {
 		return "📁"
 	}
-	subFiles = funk.Filter(subFiles, func(f os.FileInfo) bool {
+	subFiles = lo.Filter[os.FileInfo](subFiles, func(f os.FileInfo, _ int) bool {
 		switch {
 		case f.IsDir():
 			return true
@@ -120,12 +120,12 @@ func fuzzHandleDir(file os.FileInfo, cwd string) string {
 		}
 
 		return false
-	}).([]os.FileInfo)
+	})
 	for _, f := range subFiles {
 		sub := root.Add(f.Name())
 		if f.IsDir() {
 			subFiles, err := ioutil.ReadDir(cwd + "/" + file.Name())
-			subFiles = funk.Filter(subFiles, func(f os.FileInfo) bool {
+			subFiles = lo.Filter[os.FileInfo](subFiles, func(f os.FileInfo, _ int) bool {
 				switch {
 				case f.IsDir():
 					return true
@@ -134,7 +134,7 @@ func fuzzHandleDir(file os.FileInfo, cwd string) string {
 				}
 
 				return false
-			}).([]os.FileInfo)
+			})
 			if err == nil {
 				for _, f := range subFiles {
 					sub.Add(f.Name())
@@ -159,7 +159,7 @@ func GetPngFilePath() string {
 			fmt.Println("Error while getting current working directory:", err)
 			return ""
 		}
-		files = funk.Filter(files, func(f os.FileInfo) bool {
+		files = lo.Filter[os.FileInfo](files, func(f os.FileInfo, _ int) bool {
 			switch {
 			case f.IsDir():
 				return true
@@ -168,7 +168,7 @@ func GetPngFilePath() string {
 			}
 
 			return false
-		}).([]os.FileInfo)
+		})
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
 
 		idx, err := fuzzyfinder.Find(
