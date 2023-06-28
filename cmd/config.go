@@ -81,7 +81,7 @@ func init() {
 	configCmd.PersistentFlags().BoolP("list-model", "l", false, "list the avalaible models")
 
 	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
-	rootCmd.PersistentFlags().IntP("messages-length", "d", 10, "the number of messages to remember (all messages will be sent for every requests)")
+	rootCmd.PersistentFlags().IntP("messages-length", "d", 20, "the number of messages to remember (all messages will be sent for every requests)")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

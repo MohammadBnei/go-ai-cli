@@ -3,15 +3,24 @@ package service
 import (
 	"context"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/jinzhu/copier"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 )
 
-var messages []openai.ChatCompletionMessage
+var messages []ChatMessage
+
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+
+	Date time.Time
+}
 
 func SendPrompt(ctx context.Context, text string, output io.Writer) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
@@ -20,21 +29,29 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 	s.Start()
 	defer s.Stop()
 
-	AddMessage(openai.ChatCompletionMessage{
-		Role:    openai.ChatMessageRoleUser,
-		Content: text,
-	})
 	model := viper.GetString("model")
 
 	if model == "" {
 		model = openai.GPT3Dot5Turbo
 	}
 
+	AddMessage(ChatMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: text,
+		Date:    time.Now(),
+	})
+
+	chatMessages := []openai.ChatCompletionMessage{}
+	err := copier.Copy(&chatMessages, &messages)
+
+	if err != nil {
+		return "", err
+	}
 	resp, err := c.CreateChatCompletionStream(
 		ctx,
 		openai.ChatCompletionRequest{
 			Model:    model,
-			Messages: messages,
+			Messages: chatMessages,
 			Stream:   true,
 		},
 	)
@@ -44,7 +61,6 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 	defer resp.Close()
 
 	fullMsg := ""
-	role := ""
 
 	for {
 		msg, err := resp.Recv()
@@ -58,14 +74,12 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 
 		output.Write([]byte(msg.Choices[0].Delta.Content))
 		fullMsg = strings.Join([]string{fullMsg, msg.Choices[0].Delta.Content}, "")
-		if role == "" {
-			role = msg.Choices[0].Delta.Role
-		}
 	}
 
-	AddMessage(openai.ChatCompletionMessage{
+	AddMessage(ChatMessage{
 		Content: fullMsg,
-		Role:    role,
+		Role:    openai.ChatMessageRoleAssistant,
+		Date:    time.Now(),
 	})
 
 	output.Write([]byte("\n"))
@@ -73,20 +87,31 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 	return fullMsg, nil
 }
 
-func AddMessage(msg openai.ChatCompletionMessage) {
+func AddMessage(msg ChatMessage) {
 	messages = append(messages, msg)
 
 	if len(messages) > viper.GetInt("messages-length") {
 		messages = messages[1:]
 	}
+
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.Before(messages[j].Date)
+	})
 }
 
 func ClearMessages() {
-	messages = []openai.ChatCompletionMessage{}
+	messages = []ChatMessage{}
 }
 
-func GetMessages() []openai.ChatCompletionMessage {
+func GetMessages() []ChatMessage {
 	return messages
+}
+
+func SetMessages(msgs []ChatMessage) {
+	messages = msgs
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.Before(messages[j].Date)
+	})
 }
 func GetModelList() ([]string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))

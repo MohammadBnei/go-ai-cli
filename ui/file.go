@@ -14,8 +14,8 @@ import (
 	"github.com/disiqueira/gotree"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/manifoldco/promptui"
+	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
-	"github.com/thoas/go-funk"
 )
 
 func FileSelectionFzf(fileNumber *int) {
@@ -35,7 +35,7 @@ FileLoop:
 			return
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
-		files = funk.Filter(files, func(f os.FileInfo) bool {
+		files = lo.Filter[os.FileInfo](files, func(f os.FileInfo, _ int) bool {
 			if f.IsDir() {
 				return true
 			}
@@ -44,7 +44,7 @@ FileLoop:
 				return false
 			}
 			return strings.Contains(http.DetectContentType(fileContent), "text/plain")
-		}).([]os.FileInfo)
+		})
 
 		idx, err := fuzzyfinder.FindMulti(
 			files,
@@ -100,15 +100,15 @@ FileLoop:
 			case file.IsDir():
 				cwd += "/" + file.Name()
 			default:
-				selected = funk.Map(idx, func(i int) os.FileInfo {
+				selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
 					return files[i]
-				}).([]os.FileInfo)
+				})
 				break FileLoop
 			}
 		} else {
-			selected = funk.Map(idx, func(i int) os.FileInfo {
+			selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
 				return files[i]
-			}).([]os.FileInfo)
+			})
 			break FileLoop
 		}
 	}
@@ -124,9 +124,10 @@ FileLoop:
 			fmt.Println(err)
 			return
 		}
-		service.AddMessage(openai.ChatCompletionMessage{
+		service.AddMessage(service.ChatMessage{
 			Content: fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent),
 			Role:    openai.ChatMessageRoleUser,
+			Date:    time.Now(),
 		})
 		*fileNumber++
 
