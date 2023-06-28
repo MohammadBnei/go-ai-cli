@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
@@ -11,6 +12,10 @@ import (
 
 func FilterMessages() error {
 	messages := service.GetMessages()
+
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.After(messages[j].Date)
+	})
 	idx, err := fuzzyfinder.FindMulti(
 		messages,
 		func(i int) string {
@@ -28,7 +33,7 @@ func FilterMessages() error {
 			splitted := strings.Split(messages[i].Content, " ")
 			acc := 0
 			for i, word := range splitted {
-				if acc >= w {
+				if acc > w*2/5 {
 					splitted = append(splitted[:i], "\n")
 					splitted = append(splitted, splitted[i+1:]...)
 					acc = 0
@@ -36,7 +41,7 @@ func FilterMessages() error {
 				acc += lo.RuneLength(word) + 1
 			}
 
-			return strings.Join(splitted, " ")
+			return fmt.Sprintf("%s\n%s", messages[i].Date.String(), strings.Join(splitted, " "))
 		}),
 	)
 
