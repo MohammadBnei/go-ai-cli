@@ -1,5 +1,12 @@
 
 
+## [0.10.2](https://github.com/MohammadBnei/go-openai-cli/compare/0.10.1...0.10.2) (2023-06-28)
+
+
+### Bug Fixes
+
+* **config.go:** change default value of "messages-length" flag from 10 to 20 ([42e166c](https://github.com/MohammadBnei/go-openai-cli/commit/42e166c76ebef285419fbc0b3273470caed00c0d))
+
 ## [0.10.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.10.0...0.10.1) (2023-05-26)
 
 # [0.10.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.9.0...0.10.0) (2023-05-26)
