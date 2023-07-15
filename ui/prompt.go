@@ -143,14 +143,17 @@ PromptLoop:
 			close(c)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					fmt.Println(err)
+					fmt.Println("❌",err)
 				}
+				fmt.Println("↩️")
 				previousPrompt = userPrompt
 				continue PromptLoop
 			}
 			previousRes = response
 			fileNumber = 0
 		}
+
+		fmt.Println("✅")
 
 		previousPrompt = userPrompt
 	}
