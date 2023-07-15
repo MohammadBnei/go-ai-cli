@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
+	"moul.io/banner"
 )
 
 const help = `
@@ -34,6 +37,7 @@ Additional commands:
 `
 
 func OpenAiPrompt() {
+	fmt.Println(banner.Inline("go openai cli"), "\n")
 	var label string
 
 	fmt.Println("for help type 'h'")
@@ -132,6 +136,8 @@ PromptLoop:
 				}
 			}()
 
+			// fmt.Print("\033[H\033[2J")
+			CallClear()
 			response, err := service.SendPrompt(ctx, userPrompt, os.Stdout)
 			signal.Stop(c)
 			close(c)
@@ -147,5 +153,30 @@ PromptLoop:
 		}
 
 		previousPrompt = userPrompt
+	}
+}
+
+var clear map[string]func() = make(map[string]func())
+
+func CallClear() {
+	if _, ok := clear["linux"]; !ok {
+		clear["linux"] = func() {
+			cmd := exec.Command("clear") //Linux example, its tested
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+	}
+	if _, ok := clear["windows"]; !ok {
+		clear["windows"] = func() {
+			cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+	}
+	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
+	if ok {                          //if we defined a clear func for that platform:
+		value() //we execute it
+	} else { //unsupported platform
+		clear["linux"]()
 	}
 }
