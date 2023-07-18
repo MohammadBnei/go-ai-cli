@@ -50,7 +50,7 @@ func FilterMessages() error {
 	}
 
 	messages = lo.Filter[service.ChatMessage](messages, func(_ service.ChatMessage, i int) bool {
-		return lo.Contains[int](idx, i)
+		return !lo.Contains[int](idx, i)
 	})
 
 	service.SetMessages(messages)

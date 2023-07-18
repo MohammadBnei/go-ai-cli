@@ -45,27 +45,30 @@ var configCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-		path := home + "/config/go-openai-cli"
+		err = viper.BindPFlag("config-path", cmd.Flags().Lookup("config"))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		filePath := viper.GetString("config-path")
 		created := false
-		if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-			err := os.MkdirAll(path, os.ModePerm)
+		if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+			err := os.MkdirAll(filePath, os.ModePerm)
 			if err != nil {
 				fmt.Println(err)
 			}
-			fmt.Println("Created config directory : " + path)
+			fmt.Println("Created config directory : " + filePath)
 			created = true
 		}
 
-		viper.AddConfigPath(path)
-		if err := viper.WriteConfigAs(path + "/config.yaml"); err != nil {
+		viper.SetConfigFile(filePath)
+		if err := viper.WriteConfigAs(filePath); err != nil {
 			fmt.Printf("Error creating config file: %s", err)
 		}
 		if created {
-			fmt.Println("Created config file : " + path + "/config.yaml")
+			fmt.Println("Created config file : " + filePath)
 		} else {
-			fmt.Println("Updated config file : " + path + "/config.yaml")
+			fmt.Println("Updated config file : " + filePath)
 		}
 	},
 }

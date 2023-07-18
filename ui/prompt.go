@@ -8,11 +8,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
-	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
+	"github.com/spf13/viper"
+	"github.com/tigergraph/promptui"
 	"moul.io/banner"
 )
 
@@ -25,6 +27,8 @@ s: save the response to a file - Save the last response from OpenAI to a file.
 f: add files to the messages - Add files to be included in the conversation messages. These files will not be sent to OpenAI until you send a prompt.
 c: clear messages and files - Clear all conversation messages and files.
 copy: copy the last response to the clipboard - Copy the last response from OpenAI to the clipboard.
+i: add an image to the conversation - Add an image to the conversation.
+e: edit last added image - Edit the last added image.
 
 Commands that can be used as the prompt:
 
@@ -34,11 +38,18 @@ Additional commands:
 
 \system - Specify that the next message should be sent as a system message.
 \filter - Filter messages - Remove messages from the conversation history.
+\list - List saved system commands - List all saved system commands.
+\d-list - Delete a saved system command - Delete a saved system command.
 `
 
 func OpenAiPrompt() {
 	fmt.Println(banner.Inline("go openai cli"), "\n")
 	var label string
+
+	savedSystemPrompt := viper.GetStringMapString("systems")
+	if savedSystemPrompt == nil {
+		savedSystemPrompt = make(map[string]string)
+	}
 
 	fmt.Println("for help type 'h'")
 
@@ -76,7 +87,8 @@ PromptLoop:
 			continue PromptLoop
 		}
 
-		switch userPrompt {
+		switch strings.TrimSpace(userPrompt) {
+
 		case "q":
 			break PromptLoop
 		case "h":
@@ -113,8 +125,18 @@ PromptLoop:
 		case "f":
 			FileSelectionFzf(&fileNumber)
 
+		case "\\list":
+			err := ListSystemCommand()
+			if err != nil {
+				fmt.Println(err)
+			}
+		case "\\d-list":
+			err := DeleteSystemCommand()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case "\\system":
-			err := SendAsSystem()
+			err := SendAsSystem(savedSystemPrompt)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -136,14 +158,14 @@ PromptLoop:
 				}
 			}()
 
-			// fmt.Print("\033[H\033[2J")
-			CallClear()
+			fmt.Print("\033[2J") // Clear screen
+			fmt.Printf("\033[%d;%dH", 0, 0)
 			response, err := service.SendPrompt(ctx, userPrompt, os.Stdout)
 			signal.Stop(c)
 			close(c)
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					fmt.Println("❌",err)
+					fmt.Println("❌", err)
 				}
 				fmt.Println("↩️")
 				previousPrompt = userPrompt
@@ -153,7 +175,7 @@ PromptLoop:
 			fileNumber = 0
 		}
 
-		fmt.Println("✅")
+		fmt.Println("\n✅")
 
 		previousPrompt = userPrompt
 	}
