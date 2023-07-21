@@ -3,10 +3,12 @@ package ui
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"sort"
 	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/golang-module/carbon/v2"
+	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
@@ -48,58 +50,75 @@ func SendAsSystem(systemPrompts map[string]string) error {
 
 func ListSystemCommand() error {
 	savedSystemPrompt := viper.GetStringMapString("systems")
-	slicedList := lo.MapToSlice[string, string, string](savedSystemPrompt, func(key string, value string) string {
-		if key == "" || value == "" {
-			return ""
-		}
-		return fmt.Sprintf("%s - %s", key, value)
+	keyStringFromMap := lo.MapToSlice[string, string, string](savedSystemPrompt, func(key string, value string) string {
+		return key
 	})
-	if len(slicedList) == 0 {
+	if len(keyStringFromMap) == 0 {
 		return errors.New("no saved systems")
 	}
-	slicedList = append(slicedList, "cancel")
-	systemPrompt := promptui.Select{
-		Items: slicedList,
-		Label: "Choose a previous system command",
-	}
-
-	id, choice, err := systemPrompt.Run()
+	sort.Slice(keyStringFromMap, func(i, j int) bool {
+		return carbon.Parse(keyStringFromMap[i]).Gt(carbon.Parse(keyStringFromMap[j]))
+	})
+	idx, err := fuzzyfinder.FindMulti(
+		keyStringFromMap,
+		func(i int) string {
+			return savedSystemPrompt[keyStringFromMap[i]]
+		},
+		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+			if i == -1 {
+				return ""
+			}
+			return fmt.Sprintf("Date: %s\n%s", keyStringFromMap[i], AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromMap[i]]))
+		}),
+	)
 	if err != nil {
 		return err
 	}
-	if choice == "" {
-		return errors.New("there was an error in the command")
+	for _, id := range idx {
+		service.AddMessage(service.ChatMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: savedSystemPrompt[keyStringFromMap[id]],
+			Date:    time.Now(),
+		})
+
+		go func (time, cmd string) {
+			RemoveFromSystemList(time)
+			AddToSystemList(cmd)
+		} (keyStringFromMap[id], savedSystemPrompt[keyStringFromMap[id]])
 	}
-	if choice == "cancel" {
-		return nil
-	}
-	service.AddMessage(service.ChatMessage{
-		Role:    openai.ChatMessageRoleSystem,
-		Content: strings.Split(slicedList[id], " - ")[1],
-		Date:    time.Now(),
-	})
 	return nil
 }
 
 func DeleteSystemCommand() error {
 	savedSystemPrompt := viper.GetStringMapString("systems")
-	slicedList := lo.MapToSlice[string, string, string](savedSystemPrompt, func(key string, value string) string {
-		return fmt.Sprintf("%s - %s", key, value)
+	keyStringFromMap := lo.MapToSlice[string, string, string](savedSystemPrompt, func(key string, value string) string {
+		return key
 	})
-	if len(slicedList) == 0 {
+	if len(keyStringFromMap) == 0 {
 		return errors.New("no saved systems")
 	}
-	systemPrompt := promptui.Select{
-		Items: slicedList,
-		Label: "Choose a previous system command",
-	}
-
-	idx, _, err := systemPrompt.Run()
+	sort.Slice(keyStringFromMap, func(i, j int) bool {
+		return carbon.Parse(keyStringFromMap[i]).Gt(carbon.Parse(keyStringFromMap[j]))
+	})
+	idx, err := fuzzyfinder.FindMulti(
+		keyStringFromMap,
+		func(i int) string {
+			return savedSystemPrompt[keyStringFromMap[i]]
+		},
+		fuzzyfinder.WithPreviewWindow(func(i, w, h int) string {
+			if i == -1 {
+				return ""
+			}
+			return fmt.Sprintf("Date: %s\n%s", keyStringFromMap[i], AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromMap[i]]))
+		}),
+	)
 	if err != nil {
 		return err
 	}
-	RemoveFromSystemList(strings.Split(slicedList[idx], " - ")[0])
-	fmt.Printf("removed %s \n", slicedList[idx])
+	for _, id := range idx {
+		RemoveFromSystemList(keyStringFromMap[id])
+		fmt.Printf("removed %s \n", keyStringFromMap[id])
+	}
 	return nil
 }
 

@@ -83,7 +83,7 @@ FileLoop:
 					files[i].Name(),
 					http.DetectContentType(fileContent),
 					len(string(fileContent)),
-					string(fileContent),
+					AddReturnOnWidth(w/3-1, string(fileContent)),
 				)
 			}))
 
@@ -186,4 +186,35 @@ func SaveToFile(content []byte) string {
 	fmt.Println("saved to", filename)
 
 	return filename
+}
+
+func AddReturnOnWidth(w int, str string) string {
+	splitted := strings.Split(str, " ")
+	// acc := len(splitted[0])
+	// for i := 1; i < len(splitted); i++ {
+	// 	acc += len(splitted[i])
+	// 	if acc > w {
+	// 		splitted[i-1] += "\n"
+	// 		acc = 0
+	// 	}
+	// }
+	// str = strings.Join(splitted, " ")
+
+	characterCount := 0
+
+	return lo.Reduce[string, string](splitted, func(acc string, elem string, id int) string {
+		characterCount += len(" " + elem)
+		if characterCount > w {
+			acc += "\n" + elem
+			characterCount = 0
+			return acc
+		}
+		if id != 0 {
+			acc += " "
+		}
+		acc += elem
+
+		return acc
+	}, "")
+	// return str
 }

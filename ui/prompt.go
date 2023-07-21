@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
 	"runtime"
 	"strings"
 
+	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
 	"github.com/samber/lo"
@@ -45,6 +47,8 @@ Additional commands:
 func OpenAiPrompt() {
 	fmt.Println(banner.Inline("go openai cli"), "\n")
 	var label string
+
+	mdWriter := markdown.NewMarkdownWriter()
 
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	if savedSystemPrompt == nil {
@@ -148,6 +152,12 @@ PromptLoop:
 			}
 
 		default:
+			md := false
+			if strings.HasPrefix(userPrompt, "!md ") {
+				userPrompt = userPrompt[4:]
+				md = true
+			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
@@ -160,9 +170,17 @@ PromptLoop:
 
 			fmt.Print("\033[2J") // Clear screen
 			fmt.Printf("\033[%d;%dH", 0, 0)
-			response, err := service.SendPrompt(ctx, userPrompt, os.Stdout)
+			var writer io.Writer
+			writer = os.Stdout
+			if md {
+				writer = mdWriter
+			}
+			response, err := service.SendPrompt(ctx, userPrompt, writer)
 			signal.Stop(c)
 			close(c)
+			if md {
+				mdWriter.Flush()
+			}
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
 					fmt.Println("❌", err)
@@ -171,6 +189,7 @@ PromptLoop:
 				previousPrompt = userPrompt
 				continue PromptLoop
 			}
+
 			previousRes = response
 			fileNumber = 0
 		}

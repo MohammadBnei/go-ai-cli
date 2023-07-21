@@ -41,7 +41,7 @@ func FilterMessages() error {
 				acc += lo.RuneLength(word) + 1
 			}
 
-			return fmt.Sprintf("%s\n%s", messages[i].Date.String(), strings.Join(splitted, " "))
+			return AddReturnOnWidth(w/3-1, fmt.Sprintf("%s\n%s", messages[i].Date.String(), strings.Join(splitted, " ")))
 		}),
 	)
 
