@@ -49,6 +49,7 @@ func OpenAiPrompt() {
 	var label string
 
 	mdWriter := markdown.NewMarkdownWriter()
+	md := false
 
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	if savedSystemPrompt == nil {
@@ -70,10 +71,15 @@ PromptLoop:
 			return acc + len(elem.Content)
 		}, 0)
 		if totalCharacters != 0 {
-			label = fmt.Sprintf("%d🔤 follow up", totalCharacters)
+			label = fmt.Sprintf("%d🔤 🧠", totalCharacters)
 		}
 		if fileNumber != 0 {
 			label = fmt.Sprintf("%d💾 %s ", fileNumber, label)
+		}
+
+		if md {
+			label = fmt.Sprintf("🖥️  %s ", label)
+			
 		}
 
 		prompt := promptui.Prompt{
@@ -151,8 +157,15 @@ PromptLoop:
 				fmt.Println(err)
 			}
 
+		case "md":
+			md = !md
+			if md {
+				fmt.Println("Markdown mode enabled")
+			} else {
+				fmt.Println("Markdown mode disabled")
+			}
+
 		default:
-			md := false
 			if strings.HasPrefix(userPrompt, "!md ") {
 				userPrompt = userPrompt[4:]
 				md = true
