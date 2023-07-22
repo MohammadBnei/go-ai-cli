@@ -8,6 +8,7 @@ require (
 	github.com/briandowns/spinner v1.23.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/disiqueira/gotree v1.0.0
+	github.com/golang-module/carbon/v2 v2.2.3
 	github.com/jinzhu/copier v0.3.5
 	github.com/ktr0731/go-fuzzyfinder v0.7.0
 	github.com/manifoldco/promptui v0.9.0
@@ -34,7 +35,6 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/gdamore/tcell/v2 v2.5.3 // indirect
-	github.com/golang-module/carbon/v2 v2.2.3 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20191123064959-2c17d62f5098 // indirect
 	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/gordonklaus/ineffassign v0.0.0-20180909121442-1003c8bd00dc // indirect

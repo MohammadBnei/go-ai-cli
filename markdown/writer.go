@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -49,9 +50,20 @@ func (mw *MarkdownWriter) Flush() {
 	mw.Raw = []string{}
 }
 
+var openBacktick = regexp.MustCompile("```[\\s\\S]*?")
+var closedBacktick = regexp.MustCompile("```[\\s\\S]*?```")
+
 func (mw *MarkdownWriter) Write(p []byte) (n int, err error) {
 	mw.Buffer = mw.Buffer + string(p)
 	n = len(p)
+
+	if openBacktick.MatchString(mw.Buffer) {
+		fmt.Println("OPENING BACKTICK")
+		if !closedBacktick.MatchString(mw.Buffer) {
+			fmt.Println("CLOSING BACKTICK")
+			return 
+		}
+	}
 
 	splitted := strings.Split(mw.Buffer, "\n")
 	if len(splitted) > 1 {

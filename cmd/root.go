@@ -59,7 +59,7 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/config/go-openai-cli/config.yaml", "config file (default is $HOME/config/go-openai-cli/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.

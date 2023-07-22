@@ -79,7 +79,7 @@ PromptLoop:
 
 		if md {
 			label = fmt.Sprintf("🖥️  %s ", label)
-			
+
 		}
 
 		prompt := promptui.Prompt{

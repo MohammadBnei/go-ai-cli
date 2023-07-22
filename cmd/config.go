@@ -53,7 +53,8 @@ var configCmd = &cobra.Command{
 		filePath := viper.GetString("config-path")
 		created := false
 		if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
-			err := os.MkdirAll(filePath, os.ModePerm)
+			path, _ := strings.CutSuffix(filePath, "/config.yaml")
+			err := os.MkdirAll(path, os.ModePerm)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -64,6 +65,7 @@ var configCmd = &cobra.Command{
 		viper.SetConfigFile(filePath)
 		if err := viper.WriteConfigAs(filePath); err != nil {
 			fmt.Printf("Error creating config file: %s", err)
+			return
 		}
 		if created {
 			fmt.Println("Created config file : " + filePath)

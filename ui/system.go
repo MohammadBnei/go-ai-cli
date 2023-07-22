@@ -42,7 +42,7 @@ func SendAsSystem(systemPrompts map[string]string) error {
 		fmt.Println("could not save : ", err)
 	}
 	if choice == "yes" {
-		AddToSystemList(command)
+		AddToSystemList(command, time.Now().Format("2006-01-02 15:04:05"))
 	}
 
 	return nil
@@ -81,10 +81,6 @@ func ListSystemCommand() error {
 			Date:    time.Now(),
 		})
 
-		go func (time, cmd string) {
-			RemoveFromSystemList(time)
-			AddToSystemList(cmd)
-		} (keyStringFromMap[id], savedSystemPrompt[keyStringFromMap[id]])
 	}
 	return nil
 }
@@ -122,9 +118,12 @@ func DeleteSystemCommand() error {
 	return nil
 }
 
-func AddToSystemList(command string) {
+func AddToSystemList(command string, key string) {
+	if key == "" {
+		key = time.Now().Format("2006-01-02 15:04:05")
+	}
 	systems := viper.GetStringMapString("systems")
-	systems[time.Now().Format("2006-01-02 15:04:05")] = command
+	systems[key] = command
 	viper.Set("systems", systems)
 	viper.GetViper().WriteConfig()
 }
