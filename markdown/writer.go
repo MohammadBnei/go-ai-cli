@@ -58,10 +58,8 @@ func (mw *MarkdownWriter) Write(p []byte) (n int, err error) {
 	n = len(p)
 
 	if openBacktick.MatchString(mw.Buffer) {
-		fmt.Println("OPENING BACKTICK")
 		if !closedBacktick.MatchString(mw.Buffer) {
-			fmt.Println("CLOSING BACKTICK")
-			return 
+			return
 		}
 	}
 
