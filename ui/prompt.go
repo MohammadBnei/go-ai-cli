@@ -165,6 +165,15 @@ PromptLoop:
 				fmt.Println("Markdown mode disabled")
 			}
 
+		case "\\reuse":
+			message, err := ReuseMessage()
+			if err != nil {
+				fmt.Println(err)
+				continue PromptLoop
+			}
+			previousPrompt = message
+			continue PromptLoop
+
 		default:
 			if strings.HasPrefix(userPrompt, "!md ") {
 				userPrompt = userPrompt[4:]
