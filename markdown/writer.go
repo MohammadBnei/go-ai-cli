@@ -53,9 +53,18 @@ func (mw *MarkdownWriter) Flush() {
 var openBacktick = regexp.MustCompile("```[\\s\\S]*?")
 var closedBacktick = regexp.MustCompile("```[\\s\\S]*?```")
 
+var singleOpenBacktick = regexp.MustCompile("`[\\s]*?")
+var singleClosedBacktick = regexp.MustCompile("`[\\s]*?`")
+
 func (mw *MarkdownWriter) Write(p []byte) (n int, err error) {
 	mw.Buffer = mw.Buffer + string(p)
 	n = len(p)
+
+	if singleOpenBacktick.Match(p) {
+		if !singleClosedBacktick.Match(p) {
+			return
+		}
+	}
 
 	if openBacktick.MatchString(mw.Buffer) {
 		if !closedBacktick.MatchString(mw.Buffer) {
