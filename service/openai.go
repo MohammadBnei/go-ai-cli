@@ -82,8 +82,6 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 		Date:    time.Now(),
 	})
 
-	output.Write([]byte("\n"))
-
 	return fullMsg, nil
 }
 

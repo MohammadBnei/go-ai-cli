@@ -4,13 +4,20 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"os/signal"
+	"runtime"
+	"strings"
 
+	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
-	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
+	"github.com/spf13/viper"
+	"github.com/tigergraph/promptui"
+	"moul.io/banner"
 )
 
 const help = `
@@ -22,6 +29,8 @@ s: save the response to a file - Save the last response from OpenAI to a file.
 f: add files to the messages - Add files to be included in the conversation messages. These files will not be sent to OpenAI until you send a prompt.
 c: clear messages and files - Clear all conversation messages and files.
 copy: copy the last response to the clipboard - Copy the last response from OpenAI to the clipboard.
+i: add an image to the conversation - Add an image to the conversation.
+e: edit last added image - Edit the last added image.
 
 Commands that can be used as the prompt:
 
@@ -31,10 +40,21 @@ Additional commands:
 
 \system - Specify that the next message should be sent as a system message.
 \filter - Filter messages - Remove messages from the conversation history.
+\list - List saved system commands - List all saved system commands.
+\d-list - Delete a saved system command - Delete a saved system command.
 `
 
 func OpenAiPrompt() {
+	fmt.Println(banner.Inline("go openai cli"), "\n")
 	var label string
+
+	mdWriter := markdown.NewMarkdownWriter()
+	md := false
+
+	savedSystemPrompt := viper.GetStringMapString("systems")
+	if savedSystemPrompt == nil {
+		savedSystemPrompt = make(map[string]string)
+	}
 
 	fmt.Println("for help type 'h'")
 
@@ -51,10 +71,15 @@ PromptLoop:
 			return acc + len(elem.Content)
 		}, 0)
 		if totalCharacters != 0 {
-			label = fmt.Sprintf("%d🔤 follow up", totalCharacters)
+			label = fmt.Sprintf("%d🔤 🧠", totalCharacters)
 		}
 		if fileNumber != 0 {
 			label = fmt.Sprintf("%d💾 %s ", fileNumber, label)
+		}
+
+		if md {
+			label = fmt.Sprintf("🖥️  %s ", label)
+
 		}
 
 		prompt := promptui.Prompt{
@@ -72,7 +97,8 @@ PromptLoop:
 			continue PromptLoop
 		}
 
-		switch userPrompt {
+		switch strings.TrimSpace(userPrompt) {
+
 		case "q":
 			break PromptLoop
 		case "h":
@@ -109,8 +135,18 @@ PromptLoop:
 		case "f":
 			FileSelectionFzf(&fileNumber)
 
+		case "\\list":
+			err := ListSystemCommand()
+			if err != nil {
+				fmt.Println(err)
+			}
+		case "\\d-list":
+			err := DeleteSystemCommand()
+			if err != nil {
+				fmt.Println(err)
+			}
 		case "\\system":
-			err := SendAsSystem()
+			err := SendAsSystem(savedSystemPrompt)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -121,7 +157,29 @@ PromptLoop:
 				fmt.Println(err)
 			}
 
+		case "md":
+			md = !md
+			if md {
+				fmt.Println("Markdown mode enabled")
+			} else {
+				fmt.Println("Markdown mode disabled")
+			}
+
+		case "\\reuse":
+			message, err := ReuseMessage()
+			if err != nil {
+				fmt.Println(err)
+				continue PromptLoop
+			}
+			previousPrompt = message
+			continue PromptLoop
+
 		default:
+			if strings.HasPrefix(userPrompt, "!md ") {
+				userPrompt = userPrompt[4:]
+				md = true
+			}
+
 			ctx, cancel := context.WithCancel(context.Background())
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
@@ -132,20 +190,59 @@ PromptLoop:
 				}
 			}()
 
-			response, err := service.SendPrompt(ctx, userPrompt, os.Stdout)
+			fmt.Print("\033[2J") // Clear screen
+			fmt.Printf("\033[%d;%dH", 0, 0)
+			var writer io.Writer
+			writer = os.Stdout
+			if md {
+				writer = mdWriter
+			}
+			response, err := service.SendPrompt(ctx, userPrompt, writer)
 			signal.Stop(c)
 			close(c)
+			if md {
+				mdWriter.Flush()
+			}
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					fmt.Println(err)
+					fmt.Println("❌", err)
 				}
+				fmt.Println("↩️")
 				previousPrompt = userPrompt
 				continue PromptLoop
 			}
+
 			previousRes = response
 			fileNumber = 0
 		}
 
+		fmt.Println("\n✅")
+
 		previousPrompt = userPrompt
+	}
+}
+
+var clear map[string]func() = make(map[string]func())
+
+func CallClear() {
+	if _, ok := clear["linux"]; !ok {
+		clear["linux"] = func() {
+			cmd := exec.Command("clear") //Linux example, its tested
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+	}
+	if _, ok := clear["windows"]; !ok {
+		clear["windows"] = func() {
+			cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+	}
+	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
+	if ok {                          //if we defined a clear func for that platform:
+		value() //we execute it
+	} else { //unsupported platform
+		clear["linux"]()
 	}
 }

@@ -1,3 +1,5 @@
 go-openai-cli
 node_modules
 *.lock
+
+.DS_STORE
