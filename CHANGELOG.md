@@ -1,5 +1,20 @@
 
 
+# [0.11.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.10.2...0.11.0) (2023-07-24)
+
+
+### Bug Fixes
+
+* **cmd/config.go:** change variable name 'path' to 'filePath' for clarity ([907ee8b](https://github.com/MohammadBnei/go-openai-cli/commit/907ee8ba7cf35b5dc5e7354b6770adfdf1a70407))
+* **markdown:** Fixed backtick error ([4dc3a83](https://github.com/MohammadBnei/go-openai-cli/commit/4dc3a839355e6d6a3e099561728326ba28004054))
+* **md-format:** utilizing "md" instead of !md ([0ed38c3](https://github.com/MohammadBnei/go-openai-cli/commit/0ed38c346e70715bf4c2ffc16a1cbc064ad87e02))
+* **writer.go:** add support for single backticks in Write method ([71d4caf](https://github.com/MohammadBnei/go-openai-cli/commit/71d4cafa4fd4304ff5befb8eb28e4dab72108f2a))
+
+
+### Features
+
+* **format:** adding support for markdown format in terminal ([6b4967a](https://github.com/MohammadBnei/go-openai-cli/commit/6b4967af3b01943e2228a9e6f5d867d63584e317))
+
 ## [0.10.2](https://github.com/MohammadBnei/go-openai-cli/compare/0.10.1...0.10.2) (2023-06-28)
 
 
