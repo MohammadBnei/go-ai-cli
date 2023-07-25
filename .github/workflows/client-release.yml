@@ -1,3 +1,6 @@
+
+name: Go Build to release
+
 on:
   release:
     types: [created]

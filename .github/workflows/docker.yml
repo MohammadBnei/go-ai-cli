@@ -1,11 +1,13 @@
 name: Build 6 Push to docker registry
 
 on:
-  release:
-    types: [created]
+  workflow_run:
+    workflows: ["Go Build to release"]
+    types: [completed]
 
 jobs:
-  docker:
+  docker-arm:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,11 +25,42 @@ jobs:
       - name: Get Version
         id: get_version
         uses: battila7/get-version-action@v2.2.1
-        
+
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-openai-cli:${{ steps.get_version.outputs.version-without-v }}, ${{ secrets.DOCKERHUB_USERNAME }}/go-openai-cli:latest
+          build-args: version=${{ steps.get_version.outputs.version-without-v }}, aarch=arm64
+
+  docker-amd:
+    if: 
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Get Version
+        id: get_version
+        uses: battila7/get-version-action@v2.2.1
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-openai-cli:${{ steps.get_version.outputs.version-without-v }}, ${{ secrets.DOCKERHUB_USERNAME }}/go-openai-cli:latest
+          build-args: version=${{ steps.get_version.outputs.version-without-v }}, aarch=amd64
+
