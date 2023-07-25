@@ -50,6 +50,13 @@ var configCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
+
+		err = viper.BindPFlag("md", cmd.Flags().Lookup("md"))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		filePath := viper.GetString("config-path")
 		created := false
 		if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
@@ -87,6 +94,8 @@ func init() {
 
 	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	rootCmd.PersistentFlags().IntP("messages-length", "d", 20, "the number of messages to remember (all messages will be sent for every requests)")
+
+	configCmd.PersistentFlags().Bool("md", false, "markdown mode enabled")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:

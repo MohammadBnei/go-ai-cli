@@ -49,7 +49,7 @@ func OpenAiPrompt() {
 	var label string
 
 	mdWriter := markdown.NewMarkdownWriter()
-	md := false
+	md := viper.GetBool("md")
 
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	if savedSystemPrompt == nil {
