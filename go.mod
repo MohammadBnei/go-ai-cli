@@ -8,6 +8,7 @@ require (
 	github.com/briandowns/spinner v1.23.0
 	github.com/c2h5oh/datasize v0.0.0-20220606134207-859f65c6625b
 	github.com/disiqueira/gotree v1.0.0
+	github.com/garlicgarrison/go-recorder v0.0.0-20230512231103-599cb77d9c61
 	github.com/golang-module/carbon/v2 v2.2.3
 	github.com/jinzhu/copier v0.3.5
 	github.com/ktr0731/go-fuzzyfinder v0.7.0
@@ -38,6 +39,7 @@ require (
 	github.com/gomarkdown/markdown v0.0.0-20191123064959-2c17d62f5098 // indirect
 	github.com/google/shlex v0.0.0-20181106134648-c34317bd91bf // indirect
 	github.com/gordonklaus/ineffassign v0.0.0-20180909121442-1003c8bd00dc // indirect
+	github.com/gordonklaus/portaudio v0.0.0-20230709114228-aafa478834f5 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a // indirect

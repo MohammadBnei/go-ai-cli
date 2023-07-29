@@ -48,6 +48,10 @@ func OpenAiPrompt() {
 	fmt.Println(banner.Inline("go openai cli"), "\n")
 	var label string
 
+	if clipboard.Unsupported {
+		fmt.Println("clipboard is not avalaible on this os")
+	}
+
 	mdWriter := markdown.NewMarkdownWriter()
 	md := viper.GetBool("md")
 
@@ -104,6 +108,61 @@ PromptLoop:
 		case "h":
 			fmt.Print(help)
 
+		case "r":
+			text, err := service.SpeechToText(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				continue PromptLoop
+			}
+			text = strings.TrimSpace(text)
+			fmt.Println("Speech: ", text)
+			previousPrompt = text
+			continue PromptLoop
+
+		case "rs":
+			text, err := service.SpeechToText(context.Background())
+			if err != nil {
+				fmt.Println(err)
+				continue PromptLoop
+			}
+			fmt.Print("\033[2J") // Clear screen
+			fmt.Printf("\033[%d;%dH", 0, 0)
+			text = strings.TrimSpace(text)
+			fmt.Println("Speech: ", text)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			go func() {
+				_, ok := <-c
+				if ok {
+					cancel()
+				}
+			}()
+
+			var writer io.Writer
+			writer = os.Stdout
+			if md {
+				writer = mdWriter
+			}
+			response, err := service.SendPrompt(ctx, text, writer)
+			signal.Stop(c)
+			close(c)
+			if md {
+				mdWriter.Flush()
+			}
+			if err != nil {
+				if !errors.Is(err, context.Canceled) {
+					fmt.Println("❌", err)
+				}
+				fmt.Println("↩️")
+				previousPrompt = userPrompt
+				continue PromptLoop
+			}
+
+			previousRes = response
+			continue PromptLoop
+
 		case "s":
 			SaveToFile([]byte(previousRes))
 
@@ -115,10 +174,6 @@ PromptLoop:
 		// 	lastImagePath = AskForEditImage(lastImagePath)
 
 		case "copy":
-			if clipboard.Unsupported {
-				fmt.Println("clipboard is not avalaible on this os")
-				continue PromptLoop
-			}
 			if previousRes == "" {
 				fmt.Println("nothing to copy")
 				continue PromptLoop
@@ -213,7 +268,6 @@ PromptLoop:
 			}
 
 			previousRes = response
-			fileNumber = 0
 		}
 
 		fmt.Println("\n✅")
