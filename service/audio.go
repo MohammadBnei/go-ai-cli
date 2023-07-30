@@ -15,8 +15,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-func SpeechToText(ctx context.Context) (string, error) {
+func SpeechToText(ctx context.Context, lang string) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+
+	if lang == "" {
+		lang = "en"
+	}
 
 	err := RecordAudioToFile()
 	if err != nil {
@@ -32,6 +36,7 @@ func SpeechToText(ctx context.Context) (string, error) {
 		Model:    openai.Whisper1,
 		Format:   "text",
 		FilePath: "speech.wav",
+		Language: lang,
 	})
 	if err != nil {
 		return "", err
@@ -60,6 +65,12 @@ func RecordAudioToFile() error {
 		log.Fatalf("recorder error -- %s", err)
 	}
 
+	for i := 1; i < 4; i++ {
+		fmt.Printf("%d...", i)
+		time.Sleep(1 * time.Second)
+	}
+
+	fmt.Println()
 	stream.Start()
 	defer stream.Close()
 	fmt.Print("Recording...")
