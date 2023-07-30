@@ -10,11 +10,13 @@ import (
 	"os/signal"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/atotto/clipboard"
 	"github.com/samber/lo"
+	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"github.com/tigergraph/promptui"
 	"moul.io/banner"
@@ -54,6 +56,14 @@ func OpenAiPrompt() {
 
 	mdWriter := markdown.NewMarkdownWriter()
 	md := viper.GetBool("md")
+
+	if md {
+		service.AddMessage(service.ChatMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: "respond in markdown format only, with a title.",
+			Date:    time.Now(),
+		})
+	}
 
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	if savedSystemPrompt == nil {
@@ -169,6 +179,22 @@ PromptLoop:
 		case "i":
 			// lastImagePath = AskForImage()
 			AskForImage()
+
+		case "mask":
+			maskPrompt := promptui.Prompt{
+				Label: "Write a sentance with the character !! as the token to replace",
+			}
+			pr, err := maskPrompt.Run()
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			result, err := service.Mask(strings.Replace(pr, "!!", "[MASK]", -1))
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println("Result : ", result)
 
 		// case "e":
 		// 	lastImagePath = AskForEditImage(lastImagePath)
