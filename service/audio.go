@@ -65,12 +65,9 @@ func RecordAudioToFile() error {
 		log.Fatalf("recorder error -- %s", err)
 	}
 
-	for i := 1; i < 4; i++ {
-		fmt.Printf("%d...", i)
-		time.Sleep(1 * time.Second)
-	}
+	fmt.Print("1 second...")
+	time.Sleep(1 * time.Second)
 
-	fmt.Println()
 	stream.Start()
 	defer stream.Close()
 	fmt.Print("Recording...")
