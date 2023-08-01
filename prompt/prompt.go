@@ -140,6 +140,7 @@ PromptLoop:
 		case "h":
 			fmt.Println(help)
 		default:
+			promptConfig.UserPrompt = cmd
 			err = command.SendPrompt(promptConfig)
 		}
 
