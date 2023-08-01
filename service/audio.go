@@ -1,3 +1,5 @@
+// +build portaudio
+
 package service
 
 import (

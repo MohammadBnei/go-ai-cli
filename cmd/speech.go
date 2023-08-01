@@ -1,6 +1,5 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
+//go:build portaudio
+
 package cmd
 
 import (

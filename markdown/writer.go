@@ -40,10 +40,10 @@ func (mw *MarkdownWriter) Flush(raw string) {
 	}
 
 	mw.Raw = append(mw.Raw, mw.Buffer)
-	if raw != "" {
-		mw.Raw = strings.Split(raw, "\n")
-	}
 	newMd := markdown.Render(strings.Join(mw.Raw, "\n"), mw.TermWidth-10, 6)
+	if raw != "" {
+		newMd = markdown.Render(raw, mw.TermWidth-10, 6)
+	}
 	alter, found := strings.CutPrefix(string(newMd), string(mw.Markdown))
 	if found {
 		fmt.Print(alter)

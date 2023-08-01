@@ -4,7 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-openai-cli/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,7 +16,7 @@ var promptCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
 
-		ui.OpenAiPrompt()
+		prompt.OpenAiPrompt()
 	},
 }
 

@@ -18,11 +18,10 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-func FileSelectionFzf(fileNumber *int) {
+func FileSelectionFzf(fileNumber *int) error {
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	}
 
 	selected := []os.FileInfo{}
@@ -32,7 +31,7 @@ FileLoop:
 		files, err := ioutil.ReadDir(cwd)
 		if err != nil {
 			fmt.Println("Error while getting current working directory:", err)
-			return
+			return errors.Join(errors.New("Error while getting current working directory : "), err)
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
 		files = lo.Filter[os.FileInfo](files, func(f os.FileInfo, _ int) bool {
@@ -88,8 +87,7 @@ FileLoop:
 			}))
 
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 		if len(idx) == 1 {
 			file := files[idx[0]]
@@ -121,8 +119,7 @@ FileLoop:
 
 		fileContent, err := os.ReadFile(cwd + "/" + file.Name())
 		if err != nil {
-			fmt.Println(err)
-			return
+			return err
 		}
 		service.AddMessage(service.ChatMessage{
 			Content: fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent),
@@ -133,16 +130,17 @@ FileLoop:
 
 		fmt.Println("added file:", file.Name())
 	}
+
+	return nil
 }
 
-func SaveToFile(content []byte) string {
+func SaveToFile(content []byte) error {
 	filePrompt := promptui.Prompt{
 		Label: "specify a filename (with extension)",
 	}
 	filename, err := filePrompt.Run()
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return err
 	}
 
 	if strings.Contains(filename, "/") {
@@ -166,26 +164,24 @@ func SaveToFile(content []byte) string {
 
 		i, _, err := replaceSelect.Run()
 		if err != nil {
-			fmt.Println(err)
-			return ""
+			return err
 		}
 
 		if i == 1 {
-			return ""
+			return nil
 		}
 	}
 
 	f, err := os.Create(filename)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return err
 	}
 	defer f.Close()
 
 	f.Write(content)
 	fmt.Println("saved to", filename)
 
-	return filename
+	return nil
 }
 
 func AddReturnOnWidth(w int, str string) string {

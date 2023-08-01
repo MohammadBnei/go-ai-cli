@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,15 +16,14 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-func AskForImage() string {
+func AskForImage() error {
 	imagePrompt := promptui.Prompt{
 		Label: "express your imagination",
 	}
 
 	desc, err := imagePrompt.Run()
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return err
 	}
 
 	sizePrompt := promptui.Select{
@@ -39,23 +39,21 @@ func AskForImage() string {
 
 	b, err := service.AskImage(desc, size)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return err
 	}
 
 	return SaveToFile(b)
 
 }
 
-func AskForEditImage(filePath string) string {
+func AskForEditImage(filePath string) error {
 	imagePrompt := promptui.Prompt{
 		Label: "what is the purpose",
 	}
 
 	desc, err := imagePrompt.Run()
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return err
 	}
 
 	sizePrompt := promptui.Select{
@@ -91,14 +89,12 @@ func AskForEditImage(filePath string) string {
 	}
 
 	if selectedImage == "" {
-		fmt.Println("no image selected")
-		return ""
+		return errors.New("no image selected")
 	}
 
 	b, err := service.EditImage(selectedImage, desc, size)
 	if err != nil {
-		fmt.Println(err)
-		return ""
+		return err
 	}
 
 	return SaveToFile(b)
