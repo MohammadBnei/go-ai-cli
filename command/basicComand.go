@@ -12,40 +12,40 @@ import (
 )
 
 func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["s"] = func(cfg *PromptConfig) error {
+	commandMap["save"] = func(cfg *PromptConfig) error {
 		return ui.SaveToFile([]byte(cfg.PreviousRes), "")
 	}
 
-	commandMap["f"] = func(cfg *PromptConfig) error {
+	commandMap["file"] = func(cfg *PromptConfig) error {
 		return ui.FileSelectionFzf(&cfg.FileNumber)
 	}
 }
 
 func AddConfigCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["md"] = func(cfg *PromptConfig) error {
+	commandMap["markdown"] = func(cfg *PromptConfig) error {
 		cfg.MdMode = !cfg.MdMode
 		return nil
 	}
 }
 
 func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["\\list"] = func(pc *PromptConfig) error {
+	commandMap["list"] = func(pc *PromptConfig) error {
 		return ui.SelectSystemCommand()
 	}
 
-	commandMap["\\d-list"] = func(pc *PromptConfig) error {
+	commandMap["d-list"] = func(pc *PromptConfig) error {
 		return ui.DeleteSystemCommand()
 	}
 
-	commandMap["\\system"] = func(pc *PromptConfig) error {
+	commandMap["system"] = func(pc *PromptConfig) error {
 		return ui.SendAsSystem()
 	}
 
-	commandMap["\\filter"] = func(pc *PromptConfig) error {
+	commandMap["filter"] = func(pc *PromptConfig) error {
 		return ui.FilterMessages()
 	}
 
-	commandMap["\\reuse"] = func(pc *PromptConfig) error {
+	commandMap["reuse"] = func(pc *PromptConfig) error {
 		message, err := ui.ReuseMessage()
 		if err != nil {
 			return err
@@ -54,10 +54,10 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["\\default"] = func(pc *PromptConfig) error {
+	commandMap["default"] = func(pc *PromptConfig) error {
 		return ui.SetSystemDefault(false)
 	}
-	commandMap["\\d-default"] = func(pc *PromptConfig) error {
+	commandMap["d-default"] = func(pc *PromptConfig) error {
 		return ui.SetSystemDefault(true)
 	}
 
@@ -70,7 +70,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["c"] = func(pc *PromptConfig) error {
+	commandMap["clear"] = func(pc *PromptConfig) error {
 		service.ClearMessages()
 		pc.FileNumber = 0
 		fmt.Println("cleared messages")
@@ -79,7 +79,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 }
 
 func AddImageCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["i"] = func(cfg *PromptConfig) error {
+	commandMap["image"] = func(cfg *PromptConfig) error {
 		return ui.AskForImage()
 	}
 }

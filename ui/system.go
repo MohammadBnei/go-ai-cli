@@ -54,9 +54,7 @@ func YesNoPrompt(label string) bool {
 func SetSystemDefault(unset bool) error {
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
-	keyStringFromSP := lo.MapToSlice[string, string, string](savedSystemPrompt, func(key string, _ string) string {
-		return key
-	})
+	keyStringFromSP := lo.Keys[string](savedSystemPrompt)
 	sort.Slice(keyStringFromSP, func(i, j int) bool {
 		return carbon.Parse(keyStringFromSP[i]).Gt(carbon.Parse(keyStringFromSP[j]))
 	})
@@ -124,9 +122,7 @@ func SelectSystemCommand() error {
 }
 
 func SystemPrompt(savedSystemPrompt map[string]string, previewWindowFunc func(int, int, int) string) ([]string, error) {
-	keyStringFromMap := lo.MapToSlice[string, string, string](savedSystemPrompt, func(key string, value string) string {
-		return key
-	})
+	keyStringFromMap := lo.Keys[string](savedSystemPrompt)
 	if len(keyStringFromMap) == 0 {
 		return nil, errors.New("no saved systems")
 	}
