@@ -119,7 +119,7 @@ PromptLoop:
 			fmt.Print(help)
 
 		case "r":
-			text, err := service.SpeechToText(context.Background(), "")
+			text, err := service.SpeechToText(context.Background(), "", 30*time.Second)
 			if err != nil {
 				fmt.Println(err)
 				continue PromptLoop
@@ -130,7 +130,7 @@ PromptLoop:
 			continue PromptLoop
 
 		case "rs":
-			text, err := service.SpeechToText(context.Background(), "")
+			text, err := service.SpeechToText(context.Background(), "", 30*time.Second)
 			if err != nil {
 				fmt.Println(err)
 				continue PromptLoop
@@ -159,7 +159,7 @@ PromptLoop:
 			signal.Stop(c)
 			close(c)
 			if md {
-				mdWriter.Flush()
+				mdWriter.Flush(response)
 			}
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
@@ -282,7 +282,7 @@ PromptLoop:
 			signal.Stop(c)
 			close(c)
 			if md {
-				mdWriter.Flush()
+				mdWriter.Flush(response)
 			}
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {

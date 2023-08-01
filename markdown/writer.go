@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -31,7 +32,7 @@ func NewMarkdownWriter() *MarkdownWriter {
 	}
 }
 
-func (mw *MarkdownWriter) Flush() {
+func (mw *MarkdownWriter) Flush(raw string) {
 	if mw.Buffer == "" {
 		mw.Markdown = []byte{}
 		mw.Raw = []string{}
@@ -39,6 +40,9 @@ func (mw *MarkdownWriter) Flush() {
 	}
 
 	mw.Raw = append(mw.Raw, mw.Buffer)
+	if raw != "" {
+		mw.Raw = strings.Split(raw, "\n")
+	}
 	newMd := markdown.Render(strings.Join(mw.Raw, "\n"), mw.TermWidth-10, 6)
 	alter, found := strings.CutPrefix(string(newMd), string(mw.Markdown))
 	if found {
@@ -85,6 +89,12 @@ func (mw *MarkdownWriter) Write(p []byte) (n int, err error) {
 	}
 
 	return
+}
+
+func (mw *MarkdownWriter) Print(text string, writer io.Writer) error {
+	byteText := markdown.Render(text, mw.TermWidth-10, 6)
+	_, err := writer.Write(byteText)
+	return err
 }
 
 func GetTerminalSize() (int, int, error) {

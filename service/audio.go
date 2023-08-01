@@ -15,14 +15,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-func SpeechToText(ctx context.Context, lang string) (string, error) {
+func SpeechToText(ctx context.Context, lang string, maxTime time.Duration) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
 	if lang == "" {
 		lang = "en"
 	}
 
-	err := RecordAudioToFile()
+	err := RecordAudioToFile(maxTime)
 	if err != nil {
 		return "", err
 	}
@@ -45,7 +45,7 @@ func SpeechToText(ctx context.Context, lang string) (string, error) {
 	return response.Text, nil
 }
 
-func RecordAudioToFile() error {
+func RecordAudioToFile(maxTime time.Duration) error {
 	quit := make(chan bool)
 	go func(quit chan bool) {
 		fmt.Println("Press enter to stop recording")
@@ -59,14 +59,14 @@ func RecordAudioToFile() error {
 	}
 	defer stream.Terminate()
 
-	rec, err := recorder.NewRecorder(recorder.DefaultRecorderConfig(), stream)
+	cfg := recorder.DefaultRecorderConfig()
+	cfg.MaxTime = int(maxTime)
+
+	rec, err := recorder.NewRecorder(cfg, stream)
 
 	if err != nil {
 		log.Fatalf("recorder error -- %s", err)
 	}
-
-	fmt.Print("1 second...")
-	time.Sleep(1 * time.Second)
 
 	stream.Start()
 	defer stream.Close()
