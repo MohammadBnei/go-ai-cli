@@ -56,6 +56,8 @@ func OpenAiPrompt() {
 		os.Exit(0)
 		return nil
 	}
+
+	fmt.Println("for help type 'h'")
 	commandMap["h"] = func(_ *command.PromptConfig) error {
 		fmt.Println(help)
 		return nil
@@ -67,22 +69,15 @@ func OpenAiPrompt() {
 		MdMode: viper.GetBool("md"),
 	}
 
-	if promptConfig.MdMode {
+	defaulSystemPrompt := viper.GetStringMapString("default-systems")
+	savedSystemPrompt := viper.GetStringMapString("systems")
+	for k := range defaulSystemPrompt {
 		service.AddMessage(service.ChatMessage{
 			Role:    openai.ChatMessageRoleSystem,
-			Content: "respond in markdown format only, with a title.",
+			Content: savedSystemPrompt[k],
 			Date:    time.Now(),
 		})
 	}
-
-	savedSystemPrompt := viper.GetStringMapString("systems")
-	if savedSystemPrompt == nil {
-		savedSystemPrompt = make(map[string]string)
-	}
-
-	promptConfig.SystemPrompts = savedSystemPrompt
-
-	fmt.Println("for help type 'h'")
 
 PromptLoop:
 	for {

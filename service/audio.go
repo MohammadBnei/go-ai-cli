@@ -1,8 +1,9 @@
-// +build portaudio
+//go:build portaudio
 
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log"
@@ -17,14 +18,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-func SpeechToText(ctx context.Context, lang string, maxTime time.Duration) (string, error) {
+func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detect bool) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
 	if lang == "" {
 		lang = "en"
 	}
 
-	err := RecordAudioToFile(maxTime)
+	err := RecordAudioToFile(maxTime, detect)
 	if err != nil {
 		return "", err
 	}
@@ -47,7 +48,7 @@ func SpeechToText(ctx context.Context, lang string, maxTime time.Duration) (stri
 	return response.Text, nil
 }
 
-func RecordAudioToFile(maxTime time.Duration) error {
+func RecordAudioToFile(maxTime time.Duration, detect bool) error {
 	quit := make(chan bool)
 	go func(quit chan bool) {
 		fmt.Println("Press enter to stop recording")
@@ -70,14 +71,19 @@ func RecordAudioToFile(maxTime time.Duration) error {
 		log.Fatalf("recorder error -- %s", err)
 	}
 
-	stream.Start()
-	defer stream.Close()
 	fmt.Print("Recording...")
-	recording, err := rec.Record(recorder.WAV, quit)
-	fmt.Println(" done.")
+	var recording *bytes.Buffer
+	if detect {
+		recording, err = rec.RecordVAD(recorder.WAV)
+		} else {
+		stream.Start()
+		defer stream.Close()
+		recording, err = rec.Record(recorder.WAV, quit)
+	}
 	if err != nil {
 		return err
 	}
+	fmt.Println(" done.")
 
 	file, err := os.Create("speech.wav")
 	if err != nil {

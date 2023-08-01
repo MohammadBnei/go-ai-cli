@@ -25,6 +25,7 @@ var markdownMode bool
 var carriageReturnC []string
 var advancedFormating string
 var systemOptions []string
+var maxMinutes int
 
 // speechCmd represents the speech command
 var speechCmd = &cobra.Command{
@@ -43,6 +44,9 @@ to quickly create a Cobra application.`,
 			<-quit
 			os.Exit(0)
 		}()
+		if maxMinutes > 5 {
+			maxMinutes = 5
+		}
 		for {
 
 			fmt.Println("Press enter to start")
@@ -71,7 +75,7 @@ to quickly create a Cobra application.`,
 				}
 			}()
 
-			speech, err := service.SpeechToText(ctx, cmd.Flag("lang").Value.String(), time.Minute)
+			speech, err := service.SpeechToText(ctx, cmd.Flag("lang").Value.String(), time.Duration(maxMinutes)*time.Minute, false)
 			cancel()
 			if err != nil {
 				fmt.Println(err)
@@ -91,9 +95,12 @@ to quickly create a Cobra application.`,
 			if format {
 				fmt.Print("Formating with openai : \n---\n\n")
 				service.AddMessage(service.ChatMessage{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: fmt.Sprintf("You will be prompted with a speech converted to text. Format it by changing occurences of '%s' with a carriage return, and correct puntucation", strings.Join(carriageReturnC, ", ")),
-					Date:    time.Now(),
+					Role: openai.ChatMessageRoleSystem,
+					Content: fmt.Sprintf(
+						"You will be prompted with a speech converted to text. Format it by changing occurences of '%s' with a carriage return, and correct puntucation. Do not translate.",
+						strings.Join(carriageReturnC, ", "),
+					),
+					Date: time.Now(),
 				})
 				if advancedFormating != "" {
 					service.AddMessage(service.ChatMessage{
@@ -132,7 +139,24 @@ to quickly create a Cobra application.`,
 			case 0:
 				clipboard.WriteAll(speech)
 			case 1:
-				ui.SaveToFile([]byte(speech))
+				filename := ""
+			filenameLoop:
+				for {
+					fmt.Println("Specify the filename orally. If you don't want to specify, press enter twice.")
+					fmt.Println("Press enter to record")
+					fmt.Scanln()
+					filename, err = service.SpeechToText(context.Background(), cmd.Flag("lang").Value.String(), 0, true)
+					switch {
+					case err != nil:
+						fmt.Println(err)
+						continue filenameLoop
+					case filename == "":
+						break filenameLoop
+					case filenameOk(filename):
+						break filenameLoop
+					}
+				}
+				ui.SaveToFile([]byte(speech), filename)
 			case 2:
 				os.Exit(0)
 			}
@@ -150,6 +174,7 @@ func init() {
 	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles.", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
 	speechCmd.Flags().StringArrayVarP(&systemOptions, "system", "s", []string{}, "additionnal system options")
+	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 1, "max record time (in minutes) (max : 5 minutes)")
 
 	// Here you will define your flags and configuration settings.
 
@@ -160,4 +185,18 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// speechCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func filenameOk(filename string) bool {
+	okPrompt := promptui.Select{
+		Label: fmt.Sprintf("Filename %s ok ?", filename),
+		Items: []string{"yes, no"},
+	}
+
+	_, ok, err := okPrompt.Run()
+	if err != nil || ok == "no" {
+		return false
+	}
+
+	return true
 }

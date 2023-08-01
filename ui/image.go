@@ -42,7 +42,7 @@ func AskForImage() error {
 		return err
 	}
 
-	return SaveToFile(b)
+	return SaveToFile(b, "")
 
 }
 
@@ -97,7 +97,7 @@ func AskForEditImage(filePath string) error {
 		return err
 	}
 
-	return SaveToFile(b)
+	return SaveToFile(b, "")
 
 }
 

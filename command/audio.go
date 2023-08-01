@@ -13,7 +13,7 @@ import (
 
 func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["r"] = func(cfg *PromptConfig) error {
-		text, err := service.SpeechToText(context.Background(), "", 30*time.Second)
+		text, err := service.SpeechToText(context.Background(), "", time.Minute, false)
 		if err != nil {
 			return err
 		}
@@ -25,7 +25,7 @@ func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 
 	commandMap["rs"] = func(cfg *PromptConfig) error {
-		text, err := service.SpeechToText(context.Background(), "", 30*time.Second)
+		text, err := service.SpeechToText(context.Background(), "", time.Minute, false)
 		if err != nil {
 			return err
 		}

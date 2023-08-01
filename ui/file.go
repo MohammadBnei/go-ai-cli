@@ -134,13 +134,16 @@ FileLoop:
 	return nil
 }
 
-func SaveToFile(content []byte) error {
-	filePrompt := promptui.Prompt{
-		Label: "specify a filename (with extension)",
-	}
-	filename, err := filePrompt.Run()
-	if err != nil {
-		return err
+func SaveToFile(content []byte, filename string) error {
+	if filename == "" {
+		filePrompt := promptui.Prompt{
+			Label: "specify a filename (with extension)",
+		}
+		var err error
+		filename, err = filePrompt.Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	if strings.Contains(filename, "/") {

@@ -13,7 +13,7 @@ import (
 
 func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["s"] = func(cfg *PromptConfig) error {
-		return ui.SaveToFile([]byte(cfg.PreviousRes))
+		return ui.SaveToFile([]byte(cfg.PreviousRes), "")
 	}
 
 	commandMap["f"] = func(cfg *PromptConfig) error {
@@ -30,7 +30,7 @@ func AddConfigCommand(commandMap map[string]func(*PromptConfig) error) {
 
 func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["\\list"] = func(pc *PromptConfig) error {
-		return ui.ListSystemCommand()
+		return ui.SelectSystemCommand()
 	}
 
 	commandMap["\\d-list"] = func(pc *PromptConfig) error {
@@ -38,7 +38,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 
 	commandMap["\\system"] = func(pc *PromptConfig) error {
-		return ui.SendAsSystem(pc.SystemPrompts)
+		return ui.SendAsSystem()
 	}
 
 	commandMap["\\filter"] = func(pc *PromptConfig) error {
@@ -52,6 +52,13 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		}
 		pc.PreviousPrompt = message
 		return nil
+	}
+
+	commandMap["\\default"] = func(pc *PromptConfig) error {
+		return ui.SetSystemDefault(false)
+	}
+	commandMap["\\d-default"] = func(pc *PromptConfig) error {
+		return ui.SetSystemDefault(true)
 	}
 
 	commandMap["copy"] = func(pc *PromptConfig) error {
