@@ -1,5 +1,25 @@
 
 
+# [0.12.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.11.0...0.12.0) (2023-08-02)
+
+
+### Bug Fixes
+
+* **audio:** adding en by default for audio record ([87470e3](https://github.com/MohammadBnei/go-openai-cli/commit/87470e3a8148aa708dabf5268370f49245544681))
+* **prompt:** fixed forgotten update of the promptConfig with user prompt ([49b57f1](https://github.com/MohammadBnei/go-openai-cli/commit/49b57f104090e28735dcdbbd7d7d57ddca44addc))
+* **speech.go:** add missing import for io package ([a128df0](https://github.com/MohammadBnei/go-openai-cli/commit/a128df061a8a82d4b63634d3844b035611ed1036))
+* **speech.go:** change maxMinutes value from 5 to 4 ([82e577d](https://github.com/MohammadBnei/go-openai-cli/commit/82e577dd09ae31400e96bf790ff4776d525b6209))
+
+
+### Features
+
+* **audio.go:** add language parameter to SpeechToText function ([dba93d0](https://github.com/MohammadBnei/go-openai-cli/commit/dba93d05567d0a48aa88ab0a05fa20b4352fc73a))
+* **audio:** audio and normal usage now joint by build args ([8774be0](https://github.com/MohammadBnei/go-openai-cli/commit/8774be0b9d0974f04fe0b875fc6a404bb34652b2))
+* **cmd/speech:** add speech command to convert speech to text ([7b92b05](https://github.com/MohammadBnei/go-openai-cli/commit/7b92b051b279247f18d3a042590a39ba7f21a372))
+* **mask:** adding hugging face mask abilities ([4f808f4](https://github.com/MohammadBnei/go-openai-cli/commit/4f808f4ef6531c481569718ed51bfe86fef3c648))
+* **prompt:** changed way to run cmd ([f40c1dc](https://github.com/MohammadBnei/go-openai-cli/commit/f40c1dc20fd15e97d39f8c9aa15984ad9f9df865))
+* **speech:** implementig speech to text ([a4a75bc](https://github.com/MohammadBnei/go-openai-cli/commit/a4a75bc4f4fbcbbef0eeeb9b651812ed16250b87))
+
 # [0.11.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.10.2...0.11.0) (2023-07-24)
 
 
