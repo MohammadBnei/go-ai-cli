@@ -40,8 +40,8 @@ var speechCmd = &cobra.Command{
 			<-quit
 			os.Exit(0)
 		}()
-		if maxMinutes > 5 {
-			maxMinutes = 5
+		if maxMinutes > 4 {
+			maxMinutes = 4
 		}
 
 		for _, opt := range systemOptions {
@@ -180,7 +180,7 @@ func init() {
 	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles. Do not modify the content of the speech", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
 	speechCmd.Flags().StringArrayVarP(&systemOptions, "system", "s", []string{}, "additionnal system options")
-	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 5, "max record time (in minutes) (max : 5 minutes)")
+	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 4, "max record time (in minutes) (max : 4 minutes)")
 
 	// Here you will define your flags and configuration settings.
 
