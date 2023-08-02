@@ -1,5 +1,12 @@
 
 
+## [0.12.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.12.0...0.12.1) (2023-08-02)
+
+
+### Bug Fixes
+
+* **terminal:** removed clear screen command ([11446f3](https://github.com/MohammadBnei/go-openai-cli/commit/11446f3ddb728f59961e2765a5296ffc1c226763))
+
 # [0.12.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.11.0...0.12.0) (2023-08-02)
 
 
