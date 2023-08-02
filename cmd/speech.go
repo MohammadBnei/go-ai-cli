@@ -30,13 +30,7 @@ var maxMinutes int
 // speechCmd represents the speech command
 var speechCmd = &cobra.Command{
 	Use:   "speech",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Convert your speech into text.",
 	Run: func(cmd *cobra.Command, args []string) {
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
@@ -58,7 +52,7 @@ to quickly create a Cobra application.`,
 					<-ctx.Done()
 					*print = false
 				}(&print)
-				time.Sleep(45 * time.Second)
+				time.Sleep(time.Duration(maxMinutes) * time.Minute - 15 * time.Second)
 				if print {
 					fmt.Print("15 seconds remaining...")
 				} else {
@@ -120,9 +114,8 @@ to quickly create a Cobra application.`,
 				} else {
 					speech = text
 				}
+				fmt.Print("\n\n---\n\n")
 			}
-
-			fmt.Print("\n\n---\n\n")
 
 			selectionPrompt := promptui.Select{
 				Label: "Speech converted to text. What do you want to do with it ?",
@@ -145,14 +138,16 @@ to quickly create a Cobra application.`,
 					fmt.Println("Specify the filename orally. If you don't want to specify, press enter twice.")
 					fmt.Println("Press enter to record")
 					fmt.Scanln()
-					filename, err = service.SpeechToText(context.Background(), cmd.Flag("lang").Value.String(), 0, true)
+					filename, err = service.SpeechToText(context.Background(), cmd.Flag("lang").Value.String(), 3*time.Second, false)
+					filename = strings.TrimSpace(filename)
+					fmt.Printf(" Filename : '%s'\n", filename)
 					switch {
 					case err != nil:
 						fmt.Println(err)
 						continue filenameLoop
 					case filename == "":
 						break filenameLoop
-					case filenameOk(filename):
+					case ui.YesNoPrompt(fmt.Sprintf("Filename : %s", filename)):
 						break filenameLoop
 					}
 				}
@@ -161,6 +156,7 @@ to quickly create a Cobra application.`,
 				os.Exit(0)
 			}
 
+			fmt.Print("\n✅\n\n")
 		}
 	},
 }
@@ -174,7 +170,7 @@ func init() {
 	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles.", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
 	speechCmd.Flags().StringArrayVarP(&systemOptions, "system", "s", []string{}, "additionnal system options")
-	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 1, "max record time (in minutes) (max : 5 minutes)")
+	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 5, "max record time (in minutes) (max : 5 minutes)")
 
 	// Here you will define your flags and configuration settings.
 
@@ -185,18 +181,4 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// speechCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-}
-
-func filenameOk(filename string) bool {
-	okPrompt := promptui.Select{
-		Label: fmt.Sprintf("Filename %s ok ?", filename),
-		Items: []string{"yes, no"},
-	}
-
-	_, ok, err := okPrompt.Run()
-	if err != nil || ok == "no" {
-		return false
-	}
-
-	return true
 }
