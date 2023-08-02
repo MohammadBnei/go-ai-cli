@@ -1,10 +1,29 @@
-FROM golang:1.20-bullseye
+FROM golang:1.20
 
-RUN go install github.com/MohammadBnei/go-openai-cli@latest
+ENV DEBIAN_FRONTEND=noninteractive
 
-VOLUME /config.yaml
+WORKDIR /app
 
-ENV CONFIG=/config.yaml
+COPY ["go.mod", "go.sum", "./"]
 
-CMD ["go-openai-cli", "prompt"]
+RUN go mod download
+
+ADD . .
+
+RUN go build  -o go-openai-cli
+
+ENTRYPOINT [ "./go-openai-cli" ]
+
+CMD ["prompt"]
+
+# FROM ubuntu:20.04
+
+# RUN apt update && apt install -y libc6
+
+# COPY --from=0 /app/go-openai-cli /go-openai-cli
+
+# VOLUME /.config
+
+# ENV CONFIG=/.config/config.yaml
+
 

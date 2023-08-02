@@ -31,18 +31,7 @@ func FilterMessages() error {
 				return ""
 			}
 
-			splitted := strings.Split(messages[i].Content, " ")
-			acc := 0
-			for i, word := range splitted {
-				if acc > w*2/5 {
-					splitted = append(splitted[:i], "\n")
-					splitted = append(splitted, splitted[i+1:]...)
-					acc = 0
-				}
-				acc += lo.RuneLength(word) + 1
-			}
-
-			return AddReturnOnWidth(w/3-1, fmt.Sprintf("%s\n%s", messages[i].Date.String(), strings.Join(splitted, " ")))
+			return fmt.Sprintf("%s\n%s", messages[i].Date.String(), AddReturnOnWidth(w/3-1, messages[i].Content))
 		}),
 	)
 

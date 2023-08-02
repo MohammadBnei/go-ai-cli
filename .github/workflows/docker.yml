@@ -1,4 +1,4 @@
-name: Build 6 Push to docker registry
+name: Push to docker registry
 
 on:
   release:
