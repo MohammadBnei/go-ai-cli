@@ -16,7 +16,6 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"github.com/tigergraph/promptui"
-	"moul.io/banner"
 )
 
 const help = `
@@ -54,7 +53,6 @@ Any other text will be sent to OpenAI as the prompt.
 `
 
 func OpenAiPrompt() {
-	fmt.Print(banner.Inline("go openai cli"), "\n\n")
 	var label string
 
 	if clipboard.Unsupported {
