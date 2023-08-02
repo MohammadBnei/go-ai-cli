@@ -1,0 +1,8 @@
+.github
+.gitignore
+Dockerfile
+CHANGELOG.md
+gowatch.yml
+LICENCE
+package.json
+README.md

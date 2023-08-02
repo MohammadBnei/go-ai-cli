@@ -1,22 +1,29 @@
-FROM ubuntu
+FROM golang:1.20
 
-ARG os=linux
-ARG aarch=arm64
-ARG version=0.11.0
+ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt update && apt install -y ca-certificates portaudio19-dev
+WORKDIR /app
 
-ADD "https://github.com/MohammadBnei/go-openai-cli/releases/download/$version/go-openai-cli-$version-$os-$aarch.tar.gz" go-openai-cli-$version-$os-$aarch.tar.gz 
+COPY ["go.mod", "go.sum", "./"]
 
-RUN tar -xvf go-openai-cli-$version-$os-$aarch.tar.gz
+RUN go mod download
 
-RUN chmod +x go-openai-cli
+ADD . .
 
-VOLUME /.config
-
-ENV CONFIG=/.config/config.yaml
+RUN go build  -o go-openai-cli
 
 ENTRYPOINT [ "./go-openai-cli" ]
 
 CMD ["prompt"]
+
+# FROM ubuntu:20.04
+
+# RUN apt update && apt install -y libc6
+
+# COPY --from=0 /app/go-openai-cli /go-openai-cli
+
+# VOLUME /.config
+
+# ENV CONFIG=/.config/config.yaml
+
 
