@@ -29,8 +29,6 @@ func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 		if err != nil {
 			return err
 		}
-		fmt.Print("\033[2J") // Clear screen
-		fmt.Printf("\033[%d;%dH", 0, 0)
 		text = strings.TrimSpace(text)
 		fmt.Println("Speech: ", text)
 

@@ -24,8 +24,6 @@ func SendPrompt(cfg *PromptConfig) error {
 		}
 	}()
 
-	fmt.Print("\033[2J") // Clear screen
-	fmt.Printf("\033[%d;%dH", 0, 0)
 	var writer io.Writer
 	writer = os.Stdout
 	if cfg.MdMode {
