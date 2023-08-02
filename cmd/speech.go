@@ -15,6 +15,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
+	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 	"github.com/tigergraph/promptui"
@@ -41,6 +42,34 @@ var speechCmd = &cobra.Command{
 		if maxMinutes > 5 {
 			maxMinutes = 5
 		}
+
+		for _, opt := range systemOptions {
+			service.AddMessage(service.ChatMessage{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: opt,
+				Date:    time.Now(),
+			})
+		}
+
+		if format {
+			service.AddMessage(service.ChatMessage{
+				Role: openai.ChatMessageRoleSystem,
+				Content: fmt.Sprintf(
+					"You will be prompted with a speech converted to text. Format it by changing occurences of '%s' with a carriage return, and correct puntucation. Do not translate.",
+					strings.Join(carriageReturnC, ", "),
+				),
+				Date: time.Now(),
+			})
+		}
+
+		if advancedFormating != "" {
+			service.AddMessage(service.ChatMessage{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: advancedFormating,
+				Date:    time.Now(),
+			})
+		}
+
 		for {
 
 			fmt.Println("Press enter to start")
@@ -52,7 +81,7 @@ var speechCmd = &cobra.Command{
 					<-ctx.Done()
 					*print = false
 				}(&print)
-				time.Sleep(time.Duration(maxMinutes) * time.Minute - 15 * time.Second)
+				time.Sleep(time.Duration(maxMinutes)*time.Minute - 15*time.Second)
 				if print {
 					fmt.Print("15 seconds remaining...")
 				} else {
@@ -78,31 +107,10 @@ var speechCmd = &cobra.Command{
 
 			fmt.Print("\n---\n", speech, "\n---\n\n")
 
-			for _, opt := range systemOptions {
-				service.AddMessage(service.ChatMessage{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: opt,
-					Date:    time.Now(),
-				})
-			}
-
-			if format {
+			if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
+				return m.Role == openai.ChatMessageRoleSystem
+			}) {
 				fmt.Print("Formating with openai : \n---\n\n")
-				service.AddMessage(service.ChatMessage{
-					Role: openai.ChatMessageRoleSystem,
-					Content: fmt.Sprintf(
-						"You will be prompted with a speech converted to text. Format it by changing occurences of '%s' with a carriage return, and correct puntucation. Do not translate.",
-						strings.Join(carriageReturnC, ", "),
-					),
-					Date: time.Now(),
-				})
-				if advancedFormating != "" {
-					service.AddMessage(service.ChatMessage{
-						Role:    openai.ChatMessageRoleSystem,
-						Content: advancedFormating,
-						Date:    time.Now(),
-					})
-				}
 				text, err := service.SendPrompt(cmd.Context(), speech, os.Stdout)
 				if markdownMode {
 					fmt.Print("\n\n---\n\n Markdown : \n\n")
