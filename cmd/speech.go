@@ -5,6 +5,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -53,23 +54,20 @@ var speechCmd = &cobra.Command{
 
 		if format {
 			service.AddMessage(service.ChatMessage{
-				Role: openai.ChatMessageRoleSystem,
-				Content: fmt.Sprintf(
-					"You will be prompted with a speech converted to text. Format it by changing occurences of '%s' with a carriage return, and correct puntucation. Do not translate.",
-					strings.Join(carriageReturnC, ", "),
-				),
-				Date: time.Now(),
-			})
-		}
-
-		if advancedFormating != "" {
-			service.AddMessage(service.ChatMessage{
 				Role:    openai.ChatMessageRoleSystem,
-				Content: advancedFormating,
+				Content: "You will be prompted with a speech converted to text. Format it by adding line return between ideas and correct puntucation. Do not translate.",
 				Date:    time.Now(),
 			})
+			if advancedFormating != "" {
+				service.AddMessage(service.ChatMessage{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: advancedFormating,
+					Date:    time.Now(),
+				})
+			}
 		}
 
+	SpeechLoop:
 		for {
 
 			fmt.Println("Press enter to start")
@@ -110,12 +108,14 @@ var speechCmd = &cobra.Command{
 			if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
 				return m.Role == openai.ChatMessageRoleSystem
 			}) {
-				fmt.Print("Formating with openai : \n---\n\n")
-				text, err := service.SendPrompt(cmd.Context(), speech, os.Stdout)
+				var writer io.Writer = os.Stdout
 				if markdownMode {
-					fmt.Print("\n\n---\n\n Markdown : \n\n")
-					writer := markdown.NewMarkdownWriter()
-					writer.Print(text, os.Stdout)
+					writer = markdown.NewMarkdownWriter()
+				}
+				fmt.Print("Formating with openai : \n---\n\n")
+				text, err := service.SendPrompt(cmd.Context(), speech, writer)
+				if markdownMode {
+					writer.(*markdown.MarkdownWriter).Flush(text)
 				}
 				if err != nil {
 					fmt.Println(err)
@@ -127,7 +127,7 @@ var speechCmd = &cobra.Command{
 
 			selectionPrompt := promptui.Select{
 				Label: "Speech converted to text. What do you want to do with it ?",
-				Items: []string{"Copy to clipboard", "Save in file", "quit"},
+				Items: []string{"Copy to clipboard", "Save in file", "another speech", "quit"},
 			}
 
 			id, _, err := selectionPrompt.Run()
@@ -161,6 +161,8 @@ var speechCmd = &cobra.Command{
 				}
 				ui.SaveToFile([]byte(speech), filename)
 			case 2:
+				continue SpeechLoop
+			case 3:
 				os.Exit(0)
 			}
 
@@ -175,7 +177,7 @@ func init() {
 	speechCmd.Flags().StringP("lang", "l", "en", "language")
 	speechCmd.Flags().StringArrayVarP(&carriageReturnC, "carriage-return", "n", []string{"carriage return"}, "The carriage return character.")
 	speechCmd.Flags().BoolVarP(&format, "format", "f", false, "format the output with the carriage return character.")
-	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles.", "Add advanced formating that will be sent as system command to openai")
+	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles. Do not modify the content of the speech", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
 	speechCmd.Flags().StringArrayVarP(&systemOptions, "system", "s", []string{}, "additionnal system options")
 	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 5, "max record time (in minutes) (max : 5 minutes)")
