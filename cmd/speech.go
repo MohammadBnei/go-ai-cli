@@ -20,6 +20,7 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 	"github.com/tigergraph/promptui"
+	"moul.io/banner"
 )
 
 var format bool
@@ -36,6 +37,7 @@ var speechCmd = &cobra.Command{
 	Use:   "speech",
 	Short: "Convert your speech into text.",
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(banner.Inline("go ai cli - speech"))
 		quit := make(chan os.Signal, 1)
 		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 		go func() {
