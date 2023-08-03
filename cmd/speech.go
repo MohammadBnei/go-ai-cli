@@ -28,6 +28,8 @@ var carriageReturnC []string
 var advancedFormating string
 var systemOptions []string
 var maxMinutes int
+var autoFilename string
+var autoMode bool
 
 // speechCmd represents the speech command
 var speechCmd = &cobra.Command{
@@ -105,6 +107,14 @@ var speechCmd = &cobra.Command{
 
 			fmt.Print("\n---\n", speech, "\n---\n\n")
 
+			if autoMode {
+				err := ui.AddToFile([]byte(speech), autoFilename)
+				if err != nil {
+					fmt.Println(err)
+				}
+				continue SpeechLoop
+			}
+
 			if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
 				return m.Role == openai.ChatMessageRoleSystem
 			}) {
@@ -175,12 +185,15 @@ func init() {
 	rootCmd.AddCommand(speechCmd)
 
 	speechCmd.Flags().StringP("lang", "l", "en", "language")
-	speechCmd.Flags().StringArrayVarP(&carriageReturnC, "carriage-return", "n", []string{"carriage return"}, "The carriage return character.")
+	speechCmd.Flags().StringArrayVarP(&carriageReturnC, "carriage-return", "c", []string{"carriage return"}, "The carriage return character.")
 	speechCmd.Flags().BoolVarP(&format, "format", "f", false, "format the output with the carriage return character.")
 	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles. Do not modify the content of the speech", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
 	speechCmd.Flags().StringArrayVarP(&systemOptions, "system", "s", []string{}, "additionnal system options")
 	speechCmd.Flags().IntVarP(&maxMinutes, "max-minutes", "t", 4, "max record time (in minutes) (max : 4 minutes)")
+
+	speechCmd.Flags().StringVarP(&autoFilename, "filename", "n", time.Now().Format("2006-01-02_15:04:05")+".txt", "When in auto mode, the name of the file")
+	speechCmd.Flags().BoolVar(&autoMode, "auto", false, "Automatically save the speech to a file.")
 
 	// Here you will define your flags and configuration settings.
 

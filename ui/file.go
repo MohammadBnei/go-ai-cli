@@ -134,6 +134,53 @@ FileLoop:
 	return nil
 }
 
+func AddToFile(content []byte, filename string) error {
+	if filename == "" {
+		filePrompt := promptui.Prompt{
+			Label: "specify a filename (with extension)",
+		}
+		var err error
+		filename, err = filePrompt.Run()
+		if err != nil {
+			return err
+		}
+	}
+
+	if strings.Contains(filename, "/") {
+		splitted := strings.Split(filename, "/")
+		dw := strings.Join(splitted[:len(splitted)-1], "/")
+
+		if _, err := os.Stat(dw); errors.Is(err, os.ErrNotExist) {
+			err := os.MkdirAll(dw, os.ModePerm)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println("Created directory : " + dw)
+		}
+	}
+
+	content = append([]byte(time.Now().Format("15:04:05 --- \n")), content...)
+
+	if _, err := os.Stat(filename); err == nil {
+		fileContent, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+		content = append([]byte("\n\n"), content...)
+		fmt.Println(fileContent)
+		content = append(fileContent, content...)
+	}
+
+	fmt.Println(string(content))
+
+	os.WriteFile(filename, content, os.ModePerm)
+
+	fmt.Println("saved to", filename)
+
+	return nil
+
+}
+
 func SaveToFile(content []byte, filename string) error {
 	if filename == "" {
 		filePrompt := promptui.Prompt{
