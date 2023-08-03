@@ -1,5 +1,12 @@
 
 
+# [0.13.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.12.1...0.13.0) (2023-08-03)
+
+
+### Features
+
+* **speech.go:** add support for auto saving speech to a file ([825f636](https://github.com/MohammadBnei/go-openai-cli/commit/825f636973f66bd0b90e48ad8a92d9172d1b2281))
+
 ## [0.12.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.12.0...0.12.1) (2023-08-02)
 
 
