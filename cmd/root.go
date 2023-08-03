@@ -37,6 +37,9 @@ var rootCmd = &cobra.Command{
 	Use:   "go-openai-cli",
 	Short: "Go-OpenAI-CLI is a command-line interface that allows users to generate text using OpenAI's GPT-3 language generation service.",
 	Long:  `Go-OpenAI-CLI is a command-line interface tool that provides users with convenient access to OpenAI's GPT-3 language generation service. With this app, users can easily send prompts to the OpenAI API and receive generated responses, which can then be printed on the command-line or saved to a markdown file. Go-OpenAI-CLI is an excellent tool for creatives, content creators, chatbot developers and virtual assistants, as they can use it to quickly generate text for various purposes. By configuring their OpenAI API key and model, users can customize the behavior of the app to suit their specific needs. Moreover, Go-OpenAI-CLI is an open-source project that welcomes contributions from the community, and it is licensed under the MIT License.`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		fmt.Println(banner.Inline("go ai cli"))
+	},
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -45,7 +48,6 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	fmt.Print(banner.Inline("go openai cli"), "\n\n")
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
