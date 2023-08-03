@@ -16,38 +16,39 @@ import (
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"github.com/tigergraph/promptui"
+	"moul.io/banner"
 )
 
 const help = `
-Type \ for options prompt.
+Type \ for options prompt, or \<command_name>.
 
 Available options:
 
-quit: 					quit - Exit the prompt.
-help: 					help - Show this help section.
+quit: 		quit - Exit the prompt.
+help: 		help - Show this help section.
 
-save: 					save the response to a file - Save the last response from OpenAI to a file.
-copy: 					copy the last response to the clipboard - Copy the last response from OpenAI to the clipboard.
+save: 		save the response to a file - Save the last response from OpenAI to a file.
+copy: 		copy the last response to the clipboard - Copy the last response from OpenAI to the clipboard.
 
-file: 					add files to the messages - Add files to be included in the conversation messages. These files will not be sent to OpenAI until you send a prompt.
-image: 					add an image to the conversation - Add an image to the conversation.
-(X) e: 					edit last added image - Edit the last added image.
+file: 		add files to the messages - Add files to be included in the conversation messages. These files will not be sent to OpenAI until you send a prompt.
+image: 		add an image to the conversation - Add an image to the conversation.
+(X) e: 		edit last added image - Edit the last added image.
 
-clear: 					clear messages and files - Clear all conversation messages and files.
+clear: 		clear messages and files - Clear all conversation messages and files.
 
-system: 				Specify that the next message should be sent as a system message.
-filter: 				Remove messages from the conversation history.
-reuse: 					Reuse a message.
+system: 	Specify that the next message should be sent as a system message.
+filter: 	Remove messages from the conversation history.
+reuse: 		Reuse a message.
 
-list: 					List saved system commands.
-d-list: 				Delete a saved system command.
+list: 		List saved system commands.
+d-list: 	Delete a saved system command.
 
-default: 				Set the default system commands.
-d-default: 			Unset default system commands.
+default: 	Set the default system commands.
+d-default: Unset default system commands.
 
-markdown: 			Set output mode to markdown.
+markdown: Set output mode to markdown.
 
-mask: 					huggingface model. Find a missing word from a sentence.
+mask: 		huggingface model. Find a missing word from a sentence.
 
 Any other text will be sent to OpenAI as the prompt.
 `
@@ -62,6 +63,7 @@ func OpenAiPrompt() {
 	commandMap := make(map[string]func(*command.PromptConfig) error)
 
 	commandMap["quit"] = func(_ *command.PromptConfig) error {
+		fmt.Println(banner.Inline("bye!"))
 		os.Exit(0)
 		return nil
 	}
@@ -124,8 +126,8 @@ PromptLoop:
 		cmd := strings.TrimSpace(userPrompt)
 		keys := lo.Keys[string](commandMap)
 
-		switch cmd {
-		case "\\":
+		switch {
+		case cmd == "\\":
 			selection, err2 := fuzzyfinder.Find(keys, func(i int) string {
 				return keys[i]
 			})
@@ -135,8 +137,19 @@ PromptLoop:
 			}
 
 			err = commandMap[keys[selection]](promptConfig)
-		case "h":
-			fmt.Println(help)
+		case strings.HasPrefix(cmd, "\\"):
+			command, ok := commandMap[cmd[1:]]
+			if !ok {
+				fmt.Println("command not found")
+				commandMap["help"](promptConfig)
+				continue PromptLoop
+			}
+			err = command(promptConfig)
+		case cmd == "h":
+			commandMap["help"](promptConfig)
+			continue PromptLoop
+		case cmd == "q":
+			commandMap["quit"](promptConfig)
 		default:
 			promptConfig.UserPrompt = cmd
 			err = command.SendPrompt(promptConfig)
