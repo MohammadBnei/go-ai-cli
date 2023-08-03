@@ -1,5 +1,12 @@
 
 
+## [0.13.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.13.0...0.13.1) (2023-08-03)
+
+
+### Bug Fixes
+
+* **banner:** put banner message in command Run instead of root, because it corrupted the completion output ([8f6361c](https://github.com/MohammadBnei/go-openai-cli/commit/8f6361cede93a0466a8d6fc5884c8f5cd32ccbb6))
+
 # [0.13.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.12.1...0.13.0) (2023-08-03)
 
 
