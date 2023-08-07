@@ -3,29 +3,18 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
-	"io"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
-	"github.com/atotto/clipboard"
-	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
-	"github.com/tigergraph/promptui"
 	"moul.io/banner"
 )
 
 var format bool
 var markdownMode bool
-var carriageReturnC []string
 var advancedFormating string
 var systemOptions []string
 var maxMinutes int
@@ -38,12 +27,6 @@ var speechCmd = &cobra.Command{
 	Short: "Convert your speech into text.",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(banner.Inline("go ai cli - speech"))
-		quit := make(chan os.Signal, 1)
-		signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-		go func() {
-			<-quit
-			os.Exit(0)
-		}()
 		if maxMinutes > 4 {
 			maxMinutes = 4
 		}
@@ -71,114 +54,20 @@ var speechCmd = &cobra.Command{
 			}
 		}
 
-	SpeechLoop:
+		cfg := &ui.SpeechConfig{
+			MaxMinutes:   maxMinutes,
+			Lang:         cmd.Flag("lang").Value.String(),
+			Format:       format,
+			MarkdownMode: markdownMode,
+			AutoMode:     autoMode,
+			AutoFilename: autoFilename,
+		}
+
 		for {
-
-			fmt.Println("Press enter to start")
-			fmt.Scanln()
-			ctx, cancel := context.WithCancel(context.Background())
-			go func() {
-				print := true
-				go func(print *bool) {
-					<-ctx.Done()
-					*print = false
-				}(&print)
-				time.Sleep(time.Duration(maxMinutes)*time.Minute - 15*time.Second)
-				if print {
-					fmt.Print("15 seconds remaining...")
-				} else {
-					return
-				}
-				time.Sleep(10 * time.Second)
-				for i := 5; i > 0; i-- {
-					if print {
-						fmt.Printf("%d seconds remaining...", i)
-					} else {
-						return
-					}
-					time.Sleep(1 * time.Second)
-				}
-			}()
-
-			speech, err := service.SpeechToText(ctx, cmd.Flag("lang").Value.String(), time.Duration(maxMinutes)*time.Minute, false)
-			cancel()
+			err := ui.SpeechLoop(cmd.Context(), cfg)
 			if err != nil {
 				fmt.Println(err)
-				return
 			}
-
-			fmt.Print("\n---\n", speech, "\n---\n\n")
-
-			if autoMode {
-				err := ui.AddToFile([]byte(speech), autoFilename)
-				if err != nil {
-					fmt.Println(err)
-				}
-				continue SpeechLoop
-			}
-
-			if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
-				return m.Role == openai.ChatMessageRoleSystem
-			}) {
-				var writer io.Writer = os.Stdout
-				if markdownMode {
-					writer = markdown.NewMarkdownWriter()
-				}
-				fmt.Print("Formating with openai : \n---\n\n")
-				text, err := service.SendPrompt(cmd.Context(), speech, writer)
-				if markdownMode {
-					writer.(*markdown.MarkdownWriter).Flush(text)
-				}
-				if err != nil {
-					fmt.Println(err)
-				} else {
-					speech = text
-				}
-				fmt.Print("\n\n---\n\n")
-			}
-
-			selectionPrompt := promptui.Select{
-				Label: "Speech converted to text. What do you want to do with it ?",
-				Items: []string{"Copy to clipboard", "Save in file", "another speech", "quit"},
-			}
-
-			id, _, err := selectionPrompt.Run()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-
-			switch id {
-			case 0:
-				clipboard.WriteAll(speech)
-			case 1:
-				filename := ""
-			filenameLoop:
-				for {
-					fmt.Println("Specify the filename orally. If you don't want to specify, press enter twice.")
-					fmt.Println("Press enter to record")
-					fmt.Scanln()
-					filename, err = service.SpeechToText(context.Background(), cmd.Flag("lang").Value.String(), 3*time.Second, false)
-					filename = strings.TrimSpace(filename)
-					fmt.Printf(" Filename : '%s'\n", filename)
-					switch {
-					case err != nil:
-						fmt.Println(err)
-						continue filenameLoop
-					case filename == "":
-						break filenameLoop
-					case ui.YesNoPrompt(fmt.Sprintf("Filename : %s", filename)):
-						break filenameLoop
-					}
-				}
-				ui.SaveToFile([]byte(speech), filename)
-			case 2:
-				continue SpeechLoop
-			case 3:
-				os.Exit(0)
-			}
-
-			fmt.Print("\n✅\n\n")
 		}
 	},
 }
@@ -187,7 +76,6 @@ func init() {
 	rootCmd.AddCommand(speechCmd)
 
 	speechCmd.Flags().StringP("lang", "l", "en", "language")
-	speechCmd.Flags().StringArrayVarP(&carriageReturnC, "carriage-return", "c", []string{"carriage return"}, "The carriage return character.")
 	speechCmd.Flags().BoolVarP(&format, "format", "f", false, "format the output with the carriage return character.")
 	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles. Do not modify the content of the speech", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
@@ -197,13 +85,4 @@ func init() {
 	speechCmd.Flags().StringVarP(&autoFilename, "filename", "n", time.Now().Format("2006-01-02_15:04:05")+".txt", "When in auto mode, the name of the file")
 	speechCmd.Flags().BoolVar(&autoMode, "auto", false, "Automatically save the speech to a file.")
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// speechCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// speechCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
