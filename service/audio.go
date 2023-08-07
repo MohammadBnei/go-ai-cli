@@ -19,13 +19,7 @@ import (
 )
 
 func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detect bool) (string, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
-
-	if lang == "" {
-		lang = "en"
-	}
-
-	err := RecordAudioToFile(maxTime, detect)
+	err := RecordAudioToFile(maxTime, detect, "speech")
 	if err != nil {
 		return "", err
 	}
@@ -35,10 +29,20 @@ func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detec
 	s.Start()
 	defer s.Stop()
 
+	return SendAudio(ctx, "speech.wav", lang)
+}
+
+func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
+	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+
+	if lang == "" {
+		lang = "en"
+	}
+
 	response, err := c.CreateTranscription(ctx, openai.AudioRequest{
 		Model:    openai.Whisper1,
 		Format:   "text",
-		FilePath: "speech.wav",
+		FilePath: filename,
 		Language: lang,
 	})
 	if err != nil {
@@ -48,7 +52,7 @@ func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detec
 	return response.Text, nil
 }
 
-func RecordAudioToFile(maxTime time.Duration, detect bool) error {
+func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) error {
 	quit := make(chan bool)
 	go func(quit chan bool) {
 		fmt.Println("Press enter to stop recording")
@@ -75,7 +79,7 @@ func RecordAudioToFile(maxTime time.Duration, detect bool) error {
 	var recording *bytes.Buffer
 	if detect {
 		recording, err = rec.RecordVAD(recorder.WAV)
-		} else {
+	} else {
 		stream.Start()
 		defer stream.Close()
 		recording, err = rec.Record(recorder.WAV, quit)
@@ -85,7 +89,10 @@ func RecordAudioToFile(maxTime time.Duration, detect bool) error {
 	}
 	fmt.Println(" done.")
 
-	file, err := os.Create("speech.wav")
+	if filename == "" {
+		filename = "speech"
+	}
+	file, err := os.Create(filename + ".wav")
 	if err != nil {
 		return err
 	}

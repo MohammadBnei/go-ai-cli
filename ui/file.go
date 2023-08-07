@@ -167,11 +167,8 @@ func AddToFile(content []byte, filename string) error {
 			return err
 		}
 		content = append([]byte("\n\n"), content...)
-		fmt.Println(fileContent)
 		content = append(fileContent, content...)
 	}
-
-	fmt.Println(string(content))
 
 	os.WriteFile(filename, content, os.ModePerm)
 
