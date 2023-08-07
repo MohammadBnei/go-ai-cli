@@ -66,14 +66,6 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 
 	fmt.Print("\n---\n", speech, "\n---\n\n")
 
-	if cfg.AutoMode {
-		err := AddToFile([]byte(speech), cfg.AutoFilename)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
 	if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
 		return m.Role == openai.ChatMessageRoleSystem
 	}) {
@@ -94,6 +86,14 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 			speech = text
 		}
 		fmt.Print("\n\n---\n\n")
+	}
+
+	if cfg.AutoMode {
+		err := AddToFile([]byte(speech), cfg.AutoFilename)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	selectionPrompt := promptui.Select{
