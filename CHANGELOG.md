@@ -1,5 +1,12 @@
 
 
+# [0.15.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.14.0...0.15.0) (2023-08-07)
+
+
+### Features
+
+* **speech.go:** add flag completion for "lang" flag to provide autocomplete options for language selection ([16a2517](https://github.com/MohammadBnei/go-openai-cli/commit/16a2517e9b48543d3cee0054b308516460128e64))
+
 # [0.14.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.13.1...0.14.0) (2023-08-07)
 
 
