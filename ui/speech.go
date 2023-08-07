@@ -57,7 +57,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 		}
 	}()
 
-	ctx1, closer := loadContext(ctx)
+	ctx1, closer := LoadContext(ctx)
 	speech, err := service.SpeechToText(ctx1, cfg.Lang, time.Duration(cfg.MaxMinutes)*time.Minute, false)
 	closer()
 	if err != nil {
@@ -82,7 +82,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 			writer = markdown.NewMarkdownWriter()
 		}
 		fmt.Print("Formating with openai : \n---\n\n")
-		ctx1, closer := loadContext(ctx)
+		ctx1, closer := LoadContext(ctx)
 		text, err := service.SendPrompt(ctx1, speech, writer)
 		closer()
 		if cfg.MarkdownMode {
@@ -116,7 +116,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 			fmt.Println("Specify the filename orally. If you don't want to specify, press enter twice.")
 			fmt.Println("Press enter to record")
 			fmt.Scanln()
-			ctx1, closer := loadContext(ctx)
+			ctx1, closer := LoadContext(ctx)
 			filename, err = service.SpeechToText(ctx1, cfg.Lang, 3*time.Second, false)
 			closer()
 			filename = strings.TrimSpace(filename)
@@ -143,7 +143,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 	return nil
 }
 
-func loadContext(ctx context.Context) (context.Context, func()) {
+func LoadContext(ctx context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
