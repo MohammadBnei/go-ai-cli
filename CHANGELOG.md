@@ -1,5 +1,19 @@
 
 
+# [0.14.0](https://github.com/MohammadBnei/go-openai-cli/compare/0.13.1...0.14.0) (2023-08-07)
+
+
+### Bug Fixes
+
+* **speech.go:** change function name from loadContext to LoadContext to follow Go naming conventions ([9382275](https://github.com/MohammadBnei/go-openai-cli/commit/93822754b385df697456ee4cd6444bcbafe48061))
+
+
+### Features
+
+* **audio.go:** add SendAudio function to send the recorded audio file to OpenAI for transcription ([84cec1c](https://github.com/MohammadBnei/go-openai-cli/commit/84cec1cd06fb9a884bb32ad595b23620e067b7fd))
+* **cmd/file.go:** add new 'file' command to convert an audio file to text ([25c1ff1](https://github.com/MohammadBnei/go-openai-cli/commit/25c1ff1cac2cfb38bfbd5fe63e6af210c4605177))
+* **cmd/record.go:** add 'record' command to the 'speech' command group ([66c00bf](https://github.com/MohammadBnei/go-openai-cli/commit/66c00bf5b88182acaf69a3f95f8f9f4dfd8861a3))
+
 ## [0.13.1](https://github.com/MohammadBnei/go-openai-cli/compare/0.13.0...0.13.1) (2023-08-03)
 
 
