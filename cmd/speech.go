@@ -76,6 +76,10 @@ func init() {
 	rootCmd.AddCommand(speechCmd)
 
 	speechCmd.PersistentFlags().StringP("lang", "l", "en", "language")
+	speechCmd.RegisterFlagCompletionFunc("lang", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"en", "fr", "fa"}, cobra.ShellCompDirectiveDefault
+	})
+
 	speechCmd.Flags().BoolVarP(&format, "format", "f", false, "format the output with the carriage return character.")
 	speechCmd.Flags().StringVarP(&advancedFormating, "advanced-format", "a", "add markdown formating. Add a title and a table of content from the content of the speech, and add the coresponding subtitles. Do not modify the content of the speech", "Add advanced formating that will be sent as system command to openai")
 	speechCmd.Flags().BoolVarP(&markdownMode, "markdown", "m", false, "Format the output to markdown")
