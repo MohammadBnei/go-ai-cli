@@ -9,7 +9,7 @@ import (
 )
 
 func Mask(prompt string) (string, error) {
-	apiKey := viper.GetString("HUGGING_KEY") // Your Hugging Face API key
+	apiKey := viper.GetString("HUGGINGFACE_KEY") // Your Hugging Face API key
 	if apiKey == "" {
 		return "", errors.New("Hugging Face API key not found")
 	}

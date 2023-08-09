@@ -60,6 +60,8 @@ func init() {
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
+	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
+	rootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -74,22 +76,7 @@ func initConfig() {
 	// Use config file from the flag.
 	viper.SetConfigFile(cfgFile)
 
-	err := viper.BindPFlag("OPENAI_KEY", rootCmd.Flags().Lookup("OPENAI_KEY"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = viper.BindPFlag("messages-length", rootCmd.Flags().Lookup("messages-length"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	err = viper.BindPFlag("config-path", rootCmd.Flags().Lookup("config"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	viper.BindPFlags(rootCmd.PersistentFlags())
 
 	viper.AutomaticEnv() // read in environment variables that match
 
