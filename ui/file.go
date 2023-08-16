@@ -24,14 +24,14 @@ func FileSelectionFzf(fileNumber *int) error {
 		return err
 	}
 
-	selected := []os.FileInfo{}
+	var selected []os.FileInfo
 
 FileLoop:
 	for {
 		files, err := ioutil.ReadDir(cwd)
 		if err != nil {
 			fmt.Println("Error while getting current working directory:", err)
-			return errors.Join(errors.New("Error while getting current working directory : "), err)
+			return errors.Join(errors.New("error while getting current working directory : "), err)
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
 		files = lo.Filter[os.FileInfo](files, func(f os.FileInfo, _ int) bool {
@@ -134,7 +134,7 @@ FileLoop:
 	return nil
 }
 
-func AddToFile(content []byte, filename string) error {
+func AddToFile(content []byte, filename string, withTimestamp bool) error {
 	if filename == "" {
 		filePrompt := promptui.Prompt{
 			Label: "specify a filename (with extension)",
@@ -159,7 +159,9 @@ func AddToFile(content []byte, filename string) error {
 		}
 	}
 
-	content = append([]byte(time.Now().Format("15:04:05 --- \n")), content...)
+	if withTimestamp {
+		content = append([]byte(time.Now().Format("15:04:05 --- \n")), content...)
+	}
 
 	if _, err := os.Stat(filename); err == nil {
 		fileContent, err := os.ReadFile(filename)

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sort"
 	"strings"
@@ -22,7 +23,7 @@ type ChatMessage struct {
 	Date time.Time
 }
 
-func SendPrompt(ctx context.Context, text string, output io.Writer) (string, error) {
+func SendPrompt(ctx context.Context, text string, output io.Writer, saveMessage bool) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
@@ -34,12 +35,14 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 	if model == "" {
 		model = openai.GPT3Dot5Turbo
 	}
+	if saveMessage {
 
-	AddMessage(ChatMessage{
-		Role:    openai.ChatMessageRoleUser,
-		Content: text,
-		Date:    time.Now(),
-	})
+		AddMessage(ChatMessage{
+			Role:    openai.ChatMessageRoleUser,
+			Content: text,
+			Date:    time.Now(),
+		})
+	}
 
 	chatMessages := []openai.ChatCompletionMessage{}
 	err := copier.Copy(&chatMessages, &messages)
@@ -75,17 +78,18 @@ func SendPrompt(ctx context.Context, text string, output io.Writer) (string, err
 		output.Write([]byte(msg.Choices[0].Delta.Content))
 		fullMsg = strings.Join([]string{fullMsg, msg.Choices[0].Delta.Content}, "")
 	}
-
-	AddMessage(ChatMessage{
-		Content: fullMsg,
-		Role:    openai.ChatMessageRoleAssistant,
-		Date:    time.Now(),
-	})
+	if saveMessage {
+		AddMessage(ChatMessage{
+			Content: fullMsg,
+			Role:    openai.ChatMessageRoleAssistant,
+			Date:    time.Now(),
+		})
+	}
 
 	return fullMsg, nil
 }
 
-func AddMessage(msg ChatMessage) {
+func AddMessage(msg ChatMessage) int {
 	messages = append(messages, msg)
 
 	if len(messages) > viper.GetInt("messages-length") {
@@ -95,6 +99,17 @@ func AddMessage(msg ChatMessage) {
 	sort.Slice(messages, func(i, j int) bool {
 		return messages[i].Date.Before(messages[j].Date)
 	})
+
+	return len(messages)
+}
+
+func UpdateMessage(idx int, msg ChatMessage) error {
+	if idx >= len(messages) {
+		return errors.New("index out of range")
+	}
+	messages[idx] = msg
+
+	return nil
 }
 
 func ClearMessages() {

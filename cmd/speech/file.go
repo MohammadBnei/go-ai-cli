@@ -1,6 +1,6 @@
 //go:build portaudio
 
-package cmd
+package speech
 
 import (
 	"fmt"
@@ -50,7 +50,7 @@ var fileCmd = &cobra.Command{
 }
 
 func init() {
-	speechCmd.AddCommand(fileCmd)
+	SpeechCmd.AddCommand(fileCmd)
 
 	// Here you will define your flags and configuration settings.
 

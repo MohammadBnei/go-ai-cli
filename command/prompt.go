@@ -29,7 +29,7 @@ func SendPrompt(cfg *PromptConfig) error {
 	if cfg.MdMode {
 		writer = mdWriter
 	}
-	response, err := service.SendPrompt(ctx, cfg.UserPrompt, writer)
+	response, err := service.SendPrompt(ctx, cfg.UserPrompt, writer, true)
 	signal.Stop(c)
 	close(c)
 	if err != nil {

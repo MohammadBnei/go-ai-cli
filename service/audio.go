@@ -19,17 +19,18 @@ import (
 )
 
 func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detect bool) (string, error) {
-	err := RecordAudioToFile(maxTime, detect, "speech")
+	tmpFileName := fmt.Sprintf("speech-%d", time.Now().UnixNano())
+	err := RecordAudioToFile(maxTime, detect, tmpFileName)
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove("speech.wav")
+	defer os.Remove(tmpFileName + ".wav")
 
 	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond)
 	s.Start()
 	defer s.Stop()
 
-	return SendAudio(ctx, "speech.wav", lang)
+	return SendAudio(ctx, tmpFileName + ".wav", lang)
 }
 
 func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
@@ -53,11 +54,16 @@ func SendAudio(ctx context.Context, filename string, lang string) (string, error
 }
 
 func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) error {
-	quit := make(chan bool)
+	quit := make(chan bool, 2)
 	go func(quit chan bool) {
 		fmt.Println("Press enter to stop recording")
 		fmt.Scanln()
 		quit <- true
+	}(quit)
+	go func(quit chan bool) {
+		time.Sleep(maxTime)
+		quit <- true
+		close(quit)
 	}(quit)
 
 	stream, err := stream.NewStream(stream.DefaultStreamConfig())

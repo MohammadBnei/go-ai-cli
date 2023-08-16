@@ -25,7 +25,7 @@ var promptCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(promptCmd)
+	RootCmd.AddCommand(promptCmd)
 
 	promptCmd.PersistentFlags().Int("depth", 2, "the depth of the tree view, when in file mode")
 	promptCmd.PersistentFlags().Bool("md", false, "markdown mode enabled")

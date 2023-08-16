@@ -21,12 +21,15 @@ import (
 )
 
 type SpeechConfig struct {
-	MaxMinutes   int
-	Lang         string
-	AutoMode     bool
-	AutoFilename string
-	MarkdownMode bool
-	Format       bool
+	MaxMinutes        int
+	Lang              string
+	AutoMode          bool
+	AutoFilename      string
+	MarkdownMode      bool
+	Format            bool
+	Timestamp         bool
+	SystemOptions     []string
+	AdvancedFormating string
 }
 
 func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
@@ -69,27 +72,14 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 	if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
 		return m.Role == openai.ChatMessageRoleSystem
 	}) {
-		var writer io.Writer = os.Stdout
-		if cfg.MarkdownMode {
-			writer = markdown.NewMarkdownWriter()
-		}
-		fmt.Print("Formating with openai : \n---\n\n")
-		ctx1, closer := LoadContext(ctx)
-		text, err := service.SendPrompt(ctx1, speech, writer)
-		closer()
-		if cfg.MarkdownMode {
-			writer.(*markdown.MarkdownWriter).Flush(text)
-		}
+		speech, err = FormatWithOpenai(ctx, speech, cfg.MarkdownMode)
 		if err != nil {
 			return err
-		} else {
-			speech = text
 		}
-		fmt.Print("\n\n---\n\n")
 	}
 
 	if cfg.AutoMode {
-		err := AddToFile([]byte(speech), cfg.AutoFilename)
+		err := AddToFile([]byte(speech), cfg.AutoFilename, true)
 		if err != nil {
 			return err
 		}
@@ -143,6 +133,50 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 	return nil
 }
 
+func ContinuousSpeech(ctx context.Context, cfg *SpeechConfig) error {
+	speech := make(chan string)
+	defer close(speech)
+	go func() {
+		for {
+			txt, ok := <-speech
+			if !ok {
+				return
+			}
+
+			if lo.SomeBy[service.ChatMessage](service.GetMessages(), func(m service.ChatMessage) bool {
+				return m.Role == openai.ChatMessageRoleSystem
+			}) {
+				var err error
+				txt, err = FormatWithOpenai(ctx, txt, cfg.MarkdownMode)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}
+
+			err := AddToFile([]byte(txt), cfg.AutoFilename, false)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+	}()
+
+	for {
+		go func(speech chan<- string) {
+			txt, err := service.SpeechToText(ctx, cfg.Lang, time.Minute, false)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			speech <- txt
+		}(speech)
+
+		time.Sleep(50 * time.Second)
+	}
+
+}
+
 func LoadContext(ctx context.Context) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	c := make(chan os.Signal, 1)
@@ -157,4 +191,51 @@ func LoadContext(ctx context.Context) (context.Context, func()) {
 		signal.Stop(c)
 		close(c)
 	}
+}
+
+func FormatWithOpenai(ctx context.Context, text string, markdownMode bool) (speech string, err error) {
+	var writer io.Writer = os.Stdout
+	if markdownMode {
+		writer = markdown.NewMarkdownWriter()
+	}
+	fmt.Print("Formating with openai : \n---\n\n")
+	ctx1, closer := LoadContext(ctx)
+	speech, err = service.SendPrompt(ctx1, text, writer, false)
+	closer()
+	if err != nil {
+		return
+	}
+	if markdownMode {
+		writer.(*markdown.MarkdownWriter).Flush(text)
+	}
+	fmt.Print("\n\n---\n\n")
+
+	return
+}
+
+func InitSpeech(speechConfig *SpeechConfig) error {
+	for _, opt := range speechConfig.SystemOptions {
+		service.AddMessage(service.ChatMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: opt,
+			Date:    time.Now(),
+		})
+	}
+
+	if speechConfig.Format {
+		service.AddMessage(service.ChatMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: "You will be prompted with a speech converted to text. Format it by adding line return between ideas and correct puntucation. Do not translate.",
+			Date:    time.Now(),
+		})
+		if speechConfig.AdvancedFormating != "" {
+			service.AddMessage(service.ChatMessage{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: speechConfig.AdvancedFormating,
+				Date:    time.Now(),
+			})
+		}
+	}
+
+	return nil
 }

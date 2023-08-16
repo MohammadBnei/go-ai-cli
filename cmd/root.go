@@ -25,14 +25,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/MohammadBnei/go-openai-cli/cmd/speech"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
+// RootCmd represents the base command when called without any subcommands
+var RootCmd = &cobra.Command{
 	Use:   "go-openai-cli",
 	Short: "Go-OpenAI-CLI is a command-line interface that allows users to generate text using OpenAI's GPT-3 language generation service.",
 	Long:  `Go-OpenAI-CLI is a command-line interface tool that provides users with convenient access to OpenAI's GPT-3 language generation service. With this app, users can easily send prompts to the OpenAI API and receive generated responses, which can then be printed on the command-line or saved to a markdown file. Go-OpenAI-CLI is an excellent tool for creatives, content creators, chatbot developers and virtual assistants, as they can use it to quickly generate text for various purposes. By configuring their OpenAI API key and model, users can customize the behavior of the app to suit their specific needs. Moreover, Go-OpenAI-CLI is an open-source project that welcomes contributions from the community, and it is licensed under the MIT License.`,
@@ -42,9 +43,9 @@ var rootCmd = &cobra.Command{
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// This is called by main.main(). It only needs to happen once to the RootCmd.
 func Execute() {
-	err := rootCmd.Execute()
+	err := RootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
@@ -59,13 +60,15 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
-	rootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
-	rootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
+	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	RootCmd.AddCommand(speech.SpeechCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -76,7 +79,7 @@ func initConfig() {
 	// Use config file from the flag.
 	viper.SetConfigFile(cfgFile)
 
-	viper.BindPFlags(rootCmd.PersistentFlags())
+	viper.BindPFlags(RootCmd.PersistentFlags())
 
 	viper.AutomaticEnv() // read in environment variables that match
 
