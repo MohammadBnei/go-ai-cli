@@ -42,7 +42,7 @@ FileLoop:
 			if err != nil {
 				return false
 			}
-			return strings.Contains(http.DetectContentType(fileContent), "text/plain")
+			return strings.Contains(http.DetectContentType(fileContent), "text/plain") || strings.Contains(f.Name(), ".svelte")
 		})
 
 		idx, err := fuzzyfinder.FindMulti(
