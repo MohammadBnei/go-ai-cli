@@ -28,13 +28,13 @@ func FileSelectionFzf(fileNumber *int) error {
 
 FileLoop:
 	for {
-		files, err := ioutil.ReadDir(cwd)
+		files, err := os.ReadDir(cwd)
 		if err != nil {
 			fmt.Println("Error while getting current working directory:", err)
 			return errors.Join(errors.New("error while getting current working directory : "), err)
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
-		files = lo.Filter[os.FileInfo](files, func(f os.FileInfo, _ int) bool {
+		files = lo.Filter(files, func(f os.DirEntry, _ int) bool {
 			if f.IsDir() {
 				return true
 			}
@@ -56,7 +56,7 @@ FileLoop:
 				}
 				if files[i].IsDir() {
 					root := gotree.New(files[i].Name())
-					subFiles, err := ioutil.ReadDir(cwd + "/" + files[i].Name())
+					subFiles, err := os.ReadDir(cwd + "/" + files[i].Name())
 					if err != nil {
 						return "📁"
 					}
@@ -99,13 +99,21 @@ FileLoop:
 				cwd += "/" + file.Name()
 			default:
 				selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
-					return files[i]
+					info, err := files[i].Info()
+					if err != nil {
+						return nil
+					}
+					return info
 				})
 				break FileLoop
 			}
 		} else {
 			selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
-				return files[i]
+				info, err := files[i].Info()
+				if err != nil {
+					return nil
+				}
+				return info
 			})
 			break FileLoop
 		}

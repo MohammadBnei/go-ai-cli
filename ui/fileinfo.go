@@ -33,6 +33,13 @@ func (fi myFileInfo) IsDir() bool {
 	return fi.isDir
 }
 
+func (fi myFileInfo) Type() os.FileMode {
+	return fi.mode
+}
+
 func (fi myFileInfo) Sys() interface{} {
 	return nil
+}
+func (fi myFileInfo) Info() (os.FileInfo, error) {
+	return fi.Info()
 }
