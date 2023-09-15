@@ -54,6 +54,11 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
+	commandMap["responses"] = func(pc *PromptConfig) error {
+		_, err := ui.ShowPreviousMessage(pc.MdMode)
+		return err
+	}
+
 	commandMap["default"] = func(pc *PromptConfig) error {
 		return ui.SetSystemDefault(false)
 	}

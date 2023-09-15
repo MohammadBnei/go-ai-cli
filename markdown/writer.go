@@ -97,6 +97,11 @@ func (mw *MarkdownWriter) Print(text string, writer io.Writer) error {
 	return err
 }
 
+func (mw *MarkdownWriter) ToMarkdown(text string) (string, error) {
+	byteText := markdown.Render(text, mw.TermWidth-10, 6)
+	return string(byteText), nil
+}
+
 func GetTerminalSize() (int, int, error) {
 	cmd := exec.Command("stty", "size")
 	cmd.Stdin = os.Stdin
