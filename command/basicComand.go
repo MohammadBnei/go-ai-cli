@@ -45,6 +45,10 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return ui.FilterMessages()
 	}
 
+	commandMap["cli-clear"] = func(pc *PromptConfig) error {
+		return ui.ClearTerminal()
+	}
+
 	commandMap["reuse"] = func(pc *PromptConfig) error {
 		message, err := ui.ReuseMessage()
 		if err != nil {

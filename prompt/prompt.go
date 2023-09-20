@@ -10,12 +10,13 @@ import (
 
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
 	"github.com/ktr0731/go-fuzzyfinder"
+	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
-	"github.com/tigergraph/promptui"
 	"moul.io/banner"
 )
 
@@ -90,6 +91,8 @@ func OpenAiPrompt() {
 		})
 	}
 
+	// history := []string{}
+
 PromptLoop:
 	for {
 		label = "prompt"
@@ -109,8 +112,9 @@ PromptLoop:
 
 		prompt := promptui.Prompt{
 			Label:     label,
-			AllowEdit: false,
+			AllowEdit: true,
 			Default:   promptConfig.PreviousPrompt,
+			IsVimMode: true,
 		}
 
 		userPrompt, err := prompt.Run()
@@ -152,6 +156,7 @@ PromptLoop:
 			commandMap["quit"](promptConfig)
 		default:
 			promptConfig.UserPrompt = cmd
+			ui.ClearTerminal()
 			err = command.SendPrompt(promptConfig)
 		}
 

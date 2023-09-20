@@ -3,6 +3,8 @@ package ui
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
 	"time"
 
@@ -181,4 +183,10 @@ func RemoveFromSystemList(time string) {
 	delete(systems, time)
 	viper.Set("systems", systems)
 	viper.GetViper().WriteConfig()
+}
+
+func ClearTerminal() error {
+	cmd := exec.Command("clear")
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }
