@@ -1,4 +1,4 @@
-//go:build portaudio
+// +build portaudio
 
 package service
 
@@ -30,7 +30,7 @@ func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detec
 	s.Start()
 	defer s.Stop()
 
-	return SendAudio(ctx, tmpFileName + ".wav", lang)
+	return SendAudio(ctx, tmpFileName+".wav", lang)
 }
 
 func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
