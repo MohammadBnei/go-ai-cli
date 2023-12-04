@@ -12,25 +12,44 @@ import (
 )
 
 func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["save"] = func(cfg *PromptConfig) error {
-		return ui.SaveToFile([]byte(cfg.PreviousRes), "")
+	commandMap["save"] = func(pc *PromptConfig) error {
+		assistantRole := service.RoleAssistant
+		lastMessage := pc.ChatMessages.LastMessage(&assistantRole)
+		if lastMessage == nil {
+			return errors.New("no assistant message found")
+		}
+		return ui.SaveToFile([]byte(lastMessage.Content), "")
 	}
 
-	commandMap["file"] = func(cfg *PromptConfig) error {
-		return ui.FileSelectionFzf(&cfg.FileNumber)
+	commandMap["file"] = func(pc *PromptConfig) error {
+		fileContents, err := ui.FileSelectionFzf()
+		if err != nil {
+			return err
+		}
+		for _, fileContent := range fileContents {
+			pc.ChatMessages.AddMessage(fileContent, service.RoleUser)
+		}
+		return nil
 	}
 }
 
 func AddConfigCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["markdown"] = func(cfg *PromptConfig) error {
-		cfg.MdMode = !cfg.MdMode
+	commandMap["markdown"] = func(pc *PromptConfig) error {
+		pc.MdMode = !pc.MdMode
 		return nil
 	}
 }
 
 func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["list"] = func(pc *PromptConfig) error {
-		return ui.SelectSystemCommand()
+		messages, err := ui.SelectSystemCommand()
+		if err != nil {
+			return err
+		}
+		for _, message := range messages {
+			pc.ChatMessages.AddMessage(message, service.RoleAssistant)
+		}
+		return nil
 	}
 
 	commandMap["d-list"] = func(pc *PromptConfig) error {
@@ -38,19 +57,37 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 
 	commandMap["system"] = func(pc *PromptConfig) error {
-		return ui.SendAsSystem()
+		message, err := ui.SendAsSystem()
+		if err != nil {
+			return err
+		}
+		pc.ChatMessages.AddMessage(message, service.RoleAssistant)
+		return nil
 	}
 
 	commandMap["filter"] = func(pc *PromptConfig) error {
-		return ui.FilterMessages()
+		messageIds, err := ui.FilterMessages(pc.ChatMessages.Messages)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range messageIds {
+			_err := pc.ChatMessages.DeleteMessage(id)
+			if _err != nil {
+				err = errors.Join(err, _err)
+			}
+		}
+
+		return err
 	}
 
 	commandMap["cli-clear"] = func(pc *PromptConfig) error {
-		return ui.ClearTerminal()
+		ui.ClearTerminal()
+		return nil
 	}
 
 	commandMap["reuse"] = func(pc *PromptConfig) error {
-		message, err := ui.ReuseMessage()
+		message, err := ui.ReuseMessage(pc.ChatMessages.Messages)
 		if err != nil {
 			return err
 		}
@@ -59,29 +96,44 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 
 	commandMap["responses"] = func(pc *PromptConfig) error {
-		_, err := ui.ShowPreviousMessage(pc.MdMode)
+		_, err := ui.ShowPreviousMessage(pc.ChatMessages.Messages, pc.MdMode)
 		return err
 	}
 
 	commandMap["default"] = func(pc *PromptConfig) error {
-		return ui.SetSystemDefault(false)
+		commandToAdd, err := ui.SetSystemDefault(false)
+		if err != nil {
+			return err
+		}
+		for _, command := range commandToAdd {
+			pc.ChatMessages.AddMessage(command, service.RoleAssistant)
+		}
+		return nil
 	}
 	commandMap["d-default"] = func(pc *PromptConfig) error {
-		return ui.SetSystemDefault(true)
+		commandToAdd, err := ui.SetSystemDefault(true)
+		if err != nil {
+			return err
+		}
+		for _, command := range commandToAdd {
+			pc.ChatMessages.AddMessage(command, service.RoleAssistant)
+		}
+		return nil
 	}
 
 	commandMap["copy"] = func(pc *PromptConfig) error {
-		if pc.PreviousRes == "" {
-			return errors.New("nothing to copy")
+		assistantMessages, _ := pc.ChatMessages.FilterMessages(service.RoleAssistant)
+		if len(assistantMessages) < 1 {
+			return errors.New("no messages to copy")
 		}
-		clipboard.WriteAll(pc.PreviousRes)
+
+		clipboard.WriteAll(assistantMessages[len(assistantMessages)-1].Content)
 		fmt.Println("copied to clipboard")
 		return nil
 	}
 
 	commandMap["clear"] = func(pc *PromptConfig) error {
-		service.ClearMessages()
-		pc.FileNumber = 0
+		pc.ChatMessages.ClearMessages()
 		fmt.Println("cleared messages")
 		return nil
 	}

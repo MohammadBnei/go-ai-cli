@@ -5,38 +5,31 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"sort"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/golang-module/carbon/v2"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"github.com/tigergraph/promptui"
 )
 
-func SendAsSystem() error {
+func SendAsSystem() (string, error) {
 	systemPrompt := promptui.Prompt{
 		Label: "specify model behavior",
 	}
 	command, err := systemPrompt.Run()
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	service.AddMessage(service.ChatMessage{
-		Role:    openai.ChatMessageRoleSystem,
-		Content: command,
-		Date:    time.Now(),
-	})
 
 	if YesNoPrompt("save prompt ?") {
 		AddToSystemList(command, time.Now().Format("2006-01-02 15:04:05"))
 	}
 
-	return nil
+	return command, nil
 }
 
 func YesNoPrompt(label string) bool {
@@ -53,7 +46,7 @@ func YesNoPrompt(label string) bool {
 	return true
 }
 
-func SetSystemDefault(unset bool) error {
+func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
 	keyStringFromSP := lo.Keys[string](savedSystemPrompt)
@@ -77,7 +70,7 @@ func SetSystemDefault(unset bool) error {
 		return fmt.Sprintf("Date: %s\nDefault: %s\n%s", keyStringFromSP[i], defaultStr, AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromSP[i]]))
 	})
 	if err != nil {
-		return err
+		return
 	}
 
 	sendCommands := false
@@ -91,11 +84,7 @@ func SetSystemDefault(unset bool) error {
 		} else {
 			savedDefaultSystemPrompt[id] = ""
 			if sendCommands {
-				service.AddMessage(service.ChatMessage{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: savedSystemPrompt[id],
-					Date:    time.Now(),
-				})
+				commandToAdd = append(commandToAdd, savedSystemPrompt[id])
 			}
 		}
 
@@ -104,23 +93,23 @@ func SetSystemDefault(unset bool) error {
 	viper.Set("default-systems", savedDefaultSystemPrompt)
 	viper.GetViper().WriteConfig()
 
-	return viper.GetViper().WriteConfig()
+	err = viper.GetViper().WriteConfig()
+
+	return
 }
 
-func SelectSystemCommand() error {
+func SelectSystemCommand() ([]string, error) {
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	keys, err := SystemPrompt(savedSystemPrompt, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	commandToSend := []string{}
 	for _, id := range keys {
-		service.AddMessage(service.ChatMessage{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: savedSystemPrompt[id],
-			Date:    time.Now(),
-		})
+		commandToSend = append(commandToSend, savedSystemPrompt[id])
 	}
-	return nil
+	return commandToSend, nil
 }
 
 func SystemPrompt(savedSystemPrompt map[string]string, previewWindowFunc func(int, int, int) string) ([]string, error) {
@@ -185,8 +174,27 @@ func RemoveFromSystemList(time string) {
 	viper.GetViper().WriteConfig()
 }
 
-func ClearTerminal() error {
-	cmd := exec.Command("clear")
-	cmd.Stdout = os.Stdout
-	return cmd.Run()
+var clear map[string]func() = make(map[string]func())
+
+func ClearTerminal() {
+	if _, ok := clear["linux"]; !ok {
+		clear["linux"] = func() {
+			cmd := exec.Command("clear") //Linux example, its tested
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+	}
+	if _, ok := clear["windows"]; !ok {
+		clear["windows"] = func() {
+			cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+			cmd.Stdout = os.Stdout
+			cmd.Run()
+		}
+	}
+	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
+	if ok {                          //if we defined a clear func for that platform:
+		value() //we execute it
+	} else { //unsupported platform
+		clear["linux"]()
+	}
 }

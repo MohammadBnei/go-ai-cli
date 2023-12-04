@@ -10,28 +10,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/disiqueira/gotree"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
-	"github.com/sashabaranov/go-openai"
 )
 
-func FileSelectionFzf(fileNumber *int) error {
+func FileSelectionFzf() (fileContents []string, err error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return
 	}
 
 	var selected []os.FileInfo
 
 FileLoop:
 	for {
-		files, err := os.ReadDir(cwd)
-		if err != nil {
-			fmt.Println("Error while getting current working directory:", err)
-			return errors.Join(errors.New("error while getting current working directory : "), err)
+		files, _err := os.ReadDir(cwd)
+		if _err != nil {
+			fmt.Println("Error while getting current working directory:", _err)
+			err = errors.Join(errors.New("error while getting current working directory : "), _err)
+			return
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
 		files = lo.Filter(files, func(f os.DirEntry, _ int) bool {
@@ -45,7 +44,7 @@ FileLoop:
 			return strings.Contains(http.DetectContentType(fileContent), "text/plain") || strings.Contains(f.Name(), ".svelte")
 		})
 
-		idx, err := fuzzyfinder.FindMulti(
+		idx, _err := fuzzyfinder.FindMulti(
 			files,
 			func(i int) string {
 				return files[i].Name()
@@ -56,8 +55,8 @@ FileLoop:
 				}
 				if files[i].IsDir() {
 					root := gotree.New(files[i].Name())
-					subFiles, err := os.ReadDir(cwd + "/" + files[i].Name())
-					if err != nil {
+					subFiles, _err := os.ReadDir(cwd + "/" + files[i].Name())
+					if _err != nil {
 						return "📁"
 					}
 					for _, f := range subFiles {
@@ -86,8 +85,9 @@ FileLoop:
 				)
 			}))
 
-		if err != nil {
-			return err
+		if _err != nil {
+			err = _err
+			return
 		}
 		if len(idx) == 1 {
 			file := files[idx[0]]
@@ -125,21 +125,18 @@ FileLoop:
 			continue
 		}
 
-		fileContent, err := os.ReadFile(cwd + "/" + file.Name())
-		if err != nil {
-			return err
+		fileContent, _err := os.ReadFile(cwd + "/" + file.Name())
+		if _err != nil {
+			err = _err
+			return
 		}
-		service.AddMessage(service.ChatMessage{
-			Content: fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent),
-			Role:    openai.ChatMessageRoleUser,
-			Date:    time.Now(),
-		})
-		*fileNumber++
+
+		fileContents = append(fileContents, fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent))
 
 		fmt.Println("added file:", file.Name())
 	}
 
-	return nil
+	return
 }
 
 func AddToFile(content []byte, filename string, withTimestamp bool) error {

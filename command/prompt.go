@@ -29,7 +29,11 @@ func SendPrompt(cfg *PromptConfig) error {
 	if cfg.MdMode {
 		writer = mdWriter
 	}
-	response, err := service.SendPrompt(ctx, cfg.UserPrompt, writer, true)
+	cfg.ChatMessages.AddMessage(cfg.UserPrompt, service.RoleUser)
+	response, err := service.SendPrompt(ctx, &service.SendPromptConfig{
+		ChatMessages: cfg.ChatMessages,
+		Output:       writer,
+	})
 	signal.Stop(c)
 	close(c)
 	if err != nil {
@@ -43,7 +47,7 @@ func SendPrompt(cfg *PromptConfig) error {
 		mdWriter.Flush(response)
 	}
 
-	cfg.PreviousRes = response
+	cfg.ChatMessages.AddMessage(response, service.RoleAssistant)
 
 	return nil
 }

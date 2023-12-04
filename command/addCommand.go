@@ -1,12 +1,12 @@
 package command
 
+import "github.com/MohammadBnei/go-openai-cli/service"
+
 type PromptConfig struct {
 	MdMode         bool
-	UserPrompt     string
+	ChatMessages   *service.ChatMessages
 	PreviousPrompt string
-	PreviousRes    string
-	FileNumber     int
-	SystemPrompts  map[string]string
+	UserPrompt     string
 }
 
 func AddBasicCommand(commandMap map[string]func(*PromptConfig) error) {

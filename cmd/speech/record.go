@@ -15,7 +15,7 @@ var recordCmd = &cobra.Command{
 	Use:   "record",
 	Short: "Record audio to file",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := service.RecordAudioToFile(4*time.Minute, false, cmd.Flag("filename").Value.String()); err != nil {
+		if err := service.RecordAudioToFile(1*time.Minute, false, cmd.Flag("filename").Value.String()); err != nil {
 			fmt.Println(err)
 			return
 		}

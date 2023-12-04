@@ -1,3 +1,4 @@
+//go:build portaudio
 // +build portaudio
 
 package service
@@ -18,9 +19,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detect bool) (string, error) {
+type SpeechConfig struct {
+	MaxMinutes time.Duration
+	Lang       string
+	Detect     bool
+}
+
+func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
 	tmpFileName := fmt.Sprintf("speech-%d", time.Now().UnixNano())
-	err := RecordAudioToFile(maxTime, detect, tmpFileName)
+	err := RecordAudioToFile(config.MaxMinutes, config.Detect, tmpFileName)
 	if err != nil {
 		return "", err
 	}
@@ -30,7 +37,7 @@ func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detec
 	s.Start()
 	defer s.Stop()
 
-	return SendAudio(ctx, tmpFileName+".wav", lang)
+	return SendAudio(ctx, tmpFileName+".wav", config.Lang)
 }
 
 func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
@@ -58,7 +65,15 @@ func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) erro
 	go func(quit chan bool) {
 		fmt.Println("Press enter to stop recording")
 		fmt.Scanln()
-		quit <- true
+		select {
+		case _, ok := <-quit:
+			if !ok {
+				return
+			}
+		default:
+			quit <- true
+
+		}
 	}(quit)
 	go func(quit chan bool) {
 		time.Sleep(maxTime)

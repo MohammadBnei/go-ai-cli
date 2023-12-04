@@ -2,9 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
 	"io"
-	"sort"
 	"strings"
 	"time"
 
@@ -14,16 +12,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-var messages []ChatMessage
-
-type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-
-	Date time.Time
+type SendPromptConfig struct {
+	ChatMessages *ChatMessages
+	Output       io.Writer
 }
 
-func SendPrompt(ctx context.Context, text string, output io.Writer, saveMessage bool) (string, error) {
+func SendPrompt(ctx context.Context, req *SendPromptConfig) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
@@ -35,17 +29,9 @@ func SendPrompt(ctx context.Context, text string, output io.Writer, saveMessage 
 	if model == "" {
 		model = openai.GPT3Dot5Turbo
 	}
-	if saveMessage {
-
-		AddMessage(ChatMessage{
-			Role:    openai.ChatMessageRoleUser,
-			Content: text,
-			Date:    time.Now(),
-		})
-	}
 
 	chatMessages := []openai.ChatCompletionMessage{}
-	err := copier.Copy(&chatMessages, &messages)
+	err := copier.Copy(&chatMessages, req.ChatMessages.Messages)
 
 	if err != nil {
 		return "", err
@@ -75,57 +61,13 @@ func SendPrompt(ctx context.Context, text string, output io.Writer, saveMessage 
 			return "", err
 		}
 
-		output.Write([]byte(msg.Choices[0].Delta.Content))
+		req.Output.Write([]byte(msg.Choices[0].Delta.Content))
 		fullMsg = strings.Join([]string{fullMsg, msg.Choices[0].Delta.Content}, "")
-	}
-	if saveMessage {
-		AddMessage(ChatMessage{
-			Content: fullMsg,
-			Role:    openai.ChatMessageRoleAssistant,
-			Date:    time.Now(),
-		})
 	}
 
 	return fullMsg, nil
 }
 
-func AddMessage(msg ChatMessage) int {
-	messages = append(messages, msg)
-
-	if len(messages) > viper.GetInt("messages-length") {
-		messages = messages[1:]
-	}
-
-	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].Date.Before(messages[j].Date)
-	})
-
-	return len(messages)
-}
-
-func UpdateMessage(idx int, msg ChatMessage) error {
-	if idx >= len(messages) {
-		return errors.New("index out of range")
-	}
-	messages[idx] = msg
-
-	return nil
-}
-
-func ClearMessages() {
-	messages = []ChatMessage{}
-}
-
-func GetMessages() []ChatMessage {
-	return messages
-}
-
-func SetMessages(msgs []ChatMessage) {
-	messages = msgs
-	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].Date.Before(messages[j].Date)
-	})
-}
 func GetModelList() ([]string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 	models, err := c.ListModels(context.Background())

@@ -1,3 +1,4 @@
+//go:build portaudio
 // +build portaudio
 
 package command
@@ -13,7 +14,7 @@ import (
 
 func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["r"] = func(cfg *PromptConfig) error {
-		text, err := service.SpeechToText(context.Background(), "", time.Minute, false)
+		text, err := service.SpeechToText(context.Background(), &service.SpeechConfig{MaxMinutes: time.Minute, Lang: "", Detect: false})
 		if err != nil {
 			return err
 		}
@@ -25,14 +26,15 @@ func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 
 	commandMap["rs"] = func(cfg *PromptConfig) error {
-		text, err := service.SpeechToText(context.Background(), "", time.Minute, false)
+		text, err := service.SpeechToText(context.Background(), &service.SpeechConfig{MaxMinutes: time.Minute, Lang: "", Detect: false})
 		if err != nil {
 			return err
 		}
 		text = strings.TrimSpace(text)
 		fmt.Println("Speech: ", text)
 
-		cfg.UserPrompt = text
+		cfg.ChatMessages.AddMessage(text, service.RoleUser)
+
 		return SendPrompt(cfg)
 	}
 }

@@ -12,12 +12,7 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-func FilterMessages() error {
-	messages := service.GetMessages()
-
-	sort.Slice(messages, func(i, j int) bool {
-		return messages[i].Date.After(messages[j].Date)
-	})
+func FilterMessages(messages []service.ChatMessage) (messageIds []int, err error) {
 	idx, err := fuzzyfinder.FindMulti(
 		messages,
 		func(i int) string {
@@ -37,22 +32,23 @@ func FilterMessages() error {
 	)
 
 	if err != nil {
-		return err
+		return
 	}
 
-	messages = lo.Filter[service.ChatMessage](messages, func(_ service.ChatMessage, i int) bool {
-		return !lo.Contains[int](idx, i)
-	})
+	for _, i := range idx {
+		messageIds = append(messageIds, messages[i].Id)
+	}
 
-	service.SetMessages(messages)
+	if err != nil {
+		return
+	}
 
 	fmt.Printf("cleared %d messages \n", len(idx))
 
-	return nil
+	return
 }
 
-func ReuseMessage() (string, error) {
-	messages := service.GetMessages()
+func ReuseMessage(messages []service.ChatMessage) (string, error) {
 	messages = lo.Filter[service.ChatMessage](messages, func(item service.ChatMessage, _ int) bool {
 		return item.Role == openai.ChatMessageRoleUser
 	})
@@ -97,8 +93,7 @@ func ReuseMessage() (string, error) {
 
 }
 
-func ShowPreviousMessage(markdownMode bool) (string, error) {
-	messages := service.GetMessages()
+func ShowPreviousMessage(messages []service.ChatMessage, markdownMode bool) (string, error) {
 	messages = lo.Filter[service.ChatMessage](messages, func(item service.ChatMessage, _ int) bool {
 		return item.Role == openai.ChatMessageRoleAssistant
 	})

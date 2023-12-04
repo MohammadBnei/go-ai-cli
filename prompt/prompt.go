@@ -3,19 +3,14 @@ package prompt
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
-	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
 	"github.com/ktr0731/go-fuzzyfinder"
-	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"moul.io/banner"
 )
@@ -78,17 +73,14 @@ func OpenAiPrompt() {
 	command.AddAllCommand(commandMap)
 
 	promptConfig := &command.PromptConfig{
-		MdMode: viper.GetBool("md"),
+		MdMode:       viper.GetBool("md"),
+		ChatMessages: service.NewChatMessages("default"),
 	}
 
 	defaulSystemPrompt := viper.GetStringMapString("default-systems")
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	for k := range defaulSystemPrompt {
-		service.AddMessage(service.ChatMessage{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: savedSystemPrompt[k],
-			Date:    time.Now(),
-		})
+		promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
 	}
 
 	// history := []string{}
@@ -96,33 +88,26 @@ func OpenAiPrompt() {
 PromptLoop:
 	for {
 		label = "prompt"
-		totalCharacters := lo.Reduce[service.ChatMessage, int](service.GetMessages(), func(acc int, elem service.ChatMessage, _ int) int {
-			return acc + len(elem.Content)
-		}, 0)
-		if totalCharacters != 0 {
-			label = fmt.Sprintf("%d🔤 🧠", totalCharacters)
-		}
-		if promptConfig.FileNumber != 0 {
-			label = fmt.Sprintf("%d💾 %s ", promptConfig.FileNumber, label)
+		tokens := promptConfig.ChatMessages.TotalTokens
+		if tokens != 0 {
+			label = fmt.Sprintf("%d🔤 🧠", tokens)
 		}
 
 		if promptConfig.MdMode {
 			label = fmt.Sprintf("🖥️  %s ", label)
 		}
 
-		prompt := promptui.Prompt{
-			Label:     label,
-			AllowEdit: true,
-			Default:   promptConfig.PreviousPrompt,
-			IsVimMode: true,
-		}
+		// prompt := promptui.Prompt{
+		// 	Label:     label,
+		// 	AllowEdit: false,
+		// 	Default:   promptConfig.PreviousPrompt,
+		// }
 
-		userPrompt, err := prompt.Run()
+		var userPrompt string
+		fmt.Print(label + ": ")
+		_, err := fmt.Scanln(&userPrompt)
 		if err != nil {
 			fmt.Println(err)
-			if err == promptui.ErrInterrupt {
-				os.Exit(0)
-			}
 			continue PromptLoop
 
 		}
@@ -169,30 +154,5 @@ PromptLoop:
 
 		fmt.Println("\n✅")
 		promptConfig.PreviousPrompt = userPrompt
-	}
-}
-
-var clear map[string]func() = make(map[string]func())
-
-func CallClear() {
-	if _, ok := clear["linux"]; !ok {
-		clear["linux"] = func() {
-			cmd := exec.Command("clear") //Linux example, its tested
-			cmd.Stdout = os.Stdout
-			cmd.Run()
-		}
-	}
-	if _, ok := clear["windows"]; !ok {
-		clear["windows"] = func() {
-			cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
-			cmd.Stdout = os.Stdout
-			cmd.Run()
-		}
-	}
-	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
-	if ok {                          //if we defined a clear func for that platform:
-		value() //we execute it
-	} else { //unsupported platform
-		clear["linux"]()
 	}
 }
