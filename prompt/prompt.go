@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
@@ -103,17 +104,20 @@ PromptLoop:
 		// 	Default:   promptConfig.PreviousPrompt,
 		// }
 
+		scanner := bufio.NewScanner(os.Stdin)
 		var userPrompt string
 		fmt.Print(label + ": ")
-		_, err := fmt.Scanln(&userPrompt)
-		if err != nil {
-			fmt.Println(err)
-			continue PromptLoop
+		scanner.Scan()
+		userPrompt = scanner.Text()
 
+		if userPrompt == "" {
+			continue PromptLoop
 		}
 
 		cmd := strings.TrimSpace(userPrompt)
 		keys := lo.Keys[string](commandMap)
+
+		var err error
 
 		switch {
 		case cmd == "\\":
