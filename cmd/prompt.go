@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/MohammadBnei/go-openai-cli/prompt"
+	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"moul.io/banner"
@@ -17,6 +18,7 @@ var promptCmd = &cobra.Command{
 	Use:   "prompt",
 	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
+		ui.ClearTerminal()
 		fmt.Println(banner.Inline("go ai cli - prompt"))
 		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
 

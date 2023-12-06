@@ -99,13 +99,7 @@ PromptLoop:
 			label = fmt.Sprintf("🖥️  %s ", label)
 		}
 
-		// prompt := promptui.Prompt{
-		// 	Label:     label,
-		// 	AllowEdit: false,
-		// 	Default:   promptConfig.PreviousPrompt,
-		// }
-
-		userPrompt, err := ui.BasicPrompt(label)
+		userPrompt, err := ui.BasicPrompt(label, promptConfig.PreviousPrompt)
 		if err != nil {
 			fmt.Println(err)
 			continue PromptLoop
@@ -143,7 +137,6 @@ PromptLoop:
 		case cmd == "q":
 			commandMap["quit"](promptConfig)
 		default:
-			ui.ClearTerminal()
 			promptConfig.ChatMessages.AddMessage(userPrompt, service.RoleUser)
 
 			// writers := io.MultiWriter(os.Stdout)
