@@ -6,9 +6,12 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 )
 
@@ -35,7 +38,25 @@ func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 
 		cfg.ChatMessages.AddMessage(text, service.RoleUser)
 
-		return SendPrompt(cfg)
+		mdWriter := markdown.NewMarkdownWriter()
+		var writer io.Writer
+		writer = os.Stdout
+		if cfg.MdMode {
+			writer = mdWriter
+		}
+		response, err := service.SendPrompt(&service.SendPromptConfig{
+			ChatMessages: cfg.ChatMessages,
+			Output:       writer,
+			GPTFunc:      service.SendPromptToOpenAi,
+		})
+		if err != nil {
+			return err
+		}
+		if cfg.MdMode {
+			mdWriter.Flush(response)
+		}
+
+		return nil
 	}
 }
 

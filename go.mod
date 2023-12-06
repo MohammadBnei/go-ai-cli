@@ -20,6 +20,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	github.com/tigergraph/promptui v0.6.3
+	gopkg.in/yaml.v3 v3.0.1
 	moul.io/banner v1.0.1
 )
 
@@ -78,5 +79,4 @@ require (
 	gopkg.in/alecthomas/kingpin.v3-unstable v3.0.0-20171010053543-63abe20a23e2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.2.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

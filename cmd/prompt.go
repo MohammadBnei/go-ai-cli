@@ -29,5 +29,7 @@ func init() {
 
 	promptCmd.PersistentFlags().Int("depth", 2, "the depth of the tree view, when in file mode")
 	promptCmd.PersistentFlags().Bool("md", false, "markdown mode enabled")
+	promptCmd.PersistentFlags().BoolP("auto-save", "s", false, "Automatically save the prompt to a file")
 
+	viper.BindPFlag("autoSave", promptCmd.Flags().Lookup("auto-save"))
 }

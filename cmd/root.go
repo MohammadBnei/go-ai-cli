@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/MohammadBnei/go-openai-cli/cmd/speech"
 	"github.com/spf13/cobra"
@@ -80,6 +81,8 @@ func initConfig() {
 	viper.SetConfigFile(cfgFile)
 
 	viper.BindPFlags(RootCmd.PersistentFlags())
+	configPath := filepath.Dir(cfgFile)
+	viper.Set("configPath", configPath)
 
 	viper.AutomaticEnv() // read in environment variables that match
 

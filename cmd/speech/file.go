@@ -1,3 +1,4 @@
+//go:build portaudio
 // +build portaudio
 
 package speech
@@ -34,7 +35,7 @@ var fileCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, closer := ui.LoadContext(cmd.Context())
+		ctx, closer := service.LoadContext(cmd.Context())
 		text, err := service.SendAudio(ctx, args[0], cmd.Flag("lang").Value.String())
 		closer()
 		if err != nil {

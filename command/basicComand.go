@@ -21,8 +21,54 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 		return ui.SaveToFile([]byte(lastMessage.Content), "")
 	}
 
+	commandMap["save-chat"] = func(pc *PromptConfig) error {
+		return ui.SaveChat(pc.ChatMessages)
+	}
+
+	commandMap["load-chat"] = func(pc *PromptConfig) error {
+		startPath, err := ui.StringPrompt("Enter a path to start from")
+		if err != nil {
+			return err
+		}
+		fmt.Println(startPath)
+		loadedChat, err := ui.LoadChat(startPath)
+		if err != nil {
+			return err
+		}
+		pc.ChatMessages = loadedChat
+		return nil
+	}
+
+	commandMap["meta"] = func(pc *PromptConfig) error {
+		system := ""
+		yes := ui.YesNoPrompt("Use predefined system ?")
+		if yes {
+			systems, err := ui.SelectSystemCommand()
+			if err != nil {
+				return err
+			}
+			system = strings.Join(systems, "\n")
+		}
+		additionalSystem, err := ui.StringPrompt("additional system")
+		if err != nil {
+			return err
+		}
+		if additionalSystem != "" {
+			system = system + "\n" + additionalSystem
+		}
+
+		command, err := ui.StringPrompt("command")
+		if err != nil {
+			return err
+		}
+
+
+		ui.SendCommandOnChat(system, command)
+		return nil
+	}
+
 	commandMap["file"] = func(pc *PromptConfig) error {
-		fileContents, err := ui.FileSelectionFzf()
+		fileContents, err := ui.FileSelectionFzf("")
 		if err != nil {
 			return err
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 type Roles string
@@ -29,17 +30,46 @@ type ChatMessage struct {
 }
 
 type ChatMessages struct {
-	id          string
+	Id          string
+	Description string
 	Messages    []ChatMessage
 	TotalTokens int
 }
 
 func NewChatMessages(id string) *ChatMessages {
 	return &ChatMessages{
-		id:          id,
+		Id:          id,
 		Messages:    []ChatMessage{},
 		TotalTokens: 0,
 	}
+}
+
+func (c *ChatMessages) SetId(id string) *ChatMessages {
+	c.Id = id
+	return c
+}
+func (c *ChatMessages) SetDescription(description string) *ChatMessages {
+	c.Description = description
+
+	return c
+}
+
+func (c *ChatMessages) SaveToFile(filename string) error {
+	if filename == "" {
+		filename = c.Id
+	}
+
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	err = SaveToFile(data, viper.GetString("configPath")+"/"+filename+".yaml")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c *ChatMessages) AddMessage(content string, role Roles) error {
@@ -68,7 +98,7 @@ func (c *ChatMessages) AddMessage(content string, role Roles) error {
 
 	c.TotalTokens += tokenCount
 
-	sort.Slice(c.Messages, func(i, j int) bool {
+	sort.SliceStable(c.Messages, func(i, j int) bool {
 		return c.Messages[i].Date.Before(c.Messages[j].Date)
 	})
 
@@ -76,22 +106,25 @@ func (c *ChatMessages) AddMessage(content string, role Roles) error {
 }
 
 func (c *ChatMessages) DeleteMessage(id int) error {
-	if _, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
+	message, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
 		return item.Id == id
-	}); !ok {
+	})
+	if !ok {
 		return errors.New("message not found")
 	}
+
+	c.TotalTokens -= message.Tokens
 
 	c.Messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
 		return item.Id != id
 	})
-	c.TotalTokens -= c.Messages[id].Tokens
 
 	return nil
 }
 
 func (c *ChatMessages) ClearMessages() {
 	c.Messages = []ChatMessage{}
+	c.TotalTokens = 0
 }
 
 func (c *ChatMessages) LastMessage(role *Roles) *ChatMessage {
@@ -109,8 +142,12 @@ func (c *ChatMessages) LastMessage(role *Roles) *ChatMessage {
 }
 
 func (c *ChatMessages) FilterMessages(role Roles) (messages []ChatMessage, tokens int) {
-	messages = lo.Filter[ChatMessage](messages, func(item ChatMessage, _ int) bool {
+	messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
 		return item.Role == role
+	})
+
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.Before(messages[j].Date)
 	})
 
 	tokens = lo.Reduce[ChatMessage, int](messages, func(acc int, item ChatMessage, _ int) int {
@@ -119,6 +156,15 @@ func (c *ChatMessages) FilterMessages(role Roles) (messages []ChatMessage, token
 	}, 0)
 
 	return
+}
+
+func (c *ChatMessages) RecountTokens() *ChatMessages {
+	c.TotalTokens = 0
+	for _, msg := range c.Messages {
+		msg.Tokens, _ = CountTokens(msg.Content)
+		c.TotalTokens += msg.Tokens
+	}
+	return c
 }
 
 func CountTokens(content string) (int, error) {

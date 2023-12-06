@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -10,9 +11,71 @@ import (
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
+	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
+func SaveChat(chatmessages *service.ChatMessages) error {
+	name, err := StringPrompt("Enter a name for this chat")
+	if err != nil {
+		return err
+	}
+
+	chatmessages.SetId(name)
+
+	description, err := StringPrompt("Enter a description for this chat")
+	if err != nil {
+		return err
+	}
+
+	chatmessages.SetDescription(description)
+
+	data, err := yaml.Marshal(chatmessages)
+	if err != nil {
+		return err
+	}
+
+	err = SaveToFile(data, viper.GetString("configPath")+"/"+name+".yaml")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LoadChat(startPath string) (*service.ChatMessages, error) {
+	if startPath == "" {
+		startPath = viper.GetString("configPath")
+	}
+	path, err := PathSelectionFzf(startPath)
+	if err != nil {
+		return nil, err
+	}
+	fileContents, err := FileSelectionFzf(path)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(fileContents) != 1 {
+		return nil, errors.New("please select only one file")
+	}
+
+	loadedChat := &service.ChatMessages{}
+	err = yaml.Unmarshal([]byte(fileContents[0]), loadedChat)
+	if err != nil {
+		return nil, err
+	}
+
+	loadedChat.RecountTokens()
+
+	return loadedChat, nil
+}
+
 func FilterMessages(messages []service.ChatMessage) (messageIds []int, err error) {
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Date.After(messages[j].Date)
+	})
+
 	idx, err := fuzzyfinder.FindMulti(
 		messages,
 		func(i int) string {
@@ -56,6 +119,7 @@ func ReuseMessage(messages []service.ChatMessage) (string, error) {
 	sort.Slice(messages, func(i, j int) bool {
 		return messages[i].Date.After(messages[j].Date)
 	})
+
 	id, err := fuzzyfinder.Find(
 		messages,
 		func(i int) string {

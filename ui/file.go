@@ -3,7 +3,6 @@ package ui
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,17 +15,19 @@ import (
 	"github.com/samber/lo"
 )
 
-func FileSelectionFzf() (fileContents []string, err error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return
+func FileSelectionFzf(path string) (fileContents []string, err error) {
+	if path == "" {
+		path, err = os.Getwd()
+		if err != nil {
+			return
+		}
 	}
 
 	var selected []os.FileInfo
 
 FileLoop:
 	for {
-		files, _err := os.ReadDir(cwd)
+		files, _err := os.ReadDir(path)
 		if _err != nil {
 			fmt.Println("Error while getting current working directory:", _err)
 			err = errors.Join(errors.New("error while getting current working directory : "), _err)
@@ -37,7 +38,7 @@ FileLoop:
 			if f.IsDir() {
 				return true
 			}
-			fileContent, err := os.ReadFile(cwd + "/" + f.Name())
+			fileContent, err := os.ReadFile(path + "/" + f.Name())
 			if err != nil {
 				return false
 			}
@@ -55,14 +56,14 @@ FileLoop:
 				}
 				if files[i].IsDir() {
 					root := gotree.New(files[i].Name())
-					subFiles, _err := os.ReadDir(cwd + "/" + files[i].Name())
+					subFiles, _err := os.ReadDir(path + "/" + files[i].Name())
 					if _err != nil {
 						return "📁"
 					}
 					for _, f := range subFiles {
 						sub := root.Add(f.Name())
 						if f.IsDir() {
-							subFiles, err := ioutil.ReadDir(cwd + "/" + files[i].Name())
+							subFiles, err := os.ReadDir(path + "/" + files[i].Name())
 							if err == nil {
 								for _, f := range subFiles {
 									sub.Add(f.Name())
@@ -73,7 +74,7 @@ FileLoop:
 
 					return root.Print()
 				}
-				fileContent, err := os.ReadFile(cwd + "/" + files[i].Name())
+				fileContent, err := os.ReadFile(path + "/" + files[i].Name())
 				if err != nil {
 					return fmt.Sprintf("Error while reading file: %s\n", err)
 				}
@@ -94,9 +95,9 @@ FileLoop:
 
 			switch {
 			case file.Name() == "..":
-				cwd = filepath.Dir(cwd)
+				path = filepath.Dir(path)
 			case file.IsDir():
-				cwd += "/" + file.Name()
+				path += "/" + file.Name()
 			default:
 				selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
 					info, err := files[i].Info()
@@ -125,7 +126,7 @@ FileLoop:
 			continue
 		}
 
-		fileContent, _err := os.ReadFile(cwd + "/" + file.Name())
+		fileContent, _err := os.ReadFile(path + "/" + file.Name())
 		if _err != nil {
 			err = _err
 			return
@@ -133,7 +134,54 @@ FileLoop:
 
 		fileContents = append(fileContents, fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent))
 
-		fmt.Println("added file:", file.Name())
+		fmt.Println("loaded file:", file.Name())
+	}
+
+	return
+}
+func PathSelectionFzf(startPath string) (path string, err error) {
+	if startPath == "" {
+		startPath, err = os.Getwd()
+		if err != nil {
+			return
+		}
+	}
+
+	path = startPath
+
+FileLoop:
+	for {
+		dirs, _err := os.ReadDir(path)
+		if _err != nil {
+			err = errors.Join(errors.New("error while getting current working directory : "), _err)
+			return
+		}
+		dirs = lo.Filter[os.DirEntry](dirs, func(item os.DirEntry, _ int) bool {
+			return item.IsDir()
+		})
+		dirs = append(dirs, &myFileInfo{".", 0, 0, time.Now(), true}, &myFileInfo{"..", 0, 0, time.Now(), true})
+
+		id, _err := fuzzyfinder.Find(
+			dirs,
+			func(i int) string {
+				return dirs[i].Name()
+			},
+		)
+		if _err != nil {
+			err = _err
+			return
+		}
+
+		dir := dirs[id]
+		switch dir.Name() {
+		case "..":
+			path = filepath.Dir(path)
+		case ".":
+			return
+		default:
+			path += "/" + dir.Name()
+			break FileLoop
+		}
 	}
 
 	return
@@ -187,11 +235,8 @@ func AddToFile(content []byte, filename string, withTimestamp bool) error {
 
 func SaveToFile(content []byte, filename string) error {
 	if filename == "" {
-		filePrompt := promptui.Prompt{
-			Label: "specify a filename (with extension)",
-		}
 		var err error
-		filename, err = filePrompt.Run()
+		filename, err = StringPrompt("specify a filename (with extension)")
 		if err != nil {
 			return err
 		}

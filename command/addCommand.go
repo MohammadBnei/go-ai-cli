@@ -2,6 +2,7 @@ package command
 
 import "github.com/MohammadBnei/go-openai-cli/service"
 
+
 type PromptConfig struct {
 	MdMode         bool
 	ChatMessages   *service.ChatMessages

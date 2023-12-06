@@ -12,12 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-type SendPromptConfig struct {
-	ChatMessages *ChatMessages
-	Output       io.Writer
-}
-
-func SendPrompt(ctx context.Context, req *SendPromptConfig) (string, error) {
+func SendPromptToOpenAi(ctx context.Context, messages []ChatMessage, output io.Writer) (string, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
@@ -31,7 +26,7 @@ func SendPrompt(ctx context.Context, req *SendPromptConfig) (string, error) {
 	}
 
 	chatMessages := []openai.ChatCompletionMessage{}
-	err := copier.Copy(&chatMessages, req.ChatMessages.Messages)
+	err := copier.Copy(&chatMessages, messages)
 
 	if err != nil {
 		return "", err
@@ -60,8 +55,10 @@ func SendPrompt(ctx context.Context, req *SendPromptConfig) (string, error) {
 		if err != nil {
 			return "", err
 		}
+		if output != nil {
+			output.Write([]byte(msg.Choices[0].Delta.Content))
+		}
 
-		req.Output.Write([]byte(msg.Choices[0].Delta.Content))
 		fullMsg = strings.Join([]string{fullMsg, msg.Choices[0].Delta.Content}, "")
 	}
 

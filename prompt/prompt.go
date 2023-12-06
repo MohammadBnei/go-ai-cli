@@ -1,12 +1,13 @@
 package prompt
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/command"
+	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
@@ -104,11 +105,11 @@ PromptLoop:
 		// 	Default:   promptConfig.PreviousPrompt,
 		// }
 
-		scanner := bufio.NewScanner(os.Stdin)
-		var userPrompt string
-		fmt.Print(label + ": ")
-		scanner.Scan()
-		userPrompt = scanner.Text()
+		userPrompt, err := ui.BasicPrompt(label)
+		if err != nil {
+			fmt.Println(err)
+			continue PromptLoop
+		}
 
 		if userPrompt == "" {
 			continue PromptLoop
@@ -116,8 +117,6 @@ PromptLoop:
 
 		cmd := strings.TrimSpace(userPrompt)
 		keys := lo.Keys[string](commandMap)
-
-		var err error
 
 		switch {
 		case cmd == "\\":
@@ -144,9 +143,30 @@ PromptLoop:
 		case cmd == "q":
 			commandMap["quit"](promptConfig)
 		default:
-			promptConfig.UserPrompt = cmd
 			ui.ClearTerminal()
-			err = command.SendPrompt(promptConfig)
+			promptConfig.ChatMessages.AddMessage(userPrompt, service.RoleUser)
+
+			// writers := io.MultiWriter(os.Stdout)
+
+			mdWriter := markdown.NewMarkdownWriter()
+			var writer io.Writer
+			writer = os.Stdout
+			if promptConfig.MdMode {
+				writer = mdWriter
+			}
+			response, err := service.SendPrompt(&service.SendPromptConfig{
+				ChatMessages: promptConfig.ChatMessages,
+				Output:       writer,
+				GPTFunc:      service.SendPromptToOpenAi,
+			})
+			if err != nil {
+				fmt.Println("❌", err)
+			}
+			if promptConfig.MdMode {
+				mdWriter.Flush(response)
+			}
+
+			promptConfig.ChatMessages.AddMessage(response, service.RoleAssistant)
 		}
 
 		if err != nil {
@@ -158,5 +178,9 @@ PromptLoop:
 
 		fmt.Println("\n✅")
 		promptConfig.PreviousPrompt = userPrompt
+
+		// if viper.GetBool("autoSave") {
+		// 	service.
+		// }
 	}
 }

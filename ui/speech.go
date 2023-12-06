@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -60,7 +59,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 		}
 	}()
 
-	ctx1, closer := LoadContext(ctx)
+	ctx1, closer := service.LoadContext(ctx)
 	speech, err := service.SpeechToText(ctx1, &service.SpeechConfig{Lang: cfg.Lang, MaxMinutes: time.Duration(cfg.MaxMinutes) * time.Minute, Detect: false})
 	closer()
 	if err != nil {
@@ -104,7 +103,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 			fmt.Println("Specify the filename orally. If you don't want to specify, press enter twice.")
 			fmt.Println("Press enter to record")
 			fmt.Scanln()
-			ctx1, closer := LoadContext(ctx)
+			ctx1, closer := service.LoadContext(ctx)
 			filename, err = service.SpeechToText(ctx1, &service.SpeechConfig{Lang: cfg.Lang, MaxMinutes: 5 * time.Second, Detect: false})
 			closer()
 			filename = strings.TrimSpace(filename)
@@ -173,33 +172,14 @@ func ContinuousSpeech(ctx context.Context, cfg *SpeechConfig) error {
 
 }
 
-func LoadContext(ctx context.Context) (context.Context, func()) {
-	ctx, cancel := context.WithCancel(ctx)
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		_, ok := <-c
-		if ok {
-			cancel()
-		}
-	}()
-	return ctx, func() {
-		signal.Stop(c)
-		close(c)
-	}
-}
-
 func FormatWithOpenai(ctx context.Context, cfg *SpeechConfig) (speech string, err error) {
 	var writer io.Writer = os.Stdout
 	if cfg.MarkdownMode {
 		writer = markdown.NewMarkdownWriter()
 	}
 	fmt.Print("Formating with openai : \n---\n\n")
-	ctx1, closer := LoadContext(ctx)
-	speech, err = service.SendPrompt(ctx1, &service.SendPromptConfig{
-		ChatMessages: cfg.ChatMessages,
-		Output:       writer,
-	})
+	ctx1, closer := service.LoadContext(ctx)
+	speech, err = service.SendPromptToOpenAi(ctx1, cfg.ChatMessages.Messages, writer)
 	closer()
 	if err != nil {
 		return
