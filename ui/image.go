@@ -1,105 +1,71 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/disiqueira/gotree"
 	"github.com/ktr0731/go-fuzzyfinder"
-	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
-	"github.com/sashabaranov/go-openai"
 )
 
-func AskForImage() error {
-	imagePrompt := promptui.Prompt{
-		Label: "express your imagination",
-	}
+// func AskForEditImage(filePath string) error {
+// 	imagePrompt := promptui.Prompt{
+// 		Label: "what is the purpose",
+// 	}
 
-	desc, err := imagePrompt.Run()
-	if err != nil {
-		return err
-	}
+// 	desc, err := imagePrompt.Run()
+// 	if err != nil {
+// 		return err
+// 	}
 
-	sizePrompt := promptui.Select{
-		Label: "Pick a size",
-		Items: []string{openai.CreateImageSize256x256, openai.CreateImageSize512x512, openai.CreateImageSize1024x1024},
-	}
+// 	sizePrompt := promptui.Select{
+// 		Label: "Pick a size",
+// 		Items: []string{openai.CreateImageSize256x256, openai.CreateImageSize512x512, openai.CreateImageSize1024x1024},
+// 	}
 
-	_, size, err := sizePrompt.Run()
+// 	_, size, err := sizePrompt.Run()
 
-	if err != nil {
-		size = openai.CreateImageSize256x256
-	}
+// 	if err != nil {
+// 		size = openai.CreateImageSize256x256
+// 	}
 
-	b, err := service.AskImage(desc, size)
-	if err != nil {
-		return err
-	}
+// 	selectedImage := filePath
+// 	if filePath != "" {
 
-	return SaveToFile(b, "")
+// 		useLastPrompt := promptui.Select{
+// 			Label: fmt.Sprintf("Use last (%s)", filePath),
+// 			Items: []string{"Yes", "no"},
+// 		}
 
-}
+// 		_, useLast, err := useLastPrompt.Run()
+// 		if err != nil {
+// 			fmt.Println(err)
+// 			useLast = "no"
+// 		}
 
-func AskForEditImage(filePath string) error {
-	imagePrompt := promptui.Prompt{
-		Label: "what is the purpose",
-	}
+// 		if useLast == "no" {
+// 			selectedImage = GetPngFilePath()
+// 		}
+// 	} else {
+// 		selectedImage = GetPngFilePath()
+// 	}
 
-	desc, err := imagePrompt.Run()
-	if err != nil {
-		return err
-	}
+// 	if selectedImage == "" {
+// 		return errors.New("no image selected")
+// 	}
 
-	sizePrompt := promptui.Select{
-		Label: "Pick a size",
-		Items: []string{openai.CreateImageSize256x256, openai.CreateImageSize512x512, openai.CreateImageSize1024x1024},
-	}
+// 	b, err := service.EditImage(selectedImage, desc, size)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	_, size, err := sizePrompt.Run()
+// 	return SaveToFile(b, "")
 
-	if err != nil {
-		size = openai.CreateImageSize256x256
-	}
-
-	selectedImage := filePath
-	if filePath != "" {
-
-		useLastPrompt := promptui.Select{
-			Label: fmt.Sprintf("Use last (%s)", filePath),
-			Items: []string{"Yes", "no"},
-		}
-
-		_, useLast, err := useLastPrompt.Run()
-		if err != nil {
-			fmt.Println(err)
-			useLast = "no"
-		}
-
-		if useLast == "no" {
-			selectedImage = GetPngFilePath()
-		}
-	} else {
-		selectedImage = GetPngFilePath()
-	}
-
-	if selectedImage == "" {
-		return errors.New("no image selected")
-	}
-
-	b, err := service.EditImage(selectedImage, desc, size)
-	if err != nil {
-		return err
-	}
-
-	return SaveToFile(b, "")
-
-}
+// }
 
 func fuzzHandleDir(file os.FileInfo, cwd string) string {
 	root := gotree.New(file.Name())

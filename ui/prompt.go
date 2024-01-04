@@ -2,13 +2,15 @@ package ui
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"golang.org/x/term"
 )
 
-func BasicPrompt(label, previousPrompt string) (string, error) {
+func StringPrompt(label string) (string, error) {
 	p := tea.NewProgram(initialModel(label, "Ask AI..."))
 	m, err := p.Run()
 	if err != nil {
@@ -28,7 +30,7 @@ type (
 )
 
 type model struct {
-	textInput textinput.Model
+	textInput textarea.Model
 	Message   string
 	label     string
 
@@ -36,11 +38,18 @@ type model struct {
 }
 
 func initialModel(label, placeholder string) model {
-	ti := textinput.New()
+	ti := textarea.New()
 	ti.Placeholder = placeholder
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("63"))
 	ti.Focus()
 	ti.Prompt = ": "
+	width, _, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		fmt.Println(err)
+		width = 80
+	}
+	ti.SetWidth(width)
+	ti.SetHeight(1)
 
 	return model{
 		textInput: ti,
@@ -50,7 +59,7 @@ func initialModel(label, placeholder string) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return textarea.Blink
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -59,7 +68,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC, tea.KeyCtrlD:
 			m.Message = "\\quit"
 			return m, tea.Quit
 		case tea.KeyEnter:

@@ -1,15 +1,47 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 
+	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
+	"moul.io/banner"
 )
+
+func SendPrompt(pc *PromptConfig) error {
+	mdWriter := markdown.NewMarkdownWriter()
+	var writer io.Writer
+	writer = os.Stdout
+	if pc.MdMode {
+		writer = mdWriter
+	}
+	ctx, closer := service.LoadContext(context.Background())
+	defer closer()
+	stream, err := service.SendPromptToOpenAi(ctx, &service.GPTChanRequest{
+		Messages: pc.ChatMessages.Messages,
+	})
+	if err != nil {
+		return err
+	}
+	response, err := service.PrintTo(stream, writer.Write)
+	if err != nil {
+		return err
+	}
+	if pc.MdMode {
+		mdWriter.Flush(response)
+	}
+
+	pc.ChatMessages.AddMessage(response, service.RoleAssistant)
+	return nil
+}
 
 func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["save"] = func(pc *PromptConfig) error {
@@ -61,7 +93,6 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 		if err != nil {
 			return err
 		}
-
 
 		ui.SendCommandOnChat(system, command)
 		return nil
@@ -185,12 +216,6 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 }
 
-func AddImageCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["image"] = func(cfg *PromptConfig) error {
-		return ui.AskForImage()
-	}
-}
-
 func AddHuggingFaceCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["mask"] = func(cfg *PromptConfig) error {
 		maskPrompt := promptui.Prompt{
@@ -209,3 +234,50 @@ func AddHuggingFaceCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 }
+
+func AddMiscCommand(commandMap map[string]func(*PromptConfig) error) {
+	commandMap["help"] = func(_ *PromptConfig) error {
+		fmt.Println(help)
+		return nil
+	}
+
+	commandMap["quit"] = func(_ *PromptConfig) error {
+		fmt.Println(banner.Inline("bye!"))
+		os.Exit(0)
+		return nil
+	}
+}
+
+const help = `
+Type \ for options prompt, or \<command_name>.
+
+Available options:
+
+quit: 		quit - Exit the prompt.
+help: 		help - Show this help section.
+
+save: 		save the response to a file - Save the last response from OpenAI to a file.
+copy: 		copy the last response to the clipboard - Copy the last response from OpenAI to the clipboard.
+
+file: 		add files to the messages - Add files to be included in the conversation messages. These files will not be sent to OpenAI until you send a prompt.
+image: 		add an image to the conversation - Add an image to the conversation.
+(X) e: 		edit last added image - Edit the last added image.
+
+clear: 		clear messages and files - Clear all conversation messages and files.
+
+system: 	Specify that the next message should be sent as a system message.
+filter: 	Remove messages from the conversation history.
+reuse: 		Reuse a message.
+
+list: 		List saved system commands.
+d-list: 	Delete a saved system command.
+
+default: 	Set the default system commands.
+d-default: Unset default system commands.
+
+markdown: Set output mode to markdown.
+
+mask: 		huggingface model. Find a missing word from a sentence.
+
+Any other text will be sent to OpenAI as the prompt.
+`

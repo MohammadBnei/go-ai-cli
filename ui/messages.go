@@ -8,6 +8,7 @@ import (
 
 	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/tool"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
@@ -35,7 +36,7 @@ func SaveChat(chatmessages *service.ChatMessages) error {
 		return err
 	}
 
-	err = SaveToFile(data, viper.GetString("configPath")+"/"+name+".yaml")
+	err = tool.SaveToFile(data, viper.GetString("configPath")+"/"+name+".yaml")
 	if err != nil {
 		return err
 	}

@@ -30,8 +30,15 @@ func SendCommandOnChat(system string, command string) (*service.ChatMessages, er
 	metaChatMessages.AddMessage(messagesToString, service.RoleUser)
 	metaChatMessages.AddMessage(command, service.RoleUser)
 	ctx, closer := service.LoadContext(context.Background())
-	response, err := service.SendPromptToOpenAi(ctx, loadedChat.Messages, nil)
-	closer()
+	defer closer()
+	stream, err := service.SendPromptToOpenAi(ctx, &service.GPTChanRequest{
+		Messages: metaChatMessages.Messages,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := service.GetFullResponse(stream)
 	if err != nil {
 		return nil, err
 	}

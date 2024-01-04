@@ -46,19 +46,6 @@ func YesNoPrompt(label string) bool {
 	return true
 }
 
-func StringPrompt(label string) (string, error) {
-	prompt := promptui.Prompt{
-		Label: label,
-	}
-
-	res, err := prompt.Run()
-	if err != nil {
-		return "", err
-	}
-
-	return res, nil
-}
-
 func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
 	savedSystemPrompt := viper.GetStringMapString("systems")
 	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")

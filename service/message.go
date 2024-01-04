@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/MohammadBnei/go-openai-cli/tool"
 	"github.com/pkoukk/tiktoken-go"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
@@ -26,7 +27,8 @@ type ChatMessage struct {
 	Content string `json:"content"`
 	Tokens  int    `json:"tokens"`
 
-	Date time.Time
+	ToolCall openai.ToolCall
+	Date     time.Time
 }
 
 type ChatMessages struct {
@@ -64,7 +66,7 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 		return err
 	}
 
-	err = SaveToFile(data, viper.GetString("configPath")+"/"+filename+".yaml")
+	err = tool.SaveToFile(data, viper.GetString("configPath")+"/"+filename+".yaml")
 	if err != nil {
 		return err
 	}

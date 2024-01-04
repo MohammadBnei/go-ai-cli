@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"io"
-	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -12,57 +10,118 @@ import (
 	"github.com/spf13/viper"
 )
 
-func SendPromptToOpenAi(ctx context.Context, messages []ChatMessage, output io.Writer) (string, error) {
+// func SendWithToolCall(ctx context.Context, messages []ChatMessage, functions []function.FunctionDefinition) (string, error) {
+// 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+
+// 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
+// 	s.Start()
+// 	defer s.Stop()
+
+// 	model := viper.GetString("model")
+
+// 	if model == "" {
+// 		model = openai.GPT4TurboPreview
+// 	}
+
+// 	chatMessages := []openai.ChatCompletionMessage{}
+// 	err := copier.Copy(&chatMessages, messages)
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	resp, err := c.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+// 		Model:    model,
+// 		Messages: chatMessages,
+// 		Tools:    tools,
+// 	})
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	toolCalled := ""
+
+// 	for _, k := range resp.Choices {
+// 		if k.FinishReason == openai.FinishReasonToolCalls {
+// 			toolCalled = k.Message.FunctionCall.Name
+// 			args := k.Message.FunctionCall.Arguments
+
+// 			data := &ui.SaveFunctionData{}
+// 			err := json.Unmarshal([]byte(args), data)
+// 			if err != nil {
+// 				return "", err
+// 			}
+// 			err = ui.SaveFileFunctionDef.Function(data)
+// 			if err != nil {
+// 				return "", err
+// 			}
+// 		}
+// 	}
+
+// 	return toolCalled, nil
+// }
+
+func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *GPTChanResponse, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
 	s.Start()
 	defer s.Stop()
 
-	model := viper.GetString("model")
-
-	if model == "" {
-		model = openai.GPT3Dot5Turbo
+	if request.Model == "" {
+		request.Model = viper.GetString("model")
 	}
 
 	chatMessages := []openai.ChatCompletionMessage{}
-	err := copier.Copy(&chatMessages, messages)
-
+	err := copier.Copy(&chatMessages, request.Messages)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+
+	req := openai.ChatCompletionRequest{
+		Model:    request.Model,
+		Messages: chatMessages,
+		Stream:   true,
+	}
+
 	resp, err := c.CreateChatCompletionStream(
 		ctx,
-		openai.ChatCompletionRequest{
-			Model:    model,
-			Messages: chatMessages,
-			Stream:   true,
-		},
+		req,
 	)
 	if err != nil {
-		return "", err
-	}
-	defer resp.Close()
-
-	fullMsg := ""
-
-	for {
-		msg, err := resp.Recv()
-		s.Stop()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return "", err
-		}
-		if output != nil {
-			output.Write([]byte(msg.Choices[0].Delta.Content))
-		}
-
-		fullMsg = strings.Join([]string{fullMsg, msg.Choices[0].Delta.Content}, "")
+		return nil, err
 	}
 
-	return fullMsg, nil
+	stream := make(chan *GPTChanResponse)
+
+	go func(resp *openai.ChatCompletionStream) {
+		defer resp.Close()
+		defer close(stream)
+	ResponseLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				data, err := resp.Recv()
+				s.Stop()
+				if err != nil {
+					stream <- &GPTChanResponse{
+						Content: nil,
+						Err:     err,
+					}
+					break ResponseLoop
+				}
+				stream <- &GPTChanResponse{
+					Content: []byte(data.Choices[0].Delta.Content),
+					Err:     nil,
+				}
+			}
+
+		}
+	}(resp)
+
+	return stream, nil
 }
 
 func GetModelList() ([]string, error) {

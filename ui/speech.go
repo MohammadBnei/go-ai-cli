@@ -14,6 +14,7 @@ import (
 
 	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/tool"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 )
@@ -118,7 +119,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 				break filenameLoop
 			}
 		}
-		SaveToFile([]byte(speech), filename)
+		tool.SaveToFile([]byte(speech), filename)
 	case 2:
 		return nil
 	case 3:
@@ -179,8 +180,14 @@ func FormatWithOpenai(ctx context.Context, cfg *SpeechConfig) (speech string, er
 	}
 	fmt.Print("Formating with openai : \n---\n\n")
 	ctx1, closer := service.LoadContext(ctx)
-	speech, err = service.SendPromptToOpenAi(ctx1, cfg.ChatMessages.Messages, writer)
-	closer()
+	defer closer()
+	stream, err := service.SendPromptToOpenAi(ctx1, &service.GPTChanRequest{
+		Messages: cfg.ChatMessages.Messages,
+	})
+	if err != nil {
+		return
+	}
+	_, err = service.PrintTo(stream, writer.Write)
 	if err != nil {
 		return
 	}
