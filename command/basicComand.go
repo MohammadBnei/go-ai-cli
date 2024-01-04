@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
@@ -25,13 +26,13 @@ func SendPrompt(pc *PromptConfig) error {
 	}
 	ctx, closer := service.LoadContext(context.Background())
 	defer closer()
-	stream, err := service.SendPromptToOpenAi(ctx, &service.GPTChanRequest{
+	stream, err := api.SendPromptToOpenAi(ctx, &api.GPTChanRequest{
 		Messages: pc.ChatMessages.Messages,
 	})
 	if err != nil {
 		return err
 	}
-	response, err := service.PrintTo(stream, writer.Write)
+	response, err := api.PrintTo(stream, writer.Write)
 	if err != nil {
 		return err
 	}
@@ -225,7 +226,7 @@ func AddHuggingFaceCommand(commandMap map[string]func(*PromptConfig) error) {
 		if err != nil {
 			return err
 		}
-		result, err := service.Mask(strings.Replace(pr, "!!", "[MASK]", -1))
+		result, err := api.Mask(strings.Replace(pr, "!!", "[MASK]", -1))
 		if err != nil {
 			return err
 		}

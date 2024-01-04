@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
+	"github.com/MohammadBnei/go-openai-cli/audio"
 	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/tool"
@@ -61,7 +63,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 	}()
 
 	ctx1, closer := service.LoadContext(ctx)
-	speech, err := service.SpeechToText(ctx1, &service.SpeechConfig{Lang: cfg.Lang, MaxMinutes: time.Duration(cfg.MaxMinutes) * time.Minute, Detect: false})
+	speech, err := audio.SpeechToText(ctx1, &audio.SpeechConfig{Lang: cfg.Lang, MaxMinutes: time.Duration(cfg.MaxMinutes) * time.Minute, Detect: false})
 	closer()
 	if err != nil {
 		return err
@@ -105,7 +107,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 			fmt.Println("Press enter to record")
 			fmt.Scanln()
 			ctx1, closer := service.LoadContext(ctx)
-			filename, err = service.SpeechToText(ctx1, &service.SpeechConfig{Lang: cfg.Lang, MaxMinutes: 5 * time.Second, Detect: false})
+			filename, err = audio.SpeechToText(ctx1, &audio.SpeechConfig{Lang: cfg.Lang, MaxMinutes: 5 * time.Second, Detect: false})
 			closer()
 			filename = strings.TrimSpace(filename)
 			fmt.Printf(" Filename : '%s'\n", filename)
@@ -160,7 +162,7 @@ func ContinuousSpeech(ctx context.Context, cfg *SpeechConfig) error {
 
 	for {
 		go func(speech chan<- string) {
-			txt, err := service.SpeechToText(ctx, &service.SpeechConfig{Lang: cfg.Lang, MaxMinutes: time.Minute, Detect: false})
+			txt, err := audio.SpeechToText(ctx, &audio.SpeechConfig{Lang: cfg.Lang, MaxMinutes: time.Minute, Detect: false})
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -181,13 +183,13 @@ func FormatWithOpenai(ctx context.Context, cfg *SpeechConfig) (speech string, er
 	fmt.Print("Formating with openai : \n---\n\n")
 	ctx1, closer := service.LoadContext(ctx)
 	defer closer()
-	stream, err := service.SendPromptToOpenAi(ctx1, &service.GPTChanRequest{
+	stream, err := api.SendPromptToOpenAi(ctx1, &api.GPTChanRequest{
 		Messages: cfg.ChatMessages.Messages,
 	})
 	if err != nil {
 		return
 	}
-	_, err = service.PrintTo(stream, writer.Write)
+	_, err = api.PrintTo(stream, writer.Write)
 	if err != nil {
 		return
 	}

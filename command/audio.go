@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MohammadBnei/go-openai-cli/audio"
 	"github.com/MohammadBnei/go-openai-cli/service"
 )
 
 func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["r"] = func(cfg *PromptConfig) error {
-		text, err := service.SpeechToText(context.Background(), &service.SpeechConfig{MaxMinutes: time.Minute, Lang: "", Detect: false})
+		text, err := audio.SpeechToText(context.Background(), &audio.SpeechConfig{MaxMinutes: time.Minute, Lang: "", Detect: false})
 		if err != nil {
 			return err
 		}
@@ -26,7 +27,7 @@ func AddAudioCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 
 	commandMap["rs"] = func(cfg *PromptConfig) error {
-		text, err := service.SpeechToText(context.Background(), &service.SpeechConfig{MaxMinutes: time.Minute, Lang: "", Detect: false})
+		text, err := audio.SpeechToText(context.Background(), &audio.SpeechConfig{MaxMinutes: time.Minute, Lang: "", Detect: false})
 		if err != nil {
 			return err
 		}

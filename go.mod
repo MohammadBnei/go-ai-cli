@@ -12,6 +12,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.24.2
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/disiqueira/gotree v1.0.0
+	github.com/fatih/color v1.16.0
 	github.com/garlicgarrison/go-recorder v0.0.0-20230512231103-599cb77d9c61
 	github.com/golang-module/carbon/v2 v2.2.14
 	github.com/jinzhu/copier v0.4.0
@@ -42,7 +43,6 @@ require (
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
-	github.com/fatih/color v1.16.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/gdamore/encoding v1.0.0 // indirect
 	github.com/gdamore/tcell/v2 v2.6.0 // indirect

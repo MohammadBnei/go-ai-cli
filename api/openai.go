@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"context"
@@ -122,6 +122,26 @@ func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *G
 	}(resp)
 
 	return stream, nil
+}
+
+func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
+	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+
+	if lang == "" {
+		lang = "en"
+	}
+
+	response, err := c.CreateTranscription(ctx, openai.AudioRequest{
+		Model:    openai.Whisper1,
+		Format:   "text",
+		FilePath: filename,
+		Language: lang,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	return response.Text, nil
 }
 
 func GetModelList() ([]string, error) {

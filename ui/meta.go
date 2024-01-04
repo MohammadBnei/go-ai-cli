@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/samber/lo"
 )
@@ -31,14 +32,14 @@ func SendCommandOnChat(system string, command string) (*service.ChatMessages, er
 	metaChatMessages.AddMessage(command, service.RoleUser)
 	ctx, closer := service.LoadContext(context.Background())
 	defer closer()
-	stream, err := service.SendPromptToOpenAi(ctx, &service.GPTChanRequest{
+	stream, err := api.SendPromptToOpenAi(ctx, &api.GPTChanRequest{
 		Messages: metaChatMessages.Messages,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := service.GetFullResponse(stream)
+	response, err := api.GetFullResponse(stream)
 	if err != nil {
 		return nil, err
 	}

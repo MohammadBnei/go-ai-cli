@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
@@ -36,7 +37,7 @@ var fileCmd = &cobra.Command{
 	},
 	Run: func(cmd *cobra.Command, args []string) {
 		ctx, closer := service.LoadContext(cmd.Context())
-		text, err := service.SendAudio(ctx, args[0], cmd.Flag("lang").Value.String())
+		text, err := api.SendAudio(ctx, args[0], cmd.Flag("lang").Value.String())
 		closer()
 		if err != nil {
 			fmt.Println(err)

@@ -1,7 +1,7 @@
 //go:build portaudio
 // +build portaudio
 
-package service
+package audio
 
 import (
 	"bytes"
@@ -12,11 +12,10 @@ import (
 
 	"os"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/briandowns/spinner"
 	"github.com/garlicgarrison/go-recorder/recorder"
 	"github.com/garlicgarrison/go-recorder/stream"
-	"github.com/sashabaranov/go-openai"
-	"github.com/spf13/viper"
 )
 
 type SpeechConfig struct {
@@ -37,27 +36,7 @@ func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
 	s.Start()
 	defer s.Stop()
 
-	return SendAudio(ctx, tmpFileName+".wav", config.Lang)
-}
-
-func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
-
-	if lang == "" {
-		lang = "en"
-	}
-
-	response, err := c.CreateTranscription(ctx, openai.AudioRequest{
-		Model:    openai.Whisper1,
-		Format:   "text",
-		FilePath: filename,
-		Language: lang,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return response.Text, nil
+	return api.SendAudio(ctx, tmpFileName+".wav", config.Lang)
 }
 
 func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) error {

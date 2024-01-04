@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,7 +21,7 @@ var configCmd = &cobra.Command{
 	Short: "Set the configuration in a file",
 	Run: func(cmd *cobra.Command, args []string) {
 		if l, _ := cmd.Flags().GetBool("list-model"); l {
-			modelList, err := service.GetModelList()
+			modelList, err := api.GetModelList()
 			if err != nil {
 				fmt.Println(err)
 				return

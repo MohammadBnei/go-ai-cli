@@ -1,4 +1,4 @@
-package service_test
+package api
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 func TestSendBasicMessage(t *testing.T) {
 	viper.BindEnv("OPENAI_KEY", "OPENAI_API_KEY")
 
-	stream, err := service.SendPromptToOpenAi(context.Background(), &service.GPTChanRequest{
+	stream, err := SendPromptToOpenAi(context.Background(), &GPTChanRequest{
 		Messages: []service.ChatMessage{{Role: service.RoleUser, Content: "hello world"}},
 		Model:    openai.GPT4TurboPreview,
 	})

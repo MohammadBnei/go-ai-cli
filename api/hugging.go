@@ -1,4 +1,4 @@
-package service
+package api
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 func Mask(prompt string) (string, error) {
 	apiKey := viper.GetString("HUGGINGFACE_KEY") // Your Hugging Face API key
 	if apiKey == "" {
-		return "", errors.New("Hugging Face API key not found")
+		return "", errors.New("hugging Face API key not found")
 	}
 	hfapigo.SetAPIKey(apiKey)
 

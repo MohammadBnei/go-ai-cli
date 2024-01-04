@@ -1,9 +1,11 @@
-package service
+package api
 
 import (
 	"context"
 	"errors"
 	"io"
+
+	"github.com/MohammadBnei/go-openai-cli/service"
 )
 
 type GPTChanResponse struct {
@@ -12,7 +14,7 @@ type GPTChanResponse struct {
 }
 
 type GPTChanRequest struct {
-	Messages []ChatMessage
+	Messages []service.ChatMessage
 	Stream   bool
 	Model    string
 }
