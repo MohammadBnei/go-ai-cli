@@ -1,3 +1,4 @@
+//go:build portaudio
 // +build portaudio
 
 package speech
@@ -40,9 +41,9 @@ var SpeechCmd = &cobra.Command{
 }
 
 func init() {
-	SpeechCmd.PersistentFlags().StringP("lang", "l", "en", "language")
+	SpeechCmd.PersistentFlags().StringVarP(&speechConfig.Lang, "lang", "l", "en", "language")
 	SpeechCmd.RegisterFlagCompletionFunc("lang", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		return []string{"en", "fr", "fa"}, cobra.ShellCompDirectiveDefault
+		return []string{"en", "fr", "fa", "ar", "es", "it"}, cobra.ShellCompDirectiveDefault
 	})
 
 	SpeechCmd.PersistentFlags().BoolVarP(&speechConfig.Format, "format", "f", false, "format the output with the carriage return character.")

@@ -202,9 +202,12 @@ func FormatWithOpenai(ctx context.Context, cfg *SpeechConfig) (speech string, er
 }
 
 func InitSpeech(speechConfig *SpeechConfig) error {
+	speechConfig.ChatMessages = service.NewChatMessages("speech")
 	for _, opt := range speechConfig.SystemOptions {
 		speechConfig.ChatMessages.AddMessage(opt, service.RoleSystem)
 	}
+
+	fmt.Println(speechConfig.SystemOptions)
 
 	if speechConfig.Format {
 		speechConfig.ChatMessages.AddMessage("You will be prompted with a speech converted to text. Format it by adding line return between ideas and correct puntucation. Do not translate.", service.RoleSystem)
