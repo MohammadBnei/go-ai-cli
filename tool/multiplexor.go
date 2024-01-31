@@ -1,22 +1,27 @@
 package tool
 
 type Multiplex[T any] struct {
-	original chan T
+	original <-chan T
 	channels map[chan T]bool
 }
 
-func NewMultiplex[T any](original chan T) *Multiplex[T] {
+func NewMultiplex[T any](original <-chan T) *Multiplex[T] {
 	m := &Multiplex[T]{
 		original: original,
 		channels: make(map[chan T]bool),
 	}
 
-	go func(o chan T) {
+	go func(o <-chan T) {
 		for v := range original {
 			for k := range m.channels {
 				k <- v
 			}
 		}
+		
+		for k := range m.channels {
+			close(k)
+		}
+
 	}(original)
 
 	return m

@@ -4,13 +4,11 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/prompt"
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"moul.io/banner"
 )
 
 // promptCmd represents the prompt command
@@ -18,11 +16,32 @@ var promptCmd = &cobra.Command{
 	Use:   "prompt",
 	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
-		ui.ClearTerminal()
-		fmt.Println(banner.Inline("go ai cli - prompt"))
 		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
 
-		prompt.OpenAiPrompt()
+		commandMap := make(map[string]func(*command.PromptConfig) error)
+
+		command.AddAllCommand(commandMap)
+
+		promptConfig := &command.PromptConfig{
+			MdMode:       viper.GetBool("md"),
+			ChatMessages: service.NewChatMessages("default"),
+		}
+
+		defaulSystemPrompt := viper.GetStringMapString("default-systems")
+		savedSystemPrompt := viper.GetStringMapString("systems")
+		for k := range defaulSystemPrompt {
+			promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
+		}
+
+		userPrompt := make(chan string)
+		updateChan := make(chan service.ChatMessage)
+		done := make(chan bool)
+		defer close(userPrompt)
+		defer close(updateChan)
+		promptConfig.UpdateChan = updateChan
+
+		prompt.Chat(&prompt.ChatChan{UserPrompt: userPrompt, UpdateChan: updateChan, Done: done}, promptConfig)
+
 	},
 }
 

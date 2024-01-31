@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/tool"
+	"github.com/jinzhu/copier"
 	"github.com/pkoukk/tiktoken-go"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
@@ -19,6 +20,7 @@ const (
 	RoleUser      Roles = "user"
 	RoleSystem    Roles = "system"
 	RoleAssistant Roles = "assistant"
+	RoleApp       Roles = "app"
 )
 
 type ChatMessage struct {
@@ -26,6 +28,8 @@ type ChatMessage struct {
 	Role    Roles  `json:"role"`
 	Content string `json:"content"`
 	Tokens  int    `json:"tokens"`
+
+	AssociatedMessageId int
 
 	ToolCall openai.ToolCall
 	Date     time.Time
@@ -74,18 +78,25 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 	return nil
 }
 
-func (c *ChatMessages) AddMessage(content string, role Roles) error {
-	if content == "" {
-		return errors.New("content cannot be empty")
+func (c *ChatMessages) FindById(id int) *ChatMessage {
+	_, index, ok := lo.FindIndexOf[ChatMessage](c.Messages, func(item ChatMessage) bool {
+		return item.Id == id
+	})
+	if !ok {
+		return nil
 	}
 
+	return &c.Messages[index]
+}
+func (c *ChatMessages) AddMessage(content string, role Roles) (*ChatMessage, error) {
+
 	if role == "" {
-		return errors.New("role cannot be empty")
+		return nil, errors.New("role cannot be empty")
 	}
 
 	tokenCount, err := CountTokens(content)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	msg := ChatMessage{
@@ -103,6 +114,52 @@ func (c *ChatMessages) AddMessage(content string, role Roles) error {
 	sort.SliceStable(c.Messages, func(i, j int) bool {
 		return c.Messages[i].Date.Before(c.Messages[j].Date)
 	})
+
+	return &msg, nil
+}
+
+func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int) error {
+	msgUser := c.FindById(idUser)
+	if msgUser == nil {
+		return errors.New("user message not found")
+	}
+
+	msgAssistant := c.FindById(idAssistant)
+	if msgAssistant == nil {
+		return errors.New("assistant message not found")
+	}
+
+	msgUser.AssociatedMessageId = idAssistant
+	msgAssistant.AssociatedMessageId = idUser
+
+	return nil
+}
+
+func (c *ChatMessages) UpdateMessage(m ChatMessage) error {
+	if m.Content == "" {
+		return errors.New("content cannot be empty")
+	}
+
+	if m.Role == "" {
+		return errors.New("role cannot be empty")
+	}
+
+	tokenCount, err := CountTokens(m.Content)
+	if err != nil {
+		return err
+	}
+
+	msg := c.FindById(m.Id)
+	if msg == nil {
+		c.AddMessage(m.Content, m.Role)
+		return nil
+	}
+
+	m.Tokens = tokenCount
+
+	copier.Copy(msg, m)
+
+	c.RecountTokens()
 
 	return nil
 }
@@ -158,6 +215,16 @@ func (c *ChatMessages) FilterMessages(role Roles) (messages []ChatMessage, token
 	}, 0)
 
 	return
+}
+
+func (c *ChatMessages) FilterByOpenAIRoles() []ChatMessage {
+	return lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
+		return lo.Contains[Roles]([]Roles{
+			openai.ChatMessageRoleUser,
+			openai.ChatMessageRoleAssistant,
+			openai.ChatMessageRoleSystem,
+		}, item.Role)
+	})
 }
 
 func (c *ChatMessages) RecountTokens() *ChatMessages {

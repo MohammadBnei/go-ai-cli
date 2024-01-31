@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/api"
-	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
@@ -17,30 +16,40 @@ import (
 	"moul.io/banner"
 )
 
-func SendPrompt(pc *PromptConfig) error {
-	mdWriter := markdown.NewMarkdownWriter()
-	var writer io.Writer
-	writer = os.Stdout
-	if pc.MdMode {
-		writer = mdWriter
-	}
-	ctx, closer := service.LoadContext(context.Background())
-	defer closer()
+func SendPrompt(pc *PromptConfig, streamFunc ...func(*api.GPTChanResponse)) error {
+	userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
+	assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
+
+	pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	pc.AddContextWithId(ctx, cancel, userMsg.Id)
+
 	stream, err := api.SendPromptToOpenAi(ctx, &api.GPTChanRequest{
-		Messages: pc.ChatMessages.Messages,
+		Messages: pc.ChatMessages.FilterByOpenAIRoles(),
 	})
 	if err != nil {
 		return err
 	}
-	response, err := api.PrintTo(stream, writer.Write)
-	if err != nil {
-		return err
-	}
-	if pc.MdMode {
-		mdWriter.Flush(response)
-	}
 
-	pc.ChatMessages.AddMessage(response, service.RoleAssistant)
+	go func(stream <-chan *api.GPTChanResponse) {
+		defer pc.DeleteContext(ctx)
+		for v := range stream {
+			for _, fn := range streamFunc {
+				fn(v)
+			}
+			previous := pc.ChatMessages.FindById(assistantMessage.Id)
+			if previous == nil {
+				log.Fatalln("previous message not found")
+			}
+			previous.Content += string(v.Content)
+			pc.ChatMessages.UpdateMessage(*previous)
+			if pc.UpdateChan != nil {
+				pc.UpdateChan <- *previous
+			}
+		}
+	}(stream)
+
 	return nil
 }
 
@@ -125,7 +134,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 			return err
 		}
 		for _, message := range messages {
-			pc.ChatMessages.AddMessage(message, service.RoleAssistant)
+			pc.ChatMessages.AddMessage(message, service.RoleSystem)
 		}
 		return nil
 	}
@@ -238,7 +247,7 @@ func AddHuggingFaceCommand(commandMap map[string]func(*PromptConfig) error) {
 
 func AddMiscCommand(commandMap map[string]func(*PromptConfig) error) {
 	commandMap["help"] = func(_ *PromptConfig) error {
-		fmt.Println(help)
+		fmt.Println(HELP)
 		return nil
 	}
 
@@ -249,7 +258,7 @@ func AddMiscCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 }
 
-const help = `
+const HELP = `
 Type \ for options prompt, or \<command_name>.
 
 Available options:

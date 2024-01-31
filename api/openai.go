@@ -2,9 +2,8 @@ package api
 
 import (
 	"context"
-	"time"
+	"io"
 
-	"github.com/briandowns/spinner"
 	"github.com/jinzhu/copier"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
@@ -64,10 +63,6 @@ import (
 func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *GPTChanResponse, error) {
 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
 
-	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
-	s.Start()
-	defer s.Stop()
-
 	if request.Model == "" {
 		request.Model = viper.GetString("model")
 	}
@@ -92,7 +87,7 @@ func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *G
 		return nil, err
 	}
 
-	stream := make(chan *GPTChanResponse)
+	stream := make(chan *GPTChanResponse, 5)
 
 	go func(resp *openai.ChatCompletionStream) {
 		defer resp.Close()
@@ -104,7 +99,6 @@ func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *G
 				return
 			default:
 				data, err := resp.Recv()
-				s.Stop()
 				if err != nil {
 					stream <- &GPTChanResponse{
 						Content: nil,
@@ -117,7 +111,10 @@ func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *G
 					Err:     nil,
 				}
 			}
+		}
 
+		stream <- &GPTChanResponse{
+			Err: io.EOF,
 		}
 	}(resp)
 
@@ -133,7 +130,7 @@ func SendAudio(ctx context.Context, filename string, lang string) (string, error
 
 	response, err := c.CreateTranscription(ctx, openai.AudioRequest{
 		Model:    openai.Whisper1,
-		Format:   "text",
+		Format:   openai.AudioResponseFormatJSON,
 		FilePath: filename,
 		Language: lang,
 	})

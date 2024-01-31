@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,11 +9,59 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/atotto/clipboard"
+	"github.com/fatih/color"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
-	"github.com/fatih/color"
 )
+
+func GetLabel(pc *command.PromptConfig) string {
+	label := "prompt"
+	tokens := pc.ChatMessages.TotalTokens
+	if tokens != 0 {
+		label = fmt.Sprintf("%d🔤 🧠", tokens)
+	}
+
+	if pc.MdMode {
+		label = fmt.Sprintf("🖥️  %s ", label)
+	}
+
+	return label
+}
+
+func CommandSelectionFactory() func(cmd string, pc *command.PromptConfig) error {
+	commandMap := make(map[string]func(*command.PromptConfig) error)
+
+	command.AddAllCommand(commandMap)
+	keys := lo.Keys[string](commandMap)
+
+	return func(cmd string, pc *command.PromptConfig) error {
+
+		var err error
+
+		switch {
+		case cmd == "":
+			commandMap["help"](pc)
+		case cmd == "\\":
+			selection, err2 := fuzzyfinder.Find(keys, func(i int) string {
+				return keys[i]
+			})
+			if err2 != nil {
+				return err2
+			}
+
+			err = commandMap[keys[selection]](pc)
+		case strings.HasPrefix(cmd, "\\"):
+			command, ok := commandMap[cmd[1:]]
+			if !ok {
+				return errors.New("command not found")
+			}
+			err = command(pc)
+		}
+
+		return err
+	}
+}
 
 func OpenAiPrompt() {
 	var label string
@@ -42,15 +91,7 @@ func OpenAiPrompt() {
 
 PromptLoop:
 	for {
-		label = "prompt"
-		tokens := promptConfig.ChatMessages.TotalTokens
-		if tokens != 0 {
-			label = fmt.Sprintf("%d🔤 🧠", tokens)
-		}
-
-		if promptConfig.MdMode {
-			label = fmt.Sprintf("🖥️  %s ", label)
-		}
+		label = GetLabel(promptConfig)
 
 		userPrompt, err := ui.StringPrompt(label)
 		if err != nil {
@@ -64,7 +105,6 @@ PromptLoop:
 
 		cmd := strings.TrimSpace(userPrompt)
 		keys := lo.Keys[string](commandMap)
-
 
 		switch {
 		case cmd == "":

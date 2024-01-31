@@ -3,6 +3,9 @@ package ui
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
@@ -91,4 +94,17 @@ func (m model) View() string {
 		m.label,
 		m.textInput.View(),
 	)
+}
+
+func GetTerminalSize() (int, int, error) {
+	cmd := exec.Command("stty", "size")
+	cmd.Stdin = os.Stdin
+	output, err := cmd.Output()
+	if err != nil {
+		return 0, 0, err
+	}
+	size := strings.Split(strings.TrimSpace(string(output)), " ")
+	width, _ := strconv.Atoi(size[1])
+	height, _ := strconv.Atoi(size[0])
+	return width, height, nil
 }
