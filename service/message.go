@@ -16,20 +16,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Roles string
+type ROLES string
+type TYPE string
 
 const (
-	RoleUser      Roles = "user"
-	RoleSystem    Roles = "system"
-	RoleAssistant Roles = "assistant"
-	RoleApp       Roles = "app"
+	RoleUser      ROLES = "user"
+	RoleSystem    ROLES = "system"
+	RoleAssistant ROLES = "assistant"
+	RoleApp       ROLES = "app"
+
+	TypeFile TYPE = "file"
+	TypeUser TYPE = "user"
 )
 
 type ChatMessage struct {
 	Id      int
-	Role    Roles  `json:"role"`
+	Role    ROLES  `json:"role"`
 	Content string `json:"content"`
 	Tokens  int    `json:"tokens"`
+	Type    TYPE
 
 	AssociatedMessageId int
 
@@ -56,6 +61,7 @@ func (c *ChatMessages) SetId(id string) *ChatMessages {
 	c.Id = id
 	return c
 }
+
 func (c *ChatMessages) SetDescription(description string) *ChatMessages {
 	c.Description = description
 
@@ -90,7 +96,7 @@ func (c *ChatMessages) FindById(id int) *ChatMessage {
 
 	return &c.Messages[index]
 }
-func (c *ChatMessages) AddMessage(content string, role Roles) (*ChatMessage, error) {
+func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, error) {
 
 	if role == "" {
 		return nil, errors.New("role cannot be empty")
@@ -102,10 +108,12 @@ func (c *ChatMessages) AddMessage(content string, role Roles) (*ChatMessage, err
 	}
 
 	msg := ChatMessage{
-		Id:      len(c.Messages),
-		Role:    role,
-		Content: content,
-		Date:    time.Now(),
+		Id:                  len(c.Messages),
+		Role:                role,
+		Content:             content,
+		Date:                time.Now(),
+		Type:                TypeUser,
+		AssociatedMessageId: -1,
 	}
 
 	msg.Tokens = tokenCount
@@ -118,6 +126,11 @@ func (c *ChatMessages) AddMessage(content string, role Roles) (*ChatMessage, err
 	})
 
 	return &msg, nil
+}
+
+func (c *ChatMessage) AsTypeFile() *ChatMessage {
+	c.Type = TypeFile
+	return c
 }
 
 func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int) error {
@@ -202,7 +215,7 @@ func (c *ChatMessages) ClearMessages() {
 	c.TotalTokens = 0
 }
 
-func (c *ChatMessages) LastMessage(role *Roles) *ChatMessage {
+func (c *ChatMessages) LastMessage(role *ROLES) *ChatMessage {
 	messages := c.Messages
 	if role != nil {
 		messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
@@ -216,7 +229,7 @@ func (c *ChatMessages) LastMessage(role *Roles) *ChatMessage {
 	return &messages[len(messages)-1]
 }
 
-func (c *ChatMessages) FilterMessages(role Roles) (messages []ChatMessage, tokens int) {
+func (c *ChatMessages) FilterMessages(role ROLES) (messages []ChatMessage, tokens int) {
 	messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
 		return item.Role == role
 	})
@@ -235,7 +248,7 @@ func (c *ChatMessages) FilterMessages(role Roles) (messages []ChatMessage, token
 
 func (c *ChatMessages) FilterByOpenAIRoles() []ChatMessage {
 	return lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
-		return lo.Contains[Roles]([]Roles{
+		return lo.Contains[ROLES]([]ROLES{
 			openai.ChatMessageRoleUser,
 			openai.ChatMessageRoleAssistant,
 			openai.ChatMessageRoleSystem,

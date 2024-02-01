@@ -37,20 +37,40 @@ func quit(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
+type UpdateContentEvent struct{}
+
+func UpdateContent() tea.Msg {
+	return UpdateContentEvent{}
+}
+
 func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
+	if len(m.promptConfig.ChatMessages.Messages) == 0 {
+		return m, nil
+	}
 	minIndex := lo.Min([]int{m.currentChatIndices.assistant, m.currentChatIndices.user})
 	previous := minIndex - 1
-	m.changeCurrentChatHelper(previous)
+	c := m.promptConfig.ChatMessages.FindById(previous)
+	if c == nil {
+		c = &m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1]
+	}
+	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
-	return m, nil
+	return m, UpdateContent
 }
 
 func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
+	if len(m.promptConfig.ChatMessages.Messages) == 0 {
+		return m, nil
+	}
 	maxIndex := lo.Max([]int{m.currentChatIndices.assistant, m.currentChatIndices.user})
 	next := maxIndex + 1
-	m.changeCurrentChatHelper(next)
+	c := m.promptConfig.ChatMessages.FindById(next)
+	if c == nil {
+		c = &m.promptConfig.ChatMessages.Messages[0]
+	}
+	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
-	return m, nil
+	return m, UpdateContent
 }
 
 func callFunction(m *chatModel) (tea.Model, tea.Cmd) {
@@ -98,32 +118,29 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, waitForUpdate(m.promptConfig.UpdateChan)
 }
 
-func (m *chatModel) changeCurrentChatHelper(previous int) {
-	messages := m.promptConfig.ChatMessages.FilterByOpenAIRoles()
-	if len(messages) == 0 {
+func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
+	if previous.AssociatedMessageId >= 0 {
+		switch previous.Role {
+		case service.RoleUser:
+			m.currentChatIndices.user = previous.Id
+			m.currentChatIndices.assistant = previous.AssociatedMessageId
+		case service.RoleAssistant:
+			m.currentChatIndices.assistant = previous.Id
+			m.currentChatIndices.user = previous.AssociatedMessageId
+		}
+	} else {
 		m.currentChatIndices.assistant = -1
-		m.currentChatIndices.user = -1
-		return
-	}
-	if previous < 0 {
-		previous = len(messages) - 1
-	}
-	prev := m.promptConfig.ChatMessages.FindById(previous)
-	if prev == nil {
-		prev = &messages[0]
+		m.currentChatIndices.user = previous.Id
 	}
 
-	switch prev.Role {
-	case service.RoleAssistant:
-		m.currentChatIndices.assistant = prev.Id
-		m.currentChatIndices.user = prev.AssociatedMessageId
-	case service.RoleUser:
-		m.currentChatIndices.user = prev.Id
-		m.currentChatIndices.assistant = prev.AssociatedMessageId
+	if m.currentChatIndices.assistant >= 0 {
+		m.aiResponse = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant).Content
+		m.userPrompt = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user).Content
+	} else {
+		m.aiResponse = previous.Content
+		m.userPrompt = "System / File | " + previous.Date.String()
 	}
 
-	m.userPrompt = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user).Content
-	m.aiResponse = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant).Content
 }
 
 func sendPrompt(pc *command.PromptConfig, currentChatIds *currentChatIndexes) error {

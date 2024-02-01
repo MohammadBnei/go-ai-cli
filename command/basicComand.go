@@ -114,7 +114,11 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 			return err
 		}
 		for _, fileContent := range fileContents {
-			pc.ChatMessages.AddMessage(fileContent, service.RoleUser)
+			m, err := pc.ChatMessages.AddMessage(fileContent, service.RoleUser)
+			if err != nil {
+				return err
+			}
+			m.AsTypeFile()
 		}
 		return nil
 	}

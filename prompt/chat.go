@@ -124,8 +124,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.size = msg
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - 3
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -188,6 +186,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return promptSend(&m)
 		}
+
+	case UpdateContentEvent:
 
 	case service.ChatMessage:
 		if msg.Id == m.currentChatIndices.user {
