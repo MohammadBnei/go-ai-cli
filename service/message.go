@@ -11,6 +11,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/schema"
 	"gopkg.in/yaml.v3"
 )
 
@@ -179,6 +181,20 @@ func (c *ChatMessages) DeleteMessage(id int) error {
 	})
 
 	return nil
+}
+
+func (c *ChatMessages) ToLangchainMessage() []llms.MessageContent {
+	return lo.Map[ChatMessage, llms.MessageContent](c.FilterByOpenAIRoles(), func(item ChatMessage, index int) llms.MessageContent {
+		switch item.Role {
+		case RoleSystem:
+			return llms.TextParts(schema.ChatMessageTypeSystem, item.Content)
+		case RoleAssistant:
+			return llms.TextParts(schema.ChatMessageTypeAI, item.Content)
+		case RoleUser:
+			return llms.TextParts(schema.ChatMessageTypeGeneric, item.Content)
+		}
+		return llms.TextParts(schema.ChatMessageTypeGeneric, item.Content)
+	})
 }
 
 func (c *ChatMessages) ClearMessages() {

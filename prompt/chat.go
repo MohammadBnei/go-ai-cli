@@ -4,12 +4,10 @@ package prompt
 // component library.
 
 import (
-	"context"
 	"fmt"
 	"log"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
-	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
@@ -18,6 +16,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/samber/lo"
 	"moul.io/banner"
 )
 
@@ -28,7 +27,9 @@ type ChatChan struct {
 }
 
 func Chat(chatChannels *ChatChan, pc *command.PromptConfig) {
-	p := tea.NewProgram(initialChatModel(chatChannels, pc), tea.WithAltScreen())
+	p := tea.NewProgram(initialChatModel(chatChannels, pc),
+		tea.WithAltScreen(), // use the full size of the terminal in its "alternate screen buffer"
+		tea.WithMouseCellMotion())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -45,8 +46,8 @@ type currentChatIndexes struct {
 }
 type chatModel struct {
 	viewport           viewport.Model
-	promptConfig       *command.PromptConfig
 	textarea           textarea.Model
+	promptConfig       *command.PromptConfig
 	err                error
 	spinner            spinner.Model
 	userPrompt         string
@@ -54,6 +55,9 @@ type chatModel struct {
 	assistantStyle     lipgloss.Style
 	aiResponse         string
 	currentChatIndices *currentChatIndexes
+	size               tea.WindowSizeMsg
+
+	stack []tea.Model
 }
 
 var terminalWidth, terminalHeight, _ = ui.GetTerminalSize()
@@ -99,7 +103,7 @@ func initialChatModel(chatChannels *ChatChan, pc *command.PromptConfig) chatMode
 }
 
 func (m chatModel) Init() tea.Cmd {
-	return nil
+	return tea.EnterAltScreen
 }
 
 var commandSelectionFn = CommandSelectionFactory()
@@ -110,90 +114,81 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		vpCmd tea.Cmd
 	)
 
+	cmds := []tea.Cmd{}
+
 	m.textarea, tiCmd = m.textarea.Update(msg)
 	m.viewport, vpCmd = m.viewport.Update(msg)
 
+	cmds = append(cmds, tiCmd, vpCmd)
+
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.size = msg
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - 3
+
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlR:
-			m.textarea.Reset()
-			m.initViewport()
-			return m, tea.EnterAltScreen
 
-		case tea.KeyCtrlC:
-			if m.err != nil {
-				m.err = nil
+		case tea.KeyEsc:
+			if len(m.stack) > 0 {
+				m.stack = m.stack[:len(m.stack)-1]
 				return m, nil
 			}
-			err := m.promptConfig.CloseContextById(m.currentChatIndices.user)
-			if err != nil {
-				m.err = err
-			}
+
+		case tea.KeyCtrlR:
+			return reset(&m)
+
+		case tea.KeyCtrlC:
+			return closeContext(&m)
 
 		case tea.KeyCtrlD:
-			return m, tea.Quit
+			return quit(&m)
 
 		case tea.KeyShiftUp:
-			previous := m.currentChatIndices.assistant - 2
-			m.changeCurrentChatHelper(previous)
-			m.viewport.GotoTop()
-			return m, nil
+			return changeResponseUp(&m)
 
 		case tea.KeyShiftDown:
-			previous := m.currentChatIndices.assistant + 2
-			m.changeCurrentChatHelper(previous)
-			m.viewport.GotoTop()
-			return m, nil
+			return changeResponseDown(&m)
 
 		case tea.KeyCtrlP:
-			Pager(m.userPrompt, m.aiResponse)
+			if m.aiResponse == "" {
+				return m, nil
+			}
+
+			_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
+				_, ok := item.(pagerModel)
+				return ok
+			})
+			if !ok {
+				pager := pagerModel{
+					title:   m.userPrompt,
+					content: m.aiResponse,
+					pc:      m.promptConfig,
+				}
+				p, cmd := pager.Update(m.size)
+				pager = p.(pagerModel)
+
+				m.stack = append(m.stack, pager)
+
+				cmds = append(cmds, m.stack[len(m.stack)-1].Init(), cmd)
+			} else {
+				m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
+			}
 
 		case tea.KeyEnter:
 			if m.err != nil {
 				m.err = nil
 				return m, nil
 			}
-			v := m.textarea.Value()
-			switch v {
-			case "":
-				m.viewport.SetContent(command.HELP)
-				return m, nil
-			case "\\quit":
-				return m, tea.Quit
-			case "\\help":
-				m.viewport.SetContent(command.HELP)
-				m.textarea.Reset()
-				return m, nil
+
+			if e, c := callFunction(&m); e != nil {
+				return e, c
 			}
 
-			if v[0] == '\\' {
-				m.textarea.Blur()
-				err := commandSelectionFn(v, m.promptConfig)
-				m.textarea.Reset()
-				m.textarea.Focus()
-				if err != nil {
-					m.err = err
-				}
-				return m, tea.ClearScreen
-			}
-
-			m.userPrompt = v
-			m.promptConfig.UserPrompt = m.userPrompt
-
-			go func() {
-				err := sendPrompt(m.promptConfig, m.currentChatIndices)
-				if err != nil {
-					m.err = err
-				}
-			}()
-
-			m.textarea.Reset()
-			m.aiResponse = ""
-
-			m.viewport.GotoBottom()
-			return m, waitForUpdate(m.promptConfig.UpdateChan)
+			return promptSend(&m)
 		}
+
 	case service.ChatMessage:
 		if msg.Id == m.currentChatIndices.user {
 			m.userPrompt = msg.Content
@@ -203,7 +198,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.aiResponse = msg.Content
 		}
 
-		return m, waitForUpdate(m.promptConfig.UpdateChan)
+		return m, tea.Batch(waitForUpdate(m.promptConfig.UpdateChan), func() tea.Msg {
+			return pagerContentUpdate(m.aiResponse)
+		})
 
 	// We handle errors just like any other message
 
@@ -211,16 +208,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg
 		return m, nil
 
-	default:
-		return m, nil
 	}
 
-	return m, tea.Batch(tiCmd, vpCmd)
-}
-
-func (m chatModel) View() string {
-	if m.err != nil {
-		return fmt.Sprintf("Error: %s", m.err)
+	if len(m.stack) > 0 {
+		var cmd tea.Cmd
+		m.stack[len(m.stack)-1], cmd = m.stack[len(m.stack)-1].Update(msg)
+		cmds = append(cmds, cmd)
 	}
 
 	if m.userPrompt != "" {
@@ -229,6 +222,18 @@ func (m chatModel) View() string {
 			aiRes = string(markdown.Render(m.aiResponse, terminalWidth, 3))
 		}
 		m.viewport.SetContent(fmt.Sprintf("%s\n%s", m.userStyle.Render(m.userPrompt), aiRes))
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m chatModel) View() string {
+	if m.err != nil {
+		return fmt.Sprintf("Error: %s", m.err)
+	}
+
+	if len(m.stack) > 0 {
+		return m.stack[len(m.stack)-1].View()
 	}
 
 	return fmt.Sprintf(
@@ -242,87 +247,4 @@ func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
 	return func() tea.Msg {
 		return <-updateChan
 	}
-}
-
-func (m *chatModel) changeCurrentChatHelper(previous int) {
-	if len(m.promptConfig.ChatMessages.Messages) == 0 {
-		m.currentChatIndices.assistant = -1
-		m.currentChatIndices.user = -1
-		return
-	}
-	if previous < 0 {
-		previous = len(m.promptConfig.ChatMessages.Messages) - 1
-	}
-	prev := m.promptConfig.ChatMessages.FindById(previous)
-	if prev == nil {
-		prev = &m.promptConfig.ChatMessages.Messages[0]
-	}
-
-	switch prev.Role {
-	case service.RoleAssistant:
-		m.currentChatIndices.assistant = prev.Id
-		m.currentChatIndices.user = prev.AssociatedMessageId
-	case service.RoleUser:
-		m.currentChatIndices.user = prev.Id
-		m.currentChatIndices.assistant = prev.AssociatedMessageId
-	}
-
-	m.userPrompt = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user).Content
-	m.aiResponse = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant).Content
-}
-
-func sendPrompt(pc *command.PromptConfig, currentChatIds *currentChatIndexes) error {
-	userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
-	assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
-
-	currentChatIds.user = userMsg.Id
-	currentChatIds.assistant = assistantMessage.Id
-
-	pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	pc.AddContextWithId(ctx, cancel, userMsg.Id)
-
-	stream, err := api.SendPromptToOpenAi(ctx, &api.GPTChanRequest{
-		Messages: pc.ChatMessages.FilterByOpenAIRoles(),
-	})
-	if err != nil {
-		return err
-	}
-
-	go func(stream <-chan *api.GPTChanResponse) {
-		defer pc.DeleteContext(ctx)
-		for v := range stream {
-			previous := pc.ChatMessages.FindById(assistantMessage.Id)
-			if previous == nil {
-				log.Fatalln("previous message not found")
-			}
-			previous.Content += string(v.Content)
-			pc.ChatMessages.UpdateMessage(*previous)
-			if pc.UpdateChan != nil {
-				pc.UpdateChan <- *previous
-			}
-		}
-	}(stream)
-
-	return nil
-}
-
-func (m *chatModel) initViewport() (tea.Model, tea.Cmd) {
-	w, h, err := ui.GetTerminalSize()
-	terminalHeight = h
-	terminalWidth = w
-
-	if err != nil {
-		m.err = err
-		return m, nil
-	}
-
-	vp := viewport.New(terminalWidth, terminalHeight-3)
-
-	vp.SetContent(banner.Inline("go ai cli - prompt"))
-
-	m.viewport = vp
-
-	return m, nil
 }

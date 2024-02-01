@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
+	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -36,11 +37,14 @@ var (
 	}()
 )
 
+type pagerContentUpdate string
+
 type pagerModel struct {
 	content  string
 	title    string
 	ready    bool
 	viewport viewport.Model
+	pc       *command.PromptConfig
 }
 
 func (m pagerModel) Init() tea.Cmd {
@@ -54,13 +58,20 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		return m, tea.Quit
+
+	case pagerContentUpdate:
+		m.content = string(msg)
+		return m, nil
+
+	case *command.PromptConfig:
+		m.pc = msg
+		return m, nil
 
 	case tea.WindowSizeMsg:
 		headerHeight := lipgloss.Height(m.headerView())
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
+		m.content = string(markdown.Render(m.content, msg.Width, 3))
 
 		if !m.ready {
 			// Since this program is using the full size of the viewport we
@@ -68,10 +79,10 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// we can initialize the viewport. The initial dimensions come in
 			// quickly, though asynchronously, which is why we wait for them
 			// here.
-			m.viewport = viewport.New(terminalWidth, terminalHeight-verticalMarginHeight)
+			m.viewport = viewport.New(msg.Width, msg.Height-verticalMarginHeight)
+			m.viewport.MouseWheelEnabled = true
 			m.viewport.YPosition = headerHeight
 			m.viewport.HighPerformanceRendering = useHighPerformanceRenderer
-			m.viewport.SetContent(string(markdown.Render(m.content, terminalWidth, 3)))
 			m.ready = true
 
 			// This is only necessary for high performance rendering, which in
@@ -97,6 +108,11 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
+	if m.pc.MdMode {
+		m.content = string(markdown.Render(m.content, terminalWidth, 3))
+	}
+	m.viewport.SetContent(m.content)
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -104,6 +120,7 @@ func (m pagerModel) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
 	}
+
 	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.viewport.View(), m.footerView())
 }
 
@@ -129,8 +146,6 @@ func max(a, b int) int {
 func Pager(userPrompt, content string) {
 	p := tea.NewProgram(
 		pagerModel{title: userPrompt, content: content},
-		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
-		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
 	)
 
 	if _, err := p.Run(); err != nil {

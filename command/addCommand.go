@@ -52,6 +52,10 @@ func (pc *PromptConfig) CloseContextById(id int) error {
 	}
 	ctx.CancelFn()
 
+	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
+		return item.UserChatId != id
+	})
+
 	return nil
 }
 
