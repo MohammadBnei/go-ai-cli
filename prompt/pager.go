@@ -38,6 +38,7 @@ var (
 )
 
 type pagerContentUpdate string
+type pagerTitleUpdate string
 
 type pagerModel struct {
 	content  string
@@ -59,9 +60,11 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case pagerTitleUpdate:
+		m.title = string(msg)
+
 	case pagerContentUpdate:
 		m.content = string(msg)
-		return m, nil
 
 	case *command.PromptConfig:
 		m.pc = msg

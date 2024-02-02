@@ -33,14 +33,11 @@ var promptCmd = &cobra.Command{
 			promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
 		}
 
-		userPrompt := make(chan string)
 		updateChan := make(chan service.ChatMessage)
-		done := make(chan bool)
-		defer close(userPrompt)
 		defer close(updateChan)
 		promptConfig.UpdateChan = updateChan
 
-		prompt.Chat(&prompt.ChatChan{UserPrompt: userPrompt, UpdateChan: updateChan, Done: done}, promptConfig)
+		prompt.Chat(promptConfig)
 
 	},
 }

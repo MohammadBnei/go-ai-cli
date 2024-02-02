@@ -3,11 +3,13 @@ package prompt
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
@@ -18,6 +20,11 @@ type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 
 func reset(m *chatModel) (tea.Model, tea.Cmd) {
 	m.textarea.Reset()
+	paragraphStyle := lipgloss.NewStyle().Padding(2)
+	m.viewport.SetContent(lipgloss.JoinHorizontal(lipgloss.Center,
+		paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens)),
+		paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages)))),
+	)
 	return m, tea.EnterAltScreen
 }
 
@@ -47,7 +54,7 @@ func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
-	minIndex := lo.Min([]int{m.currentChatIndices.assistant, m.currentChatIndices.user})
+	minIndex := lo.Min(lo.Filter[int]([]int{m.currentChatIndices.user, m.currentChatIndices.assistant}, func(i int, _ int) bool { return i >= 0 }))
 	previous := minIndex - 1
 	c := m.promptConfig.ChatMessages.FindById(previous)
 	if c == nil {

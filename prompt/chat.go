@@ -20,14 +20,20 @@ import (
 	"moul.io/banner"
 )
 
-type ChatChan struct {
-	UpdateChan chan service.ChatMessage
-	UserPrompt chan string
-	Done       chan bool
+type Styles struct {
+	BorderColor lipgloss.Color
+	InputField  lipgloss.Style
 }
 
-func Chat(chatChannels *ChatChan, pc *command.PromptConfig) {
-	p := tea.NewProgram(initialChatModel(chatChannels, pc),
+func DefaultStyle() *Styles {
+	s := new(Styles)
+	s.BorderColor = lipgloss.Color("36")
+	s.InputField = lipgloss.NewStyle().BorderForeground(s.BorderColor).BorderStyle(lipgloss.NormalBorder()).Padding(1)
+	return s
+}
+
+func Chat(pc *command.PromptConfig) {
+	p := tea.NewProgram(initialChatModel(pc),
 		tea.WithAltScreen(), // use the full size of the terminal in its "alternate screen buffer"
 		tea.WithMouseCellMotion())
 
@@ -52,17 +58,18 @@ type chatModel struct {
 	spinner            spinner.Model
 	userPrompt         string
 	userStyle          lipgloss.Style
-	assistantStyle     lipgloss.Style
 	aiResponse         string
 	currentChatIndices *currentChatIndexes
 	size               tea.WindowSizeMsg
+
+	styles *Styles
 
 	stack []tea.Model
 }
 
 var terminalWidth, terminalHeight, _ = ui.GetTerminalSize()
 
-func initialChatModel(chatChannels *ChatChan, pc *command.PromptConfig) chatModel {
+func initialChatModel(pc *command.PromptConfig) chatModel {
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -115,11 +122,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	cmds := []tea.Cmd{}
-
-	m.textarea, tiCmd = m.textarea.Update(msg)
-	m.viewport, vpCmd = m.viewport.Update(msg)
-
-	cmds = append(cmds, tiCmd, vpCmd)
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -188,6 +190,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case UpdateContentEvent:
+		cmds = append(cmds, func() tea.Msg {
+			return pagerContentUpdate(m.aiResponse)
+		}, func() tea.Msg {
+			return pagerTitleUpdate(m.userPrompt)
+		})
 
 	case service.ChatMessage:
 		if msg.Id == m.currentChatIndices.user {
@@ -214,6 +221,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.stack[len(m.stack)-1], cmd = m.stack[len(m.stack)-1].Update(msg)
 		cmds = append(cmds, cmd)
+	} else {
+		m.textarea, tiCmd = m.textarea.Update(msg)
+		m.viewport, vpCmd = m.viewport.Update(msg)
+
+		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
 	if m.userPrompt != "" {
