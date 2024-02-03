@@ -23,7 +23,6 @@ var promptCmd = &cobra.Command{
 		command.AddAllCommand(commandMap)
 
 		promptConfig := &service.PromptConfig{
-			MdMode:       viper.GetBool("md"),
 			ChatMessages: service.NewChatMessages("default"),
 		}
 

@@ -15,13 +15,11 @@ type ContextHold struct {
 }
 
 type PromptConfig struct {
-	MdMode         bool
 	ChatMessages   *ChatMessages
 	PreviousPrompt string
 	UserPrompt     string
 	UpdateChan     chan ChatMessage
 	Contexts       []ContextHold
-	OllamaMode     bool
 }
 
 func (pc *PromptConfig) CloseLastContext() error {

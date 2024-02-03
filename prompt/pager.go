@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/viper"
 )
 
 // You generally won't need this unless you're processing stuff with
@@ -112,7 +113,7 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
-	if m.pc.MdMode {
+	if viper.GetBool("md") {
 		m.content = string(markdown.Render(m.content, terminalWidth, 3))
 	}
 	m.viewport.SetContent(m.content)

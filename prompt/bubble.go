@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/spf13/viper"
 	"moul.io/banner"
 )
 
@@ -118,7 +119,7 @@ func (m ancestorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 	case service.ChatMessage:
-		m.viewport.SetContent(PrintAncestorMessages(m.promptConfig.ChatMessages.Messages, m.promptConfig.MdMode))
+		m.viewport.SetContent(PrintAncestorMessages(m.promptConfig.ChatMessages.Messages, viper.GetBool("md")))
 		return m, waitForUpdate(m.ancestorChannels.UpdateChan)
 
 	// We handle errors just like any other message

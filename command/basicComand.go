@@ -14,6 +14,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
+	"github.com/spf13/viper"
 	"moul.io/banner"
 )
 
@@ -100,7 +101,7 @@ func AddFileCommand(commandMap map[string]func(*service.PromptConfig) error) {
 
 func AddConfigCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	commandMap["markdown"] = func(pc *service.PromptConfig) error {
-		pc.MdMode = !pc.MdMode
+		viper.Set("md", !viper.GetBool("md"))
 		return nil
 	}
 }
@@ -160,7 +161,7 @@ func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	}
 
 	commandMap["responses"] = func(pc *service.PromptConfig) error {
-		_, err := ui.ShowPreviousMessage(pc.ChatMessages.Messages, pc.MdMode)
+		_, err := ui.ShowPreviousMessage(pc.ChatMessages.Messages, viper.GetBool("md"))
 		return err
 	}
 

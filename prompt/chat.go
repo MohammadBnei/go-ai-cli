@@ -22,6 +22,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -264,7 +265,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.userPrompt != "" {
 		aiRes := m.aiResponse
-		if m.promptConfig.MdMode && m.userPrompt != "Infos" {
+		if viper.GetBool("md") && m.userPrompt != "Infos" {
 			aiRes = string(markdown.Render(m.aiResponse, m.size.Width, 0))
 		}
 		userPrompt := m.userPrompt
