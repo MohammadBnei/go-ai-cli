@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
@@ -15,8 +16,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/ollama"
-	"github.com/tmc/langchaingo/llms/openai"
 	"golang.org/x/term"
 )
 
@@ -195,29 +194,21 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 }
 
 func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) error {
-	userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
-	assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
+	userMsg, err := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
+	if err != nil {
+		return err
+	}
+	assistantMessage, err := pc.ChatMessages.AddMessage("", service.RoleAssistant)
+	if err != nil {
+		return err
+	}
 
 	currentChatIds.user = userMsg.Id
 	currentChatIds.assistant = assistantMessage.Id
 
 	pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
 
-	var generateContent func(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error)
-	var err error
-	llmModel := llms.WithModel(viper.GetString("model"))
-
-	// TODO: inverse this condition
-	if !pc.OllamaMode {
-		llama, e := ollama.New()
-		err = e
-		generateContent = llama.GenerateContent
-		llmModel = llms.WithModel("llama2-uncensored")
-	} else {
-		llm, e := openai.New(openai.WithToken(viper.GetString("OPENAI_KEY")))
-		err = e
-		generateContent = llm.GenerateContent
-	}
+	generate, err := api.GetGenerateFunction()
 	if err != nil {
 		return err
 	}
@@ -226,7 +217,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) er
 	pc.AddContextWithId(ctx, cancel, userMsg.Id)
 	defer pc.DeleteContextById(userMsg.Id)
 
-	_, err = generateContent(ctx, pc.ChatMessages.ToLangchainMessage(), llmModel, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(), llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 		if err := ctx.Err(); err != nil {
 			pc.DeleteContextById(userMsg.Id)
 			if err == io.EOF {

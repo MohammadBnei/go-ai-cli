@@ -125,7 +125,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 
 	if exists, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
 		return item.Content == content
-	}); ok {
+	}); ok && content != "" {
 		return &exists, ErrAlreadyExist
 	}
 
@@ -288,12 +288,7 @@ func (c *ChatMessages) RecountTokens() *ChatMessages {
 }
 
 func CountTokens(content string) (int, error) {
-	model := viper.GetString("model")
-
-	if model == "" {
-		model = openai.GPT3Dot5Turbo
-	}
-	tkm, err := tiktoken.EncodingForModel(model)
+	tkm, err := tiktoken.EncodingForModel(openai.GPT4)
 	if err != nil {
 		return 0, err
 	}

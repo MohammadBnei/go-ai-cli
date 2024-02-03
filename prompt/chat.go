@@ -169,7 +169,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return addPagerToStack(&m)
 			}
 
-		case tea.KeyCtrlF:
+		case tea.KeyCtrlI:
 			if len(m.stack) == 0 {
 				return m, event.AddStack(ui.NewConfigModel())
 			}
@@ -198,11 +198,13 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, event.UpdateAiResponse(m.aiResponse), event.UpdateUserPrompt(m.userPrompt))
 
 	case event.RemoveStackEvent:
-		_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
-			return reflect.TypeOf(item) == reflect.TypeOf(msg.Stack)
-		})
-		if !ok || index == len(m.stack) {
-			return m, nil
+		if msg.Stack != nil {
+			_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
+				return reflect.TypeOf(item) == reflect.TypeOf(msg.Stack)
+			})
+			if !ok || index == len(m.stack) {
+				return m, nil
+			}
 		}
 
 		// TODO: find better solutions, direct comparison provokes panic

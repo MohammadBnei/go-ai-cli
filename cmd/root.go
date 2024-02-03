@@ -26,7 +26,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/cmd/speech"
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -65,9 +67,10 @@ func init() {
 	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	RootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.PersistentFlags().StringP("API_TYPE", "t", api.API_OLLAMA, "the api type to be added to config")
+	RootCmd.RegisterFlagCompletionFunc("API_TYPE", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{api.API_HUGGINGFACE, api.API_OLLAMA, api.API_OPENAI}, cobra.ShellCompDirectiveDefault
+	})
 
 	RootCmd.AddCommand(speech.SpeechCmd)
 }
@@ -90,4 +93,9 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 	}
+
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		viper.ReadInConfig()
+	})
+	go viper.WatchConfig()
 }
