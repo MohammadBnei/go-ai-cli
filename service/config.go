@@ -1,25 +1,74 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/samber/lo"
-	"github.com/spf13/viper"
 )
 
-func GetConfig() (map[string]any, error) {
-	return viper.AllSettings(), nil
+type ContextHold struct {
+	UserChatId int
+	Ctx        context.Context
+	CancelFn   func()
 }
 
-func SetConfig(key string, value any) error {
-	if !lo.Some[string](viper.AllKeys(), []string{strings.ToLower(key)}) {
-		return fmt.Errorf("key %s not found", key)
+type PromptConfig struct {
+	MdMode         bool
+	ChatMessages   *ChatMessages
+	PreviousPrompt string
+	UserPrompt     string
+	UpdateChan     chan ChatMessage
+	Contexts       []ContextHold
+	OllamaMode     bool
+}
+
+func (pc *PromptConfig) CloseLastContext() error {
+	if len(pc.Contexts) == 0 {
+		return errors.New("no context")
 	}
-	viper.Set(key, value)
+	pc.Contexts[len(pc.Contexts)-1].CancelFn()
 	return nil
 }
 
-func SaveConfigToFile() error {
-	return viper.WriteConfig()
+func (pc *PromptConfig) AddContext(ctx context.Context, cancelFn func()) {
+	pc.Contexts = append(pc.Contexts, ContextHold{Ctx: ctx, CancelFn: cancelFn})
+}
+
+func (pc *PromptConfig) AddContextWithId(ctx context.Context, cancelFn func(), id int) {
+	pc.Contexts = append(pc.Contexts, ContextHold{Ctx: ctx, CancelFn: cancelFn, UserChatId: id})
+}
+
+func (pc *PromptConfig) DeleteContext(ctx context.Context) {
+	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
+		return item.Ctx != ctx
+	})
+}
+
+func (pc *PromptConfig) FindContextWithId(id int) *ContextHold {
+	ctx, _ := lo.Find(pc.Contexts, func(item ContextHold) bool {
+		return item.UserChatId != id
+	})
+	return &ctx
+}
+
+func (pc *PromptConfig) DeleteContextById(id int) {
+	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
+		return item.UserChatId != id
+	})
+}
+
+func (pc *PromptConfig) CloseContextById(id int) error {
+	ctx, ok := lo.Find(pc.Contexts, func(item ContextHold) bool { return item.UserChatId == id })
+	if !ok {
+		return errors.New(fmt.Sprintf("no context found with id %d, %s", id, pc.Contexts))
+	}
+	ctx.CancelFn()
+
+	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
+		return item.UserChatId != id
+	})
+
+	return nil
 }

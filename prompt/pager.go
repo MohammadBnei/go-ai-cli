@@ -9,7 +9,8 @@ import (
 	"strings"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
-	"github.com/MohammadBnei/go-openai-cli/command"
+	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -45,7 +46,7 @@ type pagerModel struct {
 	title    string
 	ready    bool
 	viewport viewport.Model
-	pc       *command.PromptConfig
+	pc       *service.PromptConfig
 }
 
 func (m pagerModel) Init() tea.Cmd {
@@ -60,13 +61,13 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
-	case pagerTitleUpdate:
-		m.title = string(msg)
+	case event.UpdateUserPromptEvent:
+		m.title = msg.Content
 
-	case pagerContentUpdate:
-		m.content = string(msg)
+	case event.UpdateAiResponseEvent:
+		m.content = msg.Content
 
-	case *command.PromptConfig:
+	case *service.PromptConfig:
 		m.pc = msg
 		return m, nil
 

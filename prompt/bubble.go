@@ -8,7 +8,6 @@ import (
 	"log"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
-	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -25,7 +24,7 @@ type AncestorChan struct {
 	Done       chan bool
 }
 
-func Ancestor(ancestorChannels *AncestorChan, pc *command.PromptConfig) {
+func Ancestor(ancestorChannels *AncestorChan, pc *service.PromptConfig) {
 	p := tea.NewProgram(initialAncestorModel(ancestorChannels, pc), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
@@ -35,7 +34,7 @@ func Ancestor(ancestorChannels *AncestorChan, pc *command.PromptConfig) {
 
 type ancestorModel struct {
 	viewport         viewport.Model
-	promptConfig     *command.PromptConfig
+	promptConfig     *service.PromptConfig
 	textarea         textarea.Model
 	senderStyle      lipgloss.Style
 	assistStyle      lipgloss.Style
@@ -44,7 +43,7 @@ type ancestorModel struct {
 	ancestorChannels *AncestorChan
 }
 
-func initialAncestorModel(ancestorChannels *AncestorChan, pc *command.PromptConfig) ancestorModel {
+func initialAncestorModel(ancestorChannels *AncestorChan, pc *service.PromptConfig) ancestorModel {
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -106,7 +105,7 @@ func (m ancestorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyCtrlC:
 			m.promptConfig.CloseLastContext()
-			
+
 		case tea.KeyCtrlD:
 			fmt.Println(m.textarea.Value())
 			return m, tea.Quit

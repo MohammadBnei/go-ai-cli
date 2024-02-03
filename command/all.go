@@ -1,7 +1,10 @@
+//go:build !portaudio
 // +build !portaudio
 
 package command
 
-func AddAllCommand(commandMap map[string]func(*PromptConfig) error) {
+import "github.com/MohammadBnei/go-openai-cli/service"
+
+func AddAllCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	AddBasicCommand(commandMap)
 }

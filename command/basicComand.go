@@ -16,7 +16,7 @@ import (
 	"moul.io/banner"
 )
 
-func SendPrompt(pc *PromptConfig, streamFunc ...func(*api.GPTChanResponse)) error {
+func SendPrompt(pc *service.PromptConfig, streamFunc ...func(*api.GPTChanResponse)) error {
 	userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
 	assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
 
@@ -53,8 +53,8 @@ func SendPrompt(pc *PromptConfig, streamFunc ...func(*api.GPTChanResponse)) erro
 	return nil
 }
 
-func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["save"] = func(pc *PromptConfig) error {
+func AddFileCommand(commandMap map[string]func(*service.PromptConfig) error) {
+	commandMap["save"] = func(pc *service.PromptConfig) error {
 		assistantRole := service.RoleAssistant
 		lastMessage := pc.ChatMessages.LastMessage(&assistantRole)
 		if lastMessage == nil {
@@ -63,11 +63,11 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 		return ui.SaveToFile([]byte(lastMessage.Content), "")
 	}
 
-	commandMap["save-chat"] = func(pc *PromptConfig) error {
+	commandMap["save-chat"] = func(pc *service.PromptConfig) error {
 		return ui.SaveChat(pc.ChatMessages)
 	}
 
-	commandMap["load-chat"] = func(pc *PromptConfig) error {
+	commandMap["load-chat"] = func(pc *service.PromptConfig) error {
 		startPath, err := ui.StringPrompt("Enter a path to start from")
 		if err != nil {
 			return err
@@ -81,7 +81,7 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["meta"] = func(pc *PromptConfig) error {
+	commandMap["meta"] = func(pc *service.PromptConfig) error {
 		system := ""
 		yes := ui.YesNoPrompt("Use predefined system ?")
 		if yes {
@@ -108,7 +108,7 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["file"] = func(pc *PromptConfig) error {
+	commandMap["file"] = func(pc *service.PromptConfig) error {
 		fileContents, err := ui.FileSelectionFzf("")
 		if err != nil {
 			return err
@@ -124,15 +124,15 @@ func AddFileCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 }
 
-func AddConfigCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["markdown"] = func(pc *PromptConfig) error {
+func AddConfigCommand(commandMap map[string]func(*service.PromptConfig) error) {
+	commandMap["markdown"] = func(pc *service.PromptConfig) error {
 		pc.MdMode = !pc.MdMode
 		return nil
 	}
 }
 
-func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["list"] = func(pc *PromptConfig) error {
+func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
+	commandMap["list"] = func(pc *service.PromptConfig) error {
 		messages, err := ui.SelectSystemCommand()
 		if err != nil {
 			return err
@@ -143,11 +143,11 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["d-list"] = func(pc *PromptConfig) error {
+	commandMap["d-list"] = func(pc *service.PromptConfig) error {
 		return ui.DeleteSystemCommand()
 	}
 
-	commandMap["system"] = func(pc *PromptConfig) error {
+	commandMap["system"] = func(pc *service.PromptConfig) error {
 		message, err := ui.SendAsSystem()
 		if err != nil {
 			return err
@@ -156,7 +156,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["filter"] = func(pc *PromptConfig) error {
+	commandMap["filter"] = func(pc *service.PromptConfig) error {
 		messageIds, err := ui.FilterMessages(pc.ChatMessages.Messages)
 		if err != nil {
 			return err
@@ -172,12 +172,11 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return err
 	}
 
-	commandMap["cli-clear"] = func(pc *PromptConfig) error {
-		ui.ClearTerminal()
+	commandMap["cli-clear"] = func(pc *service.PromptConfig) error {
 		return nil
 	}
 
-	commandMap["reuse"] = func(pc *PromptConfig) error {
+	commandMap["reuse"] = func(pc *service.PromptConfig) error {
 		message, err := ui.ReuseMessage(pc.ChatMessages.Messages)
 		if err != nil {
 			return err
@@ -186,12 +185,12 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["responses"] = func(pc *PromptConfig) error {
+	commandMap["responses"] = func(pc *service.PromptConfig) error {
 		_, err := ui.ShowPreviousMessage(pc.ChatMessages.Messages, pc.MdMode)
 		return err
 	}
 
-	commandMap["default"] = func(pc *PromptConfig) error {
+	commandMap["default"] = func(pc *service.PromptConfig) error {
 		commandToAdd, err := ui.SetSystemDefault(false)
 		if err != nil {
 			return err
@@ -201,7 +200,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		}
 		return nil
 	}
-	commandMap["d-default"] = func(pc *PromptConfig) error {
+	commandMap["d-default"] = func(pc *service.PromptConfig) error {
 		commandToAdd, err := ui.SetSystemDefault(true)
 		if err != nil {
 			return err
@@ -212,7 +211,7 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["copy"] = func(pc *PromptConfig) error {
+	commandMap["copy"] = func(pc *service.PromptConfig) error {
 		assistantMessages, _ := pc.ChatMessages.FilterMessages(service.RoleAssistant)
 		if len(assistantMessages) < 1 {
 			return errors.New("no messages to copy")
@@ -223,15 +222,15 @@ func AddSystemCommand(commandMap map[string]func(*PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["clear"] = func(pc *PromptConfig) error {
+	commandMap["clear"] = func(pc *service.PromptConfig) error {
 		pc.ChatMessages.ClearMessages()
 		fmt.Println("cleared messages")
 		return nil
 	}
 }
 
-func AddHuggingFaceCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["mask"] = func(cfg *PromptConfig) error {
+func AddHuggingFaceCommand(commandMap map[string]func(*service.PromptConfig) error) {
+	commandMap["mask"] = func(cfg *service.PromptConfig) error {
 		maskPrompt := promptui.Prompt{
 			Label: "Write a sentance with the character !! as the token to replace",
 		}
@@ -249,13 +248,13 @@ func AddHuggingFaceCommand(commandMap map[string]func(*PromptConfig) error) {
 	}
 }
 
-func AddMiscCommand(commandMap map[string]func(*PromptConfig) error) {
-	commandMap["help"] = func(_ *PromptConfig) error {
+func AddMiscCommand(commandMap map[string]func(*service.PromptConfig) error) {
+	commandMap["help"] = func(_ *service.PromptConfig) error {
 		fmt.Println(HELP)
 		return nil
 	}
 
-	commandMap["quit"] = func(_ *PromptConfig) error {
+	commandMap["quit"] = func(_ *service.PromptConfig) error {
 		fmt.Println(banner.Inline("bye!"))
 		os.Exit(0)
 		return nil

@@ -6,18 +6,26 @@ package prompt
 import (
 	"fmt"
 	"log"
+	"reflect"
 
 	markdown "github.com/MichaelMure/go-term-markdown"
-	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
+
 	"moul.io/banner"
+)
+
+var (
+	AppStyle = lipgloss.NewStyle().Margin(1, 2, 0)
+
+	userStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#8947C8")).Bold(true).Margin(0, 2, 2)
 )
 
 type Styles struct {
@@ -32,10 +40,9 @@ func DefaultStyle() *Styles {
 	return s
 }
 
-func Chat(pc *command.PromptConfig) {
+func Chat(pc *service.PromptConfig) {
 	p := tea.NewProgram(initialChatModel(pc),
-		tea.WithAltScreen(), // use the full size of the terminal in its "alternate screen buffer"
-		tea.WithMouseCellMotion())
+		tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
@@ -53,23 +60,20 @@ type currentChatIndexes struct {
 type chatModel struct {
 	viewport           viewport.Model
 	textarea           textarea.Model
-	promptConfig       *command.PromptConfig
+	promptConfig       *service.PromptConfig
 	err                error
 	spinner            spinner.Model
 	userPrompt         string
-	userStyle          lipgloss.Style
 	aiResponse         string
 	currentChatIndices *currentChatIndexes
 	size               tea.WindowSizeMsg
-
-	styles *Styles
 
 	stack []tea.Model
 }
 
 var terminalWidth, terminalHeight, _ = ui.GetTerminalSize()
 
-func initialChatModel(pc *command.PromptConfig) chatModel {
+func initialChatModel(pc *service.PromptConfig) chatModel {
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -85,7 +89,7 @@ func initialChatModel(pc *command.PromptConfig) chatModel {
 
 	ta.ShowLineNumbers = false
 
-	vp := viewport.New(terminalWidth, terminalHeight-3)
+	vp := viewport.New(0, 0)
 
 	vp.SetContent(banner.Inline("go ai cli - prompt"))
 
@@ -103,7 +107,6 @@ func initialChatModel(pc *command.PromptConfig) chatModel {
 			user:      -1,
 			assistant: -1,
 		},
-		userStyle: lipgloss.NewStyle().Background(lipgloss.Color("#595302")).Foreground(lipgloss.Color("#8947C8")).Bold(true).Padding(1).Margin(1).Width(terminalWidth),
 	}
 
 	return modelStruct
@@ -125,22 +128,32 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		h, v := AppStyle.GetFrameSize()
+		msg.Width = msg.Width - h
+		msg.Height = msg.Height - v
 		m.size = msg
+
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - m.textarea.Height()
 
 	case tea.KeyMsg:
 		switch msg.Type {
 
-		case tea.KeyEsc:
-			if len(m.stack) > 0 {
-				m.stack = m.stack[:len(m.stack)-1]
-				return m, nil
-			}
-
 		case tea.KeyCtrlR:
 			return reset(&m)
 
+		case tea.KeyCtrlK:
+			m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.user)
+			m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.assistant)
+			return reset(&m)
+
 		case tea.KeyCtrlC:
-			return closeContext(&m)
+			if len(m.stack) > 0 {
+				return m, event.RemoveStack(m.stack[len(m.stack)-1])
+			}
+			if m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil {
+				return closeContext(&m)
+			}
 
 		case tea.KeyCtrlD:
 			return quit(&m)
@@ -152,28 +165,18 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return changeResponseDown(&m)
 
 		case tea.KeyCtrlP:
-			if m.aiResponse == "" {
-				return m, nil
+			if len(m.stack) == 0 {
+				return addPagerToStack(&m)
 			}
 
-			_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
-				_, ok := item.(pagerModel)
-				return ok
-			})
-			if !ok {
-				pager := pagerModel{
-					title:   m.userPrompt,
-					content: m.aiResponse,
-					pc:      m.promptConfig,
-				}
-				p, cmd := pager.Update(m.size)
-				pager = p.(pagerModel)
+		case tea.KeyCtrlF:
+			if len(m.stack) == 0 {
+				return m, event.AddStack(ui.NewConfigModel())
+			}
 
-				m.stack = append(m.stack, pager)
-
-				cmds = append(cmds, m.stack[len(m.stack)-1].Init(), cmd)
-			} else {
-				m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
+		case tea.KeyCtrlL:
+			if len(m.stack) == 0 {
+				return m, event.AddStack(ui.NewSystemModel(m.promptConfig))
 			}
 
 		case tea.KeyEnter:
@@ -182,19 +185,33 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if e, c := callFunction(&m); e != nil {
-				return e, c
-			}
+			if len(m.stack) == 0 {
+				if e, c := callFunction(&m); e != nil {
+					return e, c
+				}
 
-			return promptSend(&m)
+				return promptSend(&m)
+			}
 		}
 
-	case UpdateContentEvent:
-		cmds = append(cmds, func() tea.Msg {
-			return pagerContentUpdate(m.aiResponse)
-		}, func() tea.Msg {
-			return pagerTitleUpdate(m.userPrompt)
+	case event.UpdateContentEvent:
+		cmds = append(cmds, event.UpdateAiResponse(m.aiResponse), event.UpdateUserPrompt(m.userPrompt))
+
+	case event.RemoveStackEvent:
+		_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
+			return reflect.TypeOf(item) == reflect.TypeOf(msg.Stack)
 		})
+		if !ok || index == len(m.stack) {
+			return m, nil
+		}
+
+		// TODO: find better solutions, direct comparison provokes panic
+		m.stack = m.stack[:len(m.stack)-1]
+		return m, m.resize
+
+	case event.AddStackEvent:
+		m.stack = append(m.stack, msg.Stack)
+		return m, tea.Sequence(m.stack[len(m.stack)-1].Init(), m.resize, event.UpdateContent)
 
 	case service.ChatMessage:
 		if msg.Id == m.currentChatIndices.user {
@@ -205,13 +222,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.aiResponse = msg.Content
 		}
 
-		return m, tea.Batch(waitForUpdate(m.promptConfig.UpdateChan), func() tea.Msg {
-			return pagerContentUpdate(m.aiResponse)
-		})
+		cmds = append(cmds, waitForUpdate(m.promptConfig.UpdateChan), event.UpdateContent)
 
-	// We handle errors just like any other message
-
-	case errMsg:
+	case error:
 		m.err = msg
 		return m, nil
 
@@ -231,9 +244,14 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.userPrompt != "" {
 		aiRes := m.aiResponse
 		if m.promptConfig.MdMode {
-			aiRes = string(markdown.Render(m.aiResponse, terminalWidth, 3))
+			aiRes = string(markdown.Render(m.aiResponse, m.size.Width, 0))
 		}
-		m.viewport.SetContent(fmt.Sprintf("%s\n%s", m.userStyle.Render(m.userPrompt), aiRes))
+		userPrompt := m.userPrompt
+		if m.currentChatIndices.user >= 0 {
+			_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatIndices.user })
+			userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
+		}
+		m.viewport.SetContent(fmt.Sprintf("%s\n%s", userStyle.Render(userPrompt), aiRes))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -247,12 +265,10 @@ func (m chatModel) View() string {
 	if len(m.stack) > 0 {
 		return m.stack[len(m.stack)-1].View()
 	}
-
-	return fmt.Sprintf(
-		"%s\n%s\n",
+	return AppStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),
 		m.textarea.View(),
-	)
+	))
 }
 
 func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {

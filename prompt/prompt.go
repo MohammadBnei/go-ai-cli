@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func GetLabel(pc *command.PromptConfig) string {
+func GetLabel(pc *service.PromptConfig) string {
 	label := "prompt"
 	tokens := pc.ChatMessages.TotalTokens
 	if tokens != 0 {
@@ -29,13 +29,13 @@ func GetLabel(pc *command.PromptConfig) string {
 	return label
 }
 
-func CommandSelectionFactory() func(cmd string, pc *command.PromptConfig) error {
-	commandMap := make(map[string]func(*command.PromptConfig) error)
+func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error {
+	commandMap := make(map[string]func(*service.PromptConfig) error)
 
 	command.AddAllCommand(commandMap)
 	keys := lo.Keys[string](commandMap)
 
-	return func(cmd string, pc *command.PromptConfig) error {
+	return func(cmd string, pc *service.PromptConfig) error {
 
 		var err error
 
@@ -70,13 +70,13 @@ func OpenAiPrompt() {
 		fmt.Println("clipboard is not avalaible on this os")
 	}
 
-	commandMap := make(map[string]func(*command.PromptConfig) error)
+	commandMap := make(map[string]func(*service.PromptConfig) error)
 
 	fmt.Println("for help type 'h'")
 
 	command.AddAllCommand(commandMap)
 
-	promptConfig := &command.PromptConfig{
+	promptConfig := &service.PromptConfig{
 		MdMode:       viper.GetBool("md"),
 		ChatMessages: service.NewChatMessages("default"),
 	}

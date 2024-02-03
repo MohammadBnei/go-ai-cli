@@ -3,18 +3,111 @@ package ui
 import (
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"runtime"
 	"sort"
 	"time"
 
+	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/form"
+	uiList "github.com/MohammadBnei/go-openai-cli/ui/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/golang-module/carbon/v2"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tigergraph/promptui"
 )
+
+func yesNoHelper(yes bool) string {
+	if yes {
+		return "✅"
+	}
+	return "❌"
+}
+
+func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
+	savedSystemPrompt := viper.GetStringMapString("systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	if savedDefaultSystemPrompt == nil {
+		savedDefaultSystemPrompt = make(map[string]string)
+	}
+
+	items := lo.MapToSlice[string, string, uiList.Item](savedSystemPrompt, func(k string, v string) uiList.Item {
+		_, isDefault := savedDefaultSystemPrompt[k]
+		found := true
+		if _, err := promptConfig.ChatMessages.FindMessageByContent(v); err != nil {
+			if errors.Is(err, service.ErrNotFound) {
+				found = false
+			}
+		}
+		return uiList.Item{
+			ItemId:          k,
+			ItemTitle:       v,
+			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+yesNoHelper(found), " | Default: "+yesNoHelper(isDefault), " | Date: "+k),
+		}
+	})
+
+	sort.Slice(items, func(i, j int) bool {
+		return carbon.Parse(items[i].ItemId).Gt(carbon.Parse(items[j].ItemId))
+	})
+
+	delegateFn := &uiList.DelegateFunctions{
+		ChooseFn: func(s string) tea.Cmd {
+			v, ok := viper.GetStringMapString("systems")[s]
+			if ok {
+				exists, err := promptConfig.ChatMessages.AddMessage(v, service.RoleSystem)
+				if err != nil {
+					if errors.Is(err, service.ErrAlreadyExist) {
+						promptConfig.ChatMessages.DeleteMessage(exists.Id)
+						return nil
+					}
+					return event.Error(err)
+				}
+			}
+			return nil
+		},
+		EditFn: func(s string) tea.Cmd {
+			v, ok := viper.GetStringMapString("systems")[s]
+			if !ok {
+				return func() tea.Msg {
+					return errors.New(s + " not found in systems")
+				}
+			}
+			_, isDefault := savedDefaultSystemPrompt[s]
+
+			editModel := form.NewEditModel(huh.NewForm(huh.NewGroup(
+				huh.NewText().Title(s).Key(s).Value(&v).Lines(10),
+				huh.NewSelect[bool]().Key("default").Title("Added by default").Value(&isDefault).Options(huh.NewOptions[bool](true, false)...),
+			)), func(form *huh.Form) tea.Cmd {
+				content := form.GetString(s)
+				isDefault := form.GetBool("default")
+				if isDefault {
+					SetDefaultSystem(s)
+				} else {
+					UnsetDefaultSystem(s)
+				}
+				UpdateFromSystemList(s, content)
+
+				return func() tea.Msg {
+					dft := "❌"
+					if isDefault {
+						dft = "✅"
+					}
+					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center,"Added: ❌" ,  "| Default: "+dft, " | Date: "+s)}
+				}
+			})
+
+			return event.AddStack(editModel)
+		},
+		RemoveFn: func(s string) tea.Cmd {
+			RemoveFromSystemList(s)
+			return nil
+		},
+	}
+	return uiList.NewFancyListModel("system", items, delegateFn)
+}
 
 func SendAsSystem() (string, error) {
 	systemPrompt := promptui.Prompt{
@@ -44,6 +137,21 @@ func YesNoPrompt(label string) bool {
 	}
 
 	return true
+}
+
+func SetDefaultSystem(id string) error {
+	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt[id] = ""
+	viper.Set("default-systems", savedDefaultSystemPrompt)
+
+	return viper.GetViper().WriteConfig()
+}
+
+func UnsetDefaultSystem(id string) error {
+	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	delete(savedDefaultSystemPrompt, id)
+	viper.Set("default-systems", savedDefaultSystemPrompt)
+	return viper.GetViper().WriteConfig()
 }
 
 func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
@@ -158,12 +266,12 @@ func DeleteSystemCommand() error {
 	return nil
 }
 
-func AddToSystemList(command string, key string) {
+func AddToSystemList(content string, key string) {
 	if key == "" {
 		key = time.Now().Format("2006-01-02 15:04:05")
 	}
 	systems := viper.GetStringMapString("systems")
-	systems[key] = command
+	systems[key] = content
 	viper.Set("systems", systems)
 	viper.GetViper().WriteConfig()
 }
@@ -174,27 +282,9 @@ func RemoveFromSystemList(time string) {
 	viper.GetViper().WriteConfig()
 }
 
-var clear map[string]func() = make(map[string]func())
-
-func ClearTerminal() {
-	if _, ok := clear["linux"]; !ok {
-		clear["linux"] = func() {
-			cmd := exec.Command("clear") //Linux example, its tested
-			cmd.Stdout = os.Stdout
-			cmd.Run()
-		}
-	}
-	if _, ok := clear["windows"]; !ok {
-		clear["windows"] = func() {
-			cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
-			cmd.Stdout = os.Stdout
-			cmd.Run()
-		}
-	}
-	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
-	if ok {                          //if we defined a clear func for that platform:
-		value() //we execute it
-	} else { //unsupported platform
-		clear["linux"]()
-	}
+func UpdateFromSystemList(time string, content string) {
+	systems := viper.GetStringMapString("systems")
+	systems[time] = content
+	viper.Set("systems", systems)
+	viper.GetViper().WriteConfig()
 }

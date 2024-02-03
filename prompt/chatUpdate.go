@@ -5,15 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/llms/openai"
+	"golang.org/x/term"
 )
 
 type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
@@ -21,11 +25,30 @@ type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 func reset(m *chatModel) (tea.Model, tea.Cmd) {
 	m.textarea.Reset()
 	paragraphStyle := lipgloss.NewStyle().Padding(2)
-	m.viewport.SetContent(lipgloss.JoinHorizontal(lipgloss.Center,
+	m.aiResponse = lipgloss.JoinHorizontal(lipgloss.Center,
 		paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens)),
-		paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages)))),
+		paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages))),
 	)
-	return m, tea.EnterAltScreen
+	m.userPrompt = "Infos"
+	m.currentChatIndices = &currentChatIndexes{
+		user:      -1,
+		assistant: -1,
+	}
+
+	err := viper.ReadInConfig()
+	if err != nil {
+		m.err = err
+	}
+
+	return m, event.UpdateContent
+}
+
+func (m *chatModel) resize() tea.Msg {
+	w, h, _ := term.GetSize(int(os.Stdout.Fd()))
+	return tea.WindowSizeMsg{
+		Width:  w,
+		Height: h,
+	}
 }
 
 func closeContext(m *chatModel) (tea.Model, tea.Cmd) {
@@ -44,10 +67,31 @@ func quit(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
-type UpdateContentEvent struct{}
+func addPagerToStack(m *chatModel) (tea.Model, tea.Cmd) {
+	if m.aiResponse == "" {
+		return m, nil
+	}
 
-func UpdateContent() tea.Msg {
-	return UpdateContentEvent{}
+	_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
+		_, ok := item.(pagerModel)
+		return ok
+	})
+	if !ok {
+		pager := pagerModel{
+			title:   m.userPrompt,
+			content: m.aiResponse,
+			pc:      m.promptConfig,
+		}
+		p, cmd := pager.Update(m.size)
+		pager = p.(pagerModel)
+
+		m.stack = append(m.stack, pager)
+
+		return m, tea.Batch(m.stack[len(m.stack)-1].Init(), cmd)
+	} else {
+		m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
+	}
+	return m, nil
 }
 
 func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
@@ -62,7 +106,7 @@ func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
-	return m, UpdateContent
+	return m, event.UpdateContent
 }
 
 func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
@@ -77,7 +121,7 @@ func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
-	return m, UpdateContent
+	return m, event.UpdateContent
 }
 
 func callFunction(m *chatModel) (tea.Model, tea.Cmd) {
@@ -150,7 +194,7 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 
 }
 
-func sendPrompt(pc *command.PromptConfig, currentChatIds *currentChatIndexes) error {
+func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) error {
 	userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
 	assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
 
@@ -159,17 +203,32 @@ func sendPrompt(pc *command.PromptConfig, currentChatIds *currentChatIndexes) er
 
 	pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
 
-	llm, err := openai.New(openai.WithToken(viper.GetString("OPENAI_KEY")))
+	var generateContent func(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error)
+	var err error
+	llmModel := llms.WithModel(viper.GetString("model"))
+
+	// TODO: inverse this condition
+	if !pc.OllamaMode {
+		llama, e := ollama.New()
+		err = e
+		generateContent = llama.GenerateContent
+		llmModel = llms.WithModel("llama2-uncensored")
+	} else {
+		llm, e := openai.New(openai.WithToken(viper.GetString("OPENAI_KEY")))
+		err = e
+		generateContent = llm.GenerateContent
+	}
 	if err != nil {
 		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	pc.AddContextWithId(ctx, cancel, userMsg.Id)
+	defer pc.DeleteContextById(userMsg.Id)
 
-	go llm.GenerateContent(ctx, pc.ChatMessages.ToLangchainMessage(), llms.WithModel(viper.GetString("model")), llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+	_, err = generateContent(ctx, pc.ChatMessages.ToLangchainMessage(), llmModel, llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 		if err := ctx.Err(); err != nil {
-			pc.DeleteContext(ctx)
+			pc.DeleteContextById(userMsg.Id)
 			if err == io.EOF {
 				return nil
 			}
@@ -177,7 +236,7 @@ func sendPrompt(pc *command.PromptConfig, currentChatIds *currentChatIndexes) er
 		}
 		previous := pc.ChatMessages.FindById(assistantMessage.Id)
 		if previous == nil {
-			pc.DeleteContext(ctx)
+			pc.DeleteContextById(userMsg.Id)
 			return errors.New("previous message not found")
 		}
 		previous.Content += string(chunk)

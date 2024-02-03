@@ -96,8 +96,24 @@ func (c *ChatMessages) FindById(id int) *ChatMessage {
 
 	return &c.Messages[index]
 }
-func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, error) {
 
+var ErrNotFound = errors.New("not found")
+
+func (c *ChatMessages) FindMessageByContent(content string) (*ChatMessage, error) {
+	exists, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
+		return item.Content == content
+	})
+
+	if !ok {
+		return nil, ErrNotFound
+	}
+
+	return &exists, nil
+}
+
+var ErrAlreadyExist = errors.New("already exists")
+
+func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, error) {
 	if role == "" {
 		return nil, errors.New("role cannot be empty")
 	}
@@ -105,6 +121,12 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 	tokenCount, err := CountTokens(content)
 	if err != nil {
 		return nil, err
+	}
+
+	if exists, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
+		return item.Content == content
+	}); ok {
+		return &exists, ErrAlreadyExist
 	}
 
 	msg := ChatMessage{

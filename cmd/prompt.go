@@ -18,11 +18,11 @@ var promptCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
 
-		commandMap := make(map[string]func(*command.PromptConfig) error)
+		commandMap := make(map[string]func(*service.PromptConfig) error)
 
 		command.AddAllCommand(commandMap)
 
-		promptConfig := &command.PromptConfig{
+		promptConfig := &service.PromptConfig{
 			MdMode:       viper.GetBool("md"),
 			ChatMessages: service.NewChatMessages("default"),
 		}
