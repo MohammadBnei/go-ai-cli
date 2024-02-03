@@ -100,8 +100,8 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			}
 			_, isDefault := savedDefaultSystemPrompt[s]
 
-			editModel := form.NewEditModel(huh.NewForm(huh.NewGroup(
-				huh.NewText().Title(s).Key(s).Value(&v).Lines(10),
+			editModel := form.NewEditModel("Editing system ["+s+"]", huh.NewForm(huh.NewGroup(
+				huh.NewText().Title("Content").Key(s).Value(&v).Lines(10),
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Value(&isDefault).Options(huh.NewOptions[bool](true, false)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)
@@ -137,8 +137,8 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			return event.AddStack(editModel)
 		},
 		AddFn: func(s string) tea.Cmd {
-			addModel := form.NewEditModel(huh.NewForm(huh.NewGroup(
-				huh.NewText().Title(s).Key(s).Lines(10),
+			addModel := form.NewEditModel("New system", huh.NewForm(huh.NewGroup(
+				huh.NewText().Title("Content").Key(s).Lines(10),
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Options(huh.NewOptions[bool](true, false)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)

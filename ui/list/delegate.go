@@ -1,6 +1,7 @@
 package list
 
 import (
+	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -30,7 +31,7 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 					return nil
 				}
 				cmds = append(cmds, delegateFn.ChooseFn(id))
-				cmds = append(cmds, m.NewStatusMessage(statusMessageStyle("Chose "+title)))
+				cmds = append(cmds, m.NewStatusMessage(style.StatusMessageStyle("Chose "+title)))
 				return tea.Batch(cmds...)
 
 			case key.Matches(msg, keys.remove):
@@ -43,21 +44,21 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 				if len(m.Items()) == 0 {
 					keys.remove.SetEnabled(false)
 				}
-				cmds = append(cmds, delegateFn.RemoveFn(id), m.NewStatusMessage(statusMessageStyle("Deleted "+title)))
+				cmds = append(cmds, delegateFn.RemoveFn(id), m.NewStatusMessage(style.StatusMessageStyle("Deleted "+title)))
 				return tea.Batch(cmds...)
 
 			case key.Matches(msg, keys.edit):
 				if delegateFn.EditFn == nil {
 					return nil
 				}
-				cmds = append(cmds, delegateFn.EditFn(id), m.NewStatusMessage(statusMessageStyle("Edited "+title)))
+				cmds = append(cmds, delegateFn.EditFn(id), m.NewStatusMessage(style.StatusMessageStyle("Edited "+title)))
 				return tea.Batch(cmds...)
 
 			case key.Matches(msg, keys.add):
 				if delegateFn.AddFn == nil {
 					return nil
 				}
-				cmds = append(cmds, delegateFn.AddFn(id), m.NewStatusMessage(statusMessageStyle("Created "+title)))
+				cmds = append(cmds, delegateFn.AddFn(id), m.NewStatusMessage(style.StatusMessageStyle("Created "+title)))
 				return tea.Batch(cmds...)
 			}
 		}

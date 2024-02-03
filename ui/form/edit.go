@@ -1,13 +1,17 @@
 package form
 
 import (
+	"fmt"
+
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 )
 
 type editModel struct {
-	form *huh.Form
+	form  *huh.Form
+	title string
 
 	onSubmit func(form *huh.Form) tea.Cmd
 }
@@ -43,12 +47,13 @@ func (m editModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m editModel) View() string {
-	return m.form.View()
+	return fmt.Sprintf("%s\n%s", style.TitleStyle.Render(m.title), m.form.View())
 }
 
-func NewEditModel(form *huh.Form, onSubmit func(form *huh.Form) tea.Cmd) *editModel {
+func NewEditModel(title string, form *huh.Form, onSubmit func(form *huh.Form) tea.Cmd) *editModel {
 	m := editModel{form: form}
 	m.onSubmit = onSubmit
+	m.title = title
 	return &m
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/list"
+	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -25,8 +26,6 @@ import (
 
 var (
 	AppStyle = lipgloss.NewStyle().Margin(1, 2, 0)
-
-	userStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#8947C8")).Bold(true).Margin(0, 2, 2)
 )
 
 type Styles struct {
@@ -273,7 +272,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatIndices.user })
 			userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
 		}
-		m.viewport.SetContent(fmt.Sprintf("%s\n%s", userStyle.Render(userPrompt), aiRes))
+		m.viewport.SetContent(fmt.Sprintf("%s\n%s", style.TitleStyle.Render(userPrompt), aiRes))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -281,11 +280,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m chatModel) View() string {
 	if m.err != nil {
-		return fmt.Sprintf("Error: %s", m.err)
+		return fmt.Sprintf("Error: %s", style.StatusMessageStyle(m.err.Error()))
 	}
 
 	if len(m.stack) > 0 {
-		return m.stack[len(m.stack)-1].View()
+		return AppStyle.Render(m.stack[len(m.stack)-1].View())
 	}
 	return AppStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
 		m.viewport.View(),

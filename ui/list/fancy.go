@@ -1,22 +1,11 @@
 package list
 
 import (
+	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-)
-
-var (
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
-			Padding(0, 1)
-
-	statusMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
-				Render
 )
 
 type Item struct {
@@ -99,7 +88,7 @@ func NewFancyListModel(title string, items []Item, delegateFn *DelegateFunctions
 	groceryList.KeyMap.CursorDown.SetKeys("down")
 	groceryList.KeyMap.CursorDown.SetHelp("↓", "down")
 
-	groceryList.Styles.Title = titleStyle
+	groceryList.Styles.Title = style.TitleStyle
 	groceryList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.toggleSpinner,

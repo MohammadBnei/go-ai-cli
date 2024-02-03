@@ -87,13 +87,12 @@ func getEditModel(id string) (tea.Model, error) {
 
 		case "api_type":
 			editModel = newApiTypeSelectForm(value)
-
 			afterCmd = func() tea.Msg {
-				modelSelectForm, err := newModelSelectForm("")
+				modelSelectForm, err := newModelSelectForm(viper.GetString("model"))
 				if err != nil {
 					return err
 				}
-				return event.AddStackEvent{Stack: form.NewEditModel(modelSelectForm, func(form *huh.Form) tea.Cmd {
+				return event.AddStackEvent{Stack: form.NewEditModel("Editing config model after updating the api type", modelSelectForm, func(form *huh.Form) tea.Cmd {
 					result := form.GetString("model")
 					msg := UpdateConfigValue("model", result, result)()
 					return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
@@ -107,13 +106,13 @@ func getEditModel(id string) (tea.Model, error) {
 				huh.NewText().Title(id).Key(id).Value(&value).Lines(10)),
 			)
 		}
-		return form.NewEditModel(editModel, func(form *huh.Form) tea.Cmd {
+		return form.NewEditModel("Editing config ["+id+"]", editModel, func(form *huh.Form) tea.Cmd {
 			result := form.GetString(id)
 			return tea.Sequence(UpdateConfigValue(id, result, result), afterCmd)
 		}), nil
 
 	case bool:
-		return form.NewEditModel(huh.NewForm(huh.NewGroup(
+		return form.NewEditModel("Editing config ["+id+"]", huh.NewForm(huh.NewGroup(
 			huh.NewSelect[bool]().Key(id).Title(id).Options(huh.NewOptions[bool](true, false)...)),
 		), func(form *huh.Form) tea.Cmd {
 			result := form.GetBool(id)
