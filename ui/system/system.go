@@ -1,4 +1,4 @@
-package ui
+package system
 
 import (
 	"errors"
@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/form"
+	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	uiList "github.com/MohammadBnei/go-openai-cli/ui/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -20,21 +22,25 @@ import (
 	"github.com/tigergraph/promptui"
 )
 
-func yesNoHelper(yes bool) string {
-	if yes {
-		return "✅"
-	}
-	return "❌"
-}
-
-func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
-	savedSystemPrompt := viper.GetStringMapString("systems")
+func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
 	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
 	if savedDefaultSystemPrompt == nil {
 		savedDefaultSystemPrompt = make(map[string]string)
+		viper.Set("default-systems", savedDefaultSystemPrompt)
 	}
 
-	items := lo.MapToSlice[string, string, uiList.Item](savedSystemPrompt, func(k string, v string) uiList.Item {
+	items := getItemsAsUiList(promptConfig)
+
+	delegateFn := getDelegateFn(promptConfig)
+
+	return uiList.NewFancyListModel("system", items, delegateFn)
+}
+
+func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
+	savedSystemPrompt := viper.GetStringMapString("systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+
+	res := lo.MapToSlice[string, string, uiList.Item](savedSystemPrompt, func(k string, v string) uiList.Item {
 		_, isDefault := savedDefaultSystemPrompt[k]
 		found := true
 		if _, err := promptConfig.ChatMessages.FindMessageByContent(v); err != nil {
@@ -45,16 +51,21 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 		return uiList.Item{
 			ItemId:          k,
 			ItemTitle:       v,
-			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+yesNoHelper(found), " | Default: "+yesNoHelper(isDefault), " | Date: "+k),
+			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(found), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+k),
 		}
 	})
-
-	sort.Slice(items, func(i, j int) bool {
-		return carbon.Parse(items[i].ItemId).Gt(carbon.Parse(items[j].ItemId))
+	sort.Slice(res, func(i, j int) bool {
+		return carbon.Parse(res[i].ItemId).Gt(carbon.Parse(res[j].ItemId))
 	})
 
-	delegateFn := &uiList.DelegateFunctions{
+	return res
+}
+
+func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions {
+	return &uiList.DelegateFunctions{
 		ChooseFn: func(s string) tea.Cmd {
+			savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+
 			v, ok := viper.GetStringMapString("systems")[s]
 			if !ok {
 				return event.Error(errors.New(s + " not found in systems"))
@@ -65,7 +76,7 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 			if err != nil {
 				if errors.Is(err, service.ErrAlreadyExist) {
 					promptConfig.ChatMessages.DeleteMessage(exists.Id)
-					newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+yesNoHelper(false), " | Default: "+yesNoHelper(isDefault), " | Date: "+s)
+					newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(false), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+s)
 					return func() tea.Msg {
 						return newItem
 					}
@@ -73,12 +84,14 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 				return event.Error(err)
 			}
 
-			newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+yesNoHelper(true), " | Default: "+yesNoHelper(isDefault), " | Date: "+s)
+			newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(true), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+s)
 			return func() tea.Msg {
 				return newItem
 			}
 		},
 		EditFn: func(s string) tea.Cmd {
+			savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+
 			v, ok := viper.GetStringMapString("systems")[s]
 			if !ok {
 				return func() tea.Msg {
@@ -92,13 +105,19 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Value(&isDefault).Options(huh.NewOptions[bool](true, false)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)
-				isDefault := form.GetBool("default")
-				if isDefault {
-					SetDefaultSystem(s)
-				} else {
-					UnsetDefaultSystem(s)
-				}
 				UpdateFromSystemList(s, content)
+
+				isDefault := form.GetBool("default")
+				var err error
+				if isDefault {
+					err = SetDefaultSystem(s)
+				} else {
+					err = UnsetDefaultSystem(s)
+				}
+
+				if err != nil {
+					return event.Error(err)
+				}
 
 				return func() tea.Msg {
 					dft := "❌"
@@ -111,12 +130,42 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 
 			return event.AddStack(editModel)
 		},
+		AddFn: func(s string) tea.Cmd {
+			addModel := form.NewEditModel(huh.NewForm(huh.NewGroup(
+				huh.NewText().Title(s).Key(s).Lines(10),
+				huh.NewSelect[bool]().Key("default").Title("Added by default").Options(huh.NewOptions[bool](true, false)...),
+			)), func(form *huh.Form) tea.Cmd {
+				content := form.GetString(s)
+				UpdateFromSystemList(s, content)
+
+				isDefault := form.GetBool("default")
+				var err error
+				if isDefault {
+					err = SetDefaultSystem(s)
+				} else {
+					err = UnsetDefaultSystem(s)
+				}
+
+				if err != nil {
+					return event.Error(err)
+				}
+
+				return func() tea.Msg {
+					dft := "❌"
+					if isDefault {
+						dft = "✅"
+					}
+					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: ❌", "| Default: "+dft, " | Date: "+s)}
+				}
+			})
+
+			return event.AddStack(addModel)
+		},
 		RemoveFn: func(s string) tea.Cmd {
 			RemoveFromSystemList(s)
 			return nil
 		},
 	}
-	return uiList.NewFancyListModel("system", items, delegateFn)
 }
 
 func SendAsSystem() (string, error) {
@@ -128,25 +177,11 @@ func SendAsSystem() (string, error) {
 		return "", err
 	}
 
-	if YesNoPrompt("save prompt ?") {
+	if helper.YesNoPrompt("save prompt ?") {
 		AddToSystemList(command, time.Now().Format("2006-01-02 15:04:05"))
 	}
 
 	return command, nil
-}
-
-func YesNoPrompt(label string) bool {
-	prompt := promptui.Select{
-		Label: label,
-		Items: []string{"yes", "no"},
-	}
-
-	_, choice, err := prompt.Run()
-	if err != nil || choice == "no" {
-		return false
-	}
-
-	return true
 }
 
 func SetDefaultSystem(id string) error {
@@ -185,7 +220,7 @@ func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
 			defaultStr = "✅"
 		}
 
-		return fmt.Sprintf("Date: %s\nDefault: %s\n%s", keyStringFromSP[i], defaultStr, AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromSP[i]]))
+		return fmt.Sprintf("Date: %s\nDefault: %s\n%s", keyStringFromSP[i], defaultStr, ui.AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromSP[i]]))
 	})
 	if err != nil {
 		return
@@ -193,7 +228,7 @@ func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
 
 	sendCommands := false
 	if !unset {
-		sendCommands = YesNoPrompt("send commands ?")
+		sendCommands = helper.YesNoPrompt("send commands ?")
 	}
 
 	for _, id := range keys {
@@ -243,7 +278,7 @@ func SystemPrompt(savedSystemPrompt map[string]string, previewWindowFunc func(in
 			if i == -1 {
 				return ""
 			}
-			return fmt.Sprintf("Date: %s\n%s", keyStringFromMap[i], AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromMap[i]]))
+			return fmt.Sprintf("Date: %s\n%s", keyStringFromMap[i], ui.AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromMap[i]]))
 		}
 	}
 

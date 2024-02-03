@@ -10,7 +10,7 @@ import (
 
 	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +45,7 @@ var fileCmd = &cobra.Command{
 		}
 
 		fmt.Println("---\n\n", text, "\n\n---")
-		if ui.YesNoPrompt("Copy to clipboard?") {
+		if helper.YesNoPrompt("Copy to clipboard?") {
 			clipboard.WriteAll(text)
 		}
 	},

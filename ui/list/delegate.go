@@ -52,6 +52,13 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 				}
 				cmds = append(cmds, delegateFn.EditFn(id), m.NewStatusMessage(statusMessageStyle("Edited "+title)))
 				return tea.Batch(cmds...)
+
+			case key.Matches(msg, keys.add):
+				if delegateFn.AddFn == nil {
+					return nil
+				}
+				cmds = append(cmds, delegateFn.AddFn(id), m.NewStatusMessage(statusMessageStyle("Created "+title)))
+				return tea.Batch(cmds...)
 			}
 		}
 
@@ -64,6 +71,9 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 	}
 	if delegateFn.EditFn != nil {
 		help = append(help, keys.edit)
+	}
+	if delegateFn.AddFn != nil {
+		help = append(help, keys.add)
 	}
 	if delegateFn.RemoveFn != nil {
 		help = append(help, keys.remove)
@@ -84,6 +94,7 @@ type delegateKeyMap struct {
 	choose key.Binding
 	remove key.Binding
 	edit   key.Binding
+	add    key.Binding
 }
 
 // Additional short help entries. This satisfies the help.KeyMap interface and
@@ -93,6 +104,7 @@ func (d delegateKeyMap) ShortHelp() []key.Binding {
 		d.choose,
 		d.remove,
 		d.edit,
+		d.add,
 	}
 }
 
@@ -104,6 +116,7 @@ func (d delegateKeyMap) FullHelp() [][]key.Binding {
 			d.choose,
 			d.remove,
 			d.edit,
+			d.add,
 		},
 	}
 }
@@ -117,6 +130,10 @@ func newDelegateKeyMap() *delegateKeyMap {
 		edit: key.NewBinding(
 			key.WithKeys("e"),
 			key.WithHelp("e", "edit"),
+		),
+		add: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "create"),
 		),
 		remove: key.NewBinding(
 			key.WithKeys("x", "backspace"),

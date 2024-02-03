@@ -41,10 +41,6 @@ type listKeyMap struct {
 
 func newListKeyMap() *listKeyMap {
 	return &listKeyMap{
-		insertItem: key.NewBinding(
-			key.WithKeys("a"),
-			key.WithHelp("a", "add item"),
-		),
 		toggleSpinner: key.NewBinding(
 			key.WithKeys("s"),
 			key.WithHelp("s", "toggle spinner"),
@@ -72,6 +68,7 @@ type DelegateFunctions struct {
 	ChooseFn func(string) tea.Cmd
 	RemoveFn func(string) tea.Cmd
 	EditFn   func(string) tea.Cmd
+	AddFn    func(string) tea.Cmd
 }
 
 type Model struct {
@@ -81,7 +78,7 @@ type Model struct {
 	DelegateFn   *DelegateFunctions
 }
 
-func NewFancyListModel(title string, items []Item, delegateFn *DelegateFunctions) Model {
+func NewFancyListModel(title string, items []Item, delegateFn *DelegateFunctions) *Model {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
@@ -114,7 +111,7 @@ func NewFancyListModel(title string, items []Item, delegateFn *DelegateFunctions
 		}
 	}
 
-	return Model{
+	return &Model{
 		List:         groceryList,
 		Keys:         listKeys,
 		DelegateKeys: delegateKeys,
@@ -142,6 +139,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		if ok {
 			m.List.SetItem(index, msg)
+		} else {
+			m.List.InsertItem(0, msg)
 		}
 
 	case tea.KeyMsg:
@@ -174,14 +173,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.List.SetShowHelp(!m.List.ShowHelp())
 			return m, nil
 
-		case key.Matches(msg, m.Keys.insertItem):
-			newItem := Item{
-				ItemTitle:       "New Item",
-				ItemDescription: "Description",
-			}
-			insCmd := m.List.InsertItem(0, newItem)
-			statusCmd := m.List.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
-			return m, tea.Batch(insCmd, statusCmd)
 		}
 	}
 
@@ -195,4 +186,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
 	return m.List.View()
+}
+
+func (m *Model) WithChooseFn(chooseFn func(string) tea.Cmd) *Model {
+	m.DelegateFn.ChooseFn = chooseFn
+	return nil
+}
+
+func (m *Model) WithEditFn(editFn func(string) tea.Cmd) *Model {
+	m.DelegateFn.EditFn = editFn
+	return nil
+}
+
+func (m *Model) WithAddFn(addFn func(string) tea.Cmd) *Model {
+	m.DelegateFn.AddFn = addFn
+	return nil
+}
+
+func (m *Model) WithRemoveFn(removeFn func(string) tea.Cmd) *Model {
+	m.DelegateFn.RemoveFn = removeFn
+	return nil
 }

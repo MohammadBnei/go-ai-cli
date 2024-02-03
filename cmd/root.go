@@ -29,6 +29,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/cmd/speech"
 	"github.com/fsnotify/fsnotify"
+	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -72,6 +73,29 @@ func init() {
 		return []string{api.API_HUGGINGFACE, api.API_OLLAMA, api.API_OPENAI}, cobra.ShellCompDirectiveDefault
 	})
 
+	RootCmd.PersistentFlags().StringP("model", "m", openai.GPT4, "the model to use")
+	RootCmd.RegisterFlagCompletionFunc("model", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		apiType, err := cmd.Flags().GetString("API_TYPE")
+		if err != nil || apiType == "" {
+			apiType = api.API_OLLAMA
+		}
+		switch apiType {
+		case api.API_OLLAMA:
+			models, err := api.GetOllamaModelList()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return models, cobra.ShellCompDirectiveDefault
+		case api.API_OPENAI:
+			models, err := api.GetOpenAiModelList()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return models, cobra.ShellCompDirectiveDefault
+		}
+		return nil, cobra.ShellCompDirectiveDefault
+	})
+
 	RootCmd.AddCommand(speech.SpeechCmd)
 }
 
@@ -86,6 +110,8 @@ func initConfig() {
 	viper.BindPFlags(RootCmd.PersistentFlags())
 	configPath := filepath.Dir(cfgFile)
 	viper.Set("configPath", configPath)
+
+	viper.SetDefault("OLLAMA_HOST", "http://127.0.0.1:11434")
 
 	viper.AutomaticEnv() // read in environment variables that match
 

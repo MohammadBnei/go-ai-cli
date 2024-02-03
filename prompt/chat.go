@@ -11,7 +11,10 @@ import (
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/list"
+	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -68,7 +71,8 @@ type chatModel struct {
 	currentChatIndices *currentChatIndexes
 	size               tea.WindowSizeMsg
 
-	stack []tea.Model
+	stack     []tea.Model
+	errorList []error
 }
 
 var terminalWidth, terminalHeight, _ = ui.GetTerminalSize()
@@ -107,6 +111,8 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 			user:      -1,
 			assistant: -1,
 		},
+
+		errorList: []error{},
 	}
 
 	return modelStruct
@@ -148,6 +154,10 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return reset(&m)
 
 		case tea.KeyCtrlC:
+			if m.err != nil {
+				m.err = nil
+				return m, nil
+			}
 			if len(m.stack) > 0 {
 				return m, event.RemoveStack(m.stack[len(m.stack)-1])
 			}
@@ -171,12 +181,23 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyCtrlI:
 			if len(m.stack) == 0 {
-				return m, event.AddStack(ui.NewConfigModel())
+				return m, event.AddStack(config.NewConfigModel(m.promptConfig))
 			}
 
 		case tea.KeyCtrlL:
 			if len(m.stack) == 0 {
-				return m, event.AddStack(ui.NewSystemModel(m.promptConfig))
+				return m, event.AddStack(system.NewSystemModel(m.promptConfig))
+			}
+
+		case tea.KeyCtrlE:
+			if len(m.stack) == 0 {
+				return m, event.AddStack(list.NewFancyListModel("Errors", lo.Map(m.errorList, func(e error, _ int) list.Item {
+					return list.Item{
+						ItemId:          e.Error(),
+						ItemTitle:       e.Error(),
+						ItemDescription: e.Error(),
+					}
+				}), nil))
 			}
 
 		case tea.KeyEnter:
@@ -228,6 +249,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case error:
 		m.err = msg
+		m.errorList = append(m.errorList, msg)
 		return m, nil
 
 	}

@@ -72,3 +72,4 @@ func (pc *PromptConfig) CloseContextById(id int) error {
 
 	return nil
 }
+

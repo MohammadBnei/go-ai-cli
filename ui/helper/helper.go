@@ -1,0 +1,24 @@
+package helper
+
+import "github.com/manifoldco/promptui"
+
+func CheckedStringHelper(yes bool) string {
+	if yes {
+		return "✅"
+	}
+	return "❌"
+}
+
+func YesNoPrompt(label string) bool {
+	prompt := promptui.Select{
+		Label: label,
+		Items: []string{"yes", "no"},
+	}
+
+	_, choice, err := prompt.Run()
+	if err != nil || choice == "no" {
+		return false
+	}
+
+	return true
+}

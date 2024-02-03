@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/api"
-	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -21,7 +20,7 @@ var configCmd = &cobra.Command{
 	Short: "Set the configuration in a file",
 	Run: func(cmd *cobra.Command, args []string) {
 		if l, _ := cmd.Flags().GetBool("list-model"); l {
-			modelList, err := api.GetModelList()
+			modelList, err := api.GetOpenAiModelList()
 			if err != nil {
 				fmt.Println(err)
 				return
@@ -63,7 +62,6 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	configCmd.Flags().StringP("model", "m", openai.GPT3Dot5Turbo, "the model to use")
 	configCmd.Flags().BoolP("list-model", "l", false, "list the avalaible models")
 	configCmd.Flags().IntP("messages-length", "d", 20, "the number of messages to remember (all messages will be sent for every requests)")
 

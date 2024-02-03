@@ -17,6 +17,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/tool"
+	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 )
@@ -117,7 +118,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 				continue filenameLoop
 			case filename == "":
 				break filenameLoop
-			case YesNoPrompt(fmt.Sprintf("Filename : %s", filename)):
+			case helper.YesNoPrompt(fmt.Sprintf("Filename : %s", filename)):
 				break filenameLoop
 			}
 		}

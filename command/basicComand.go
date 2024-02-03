@@ -11,6 +11,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 	"moul.io/banner"
@@ -81,33 +82,6 @@ func AddFileCommand(commandMap map[string]func(*service.PromptConfig) error) {
 		return nil
 	}
 
-	commandMap["meta"] = func(pc *service.PromptConfig) error {
-		system := ""
-		yes := ui.YesNoPrompt("Use predefined system ?")
-		if yes {
-			systems, err := ui.SelectSystemCommand()
-			if err != nil {
-				return err
-			}
-			system = strings.Join(systems, "\n")
-		}
-		additionalSystem, err := ui.StringPrompt("additional system")
-		if err != nil {
-			return err
-		}
-		if additionalSystem != "" {
-			system = system + "\n" + additionalSystem
-		}
-
-		command, err := ui.StringPrompt("command")
-		if err != nil {
-			return err
-		}
-
-		ui.SendCommandOnChat(system, command)
-		return nil
-	}
-
 	commandMap["file"] = func(pc *service.PromptConfig) error {
 		fileContents, err := ui.FileSelectionFzf("")
 		if err != nil {
@@ -133,7 +107,7 @@ func AddConfigCommand(commandMap map[string]func(*service.PromptConfig) error) {
 
 func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	commandMap["list"] = func(pc *service.PromptConfig) error {
-		messages, err := ui.SelectSystemCommand()
+		messages, err := system.SelectSystemCommand()
 		if err != nil {
 			return err
 		}
@@ -144,11 +118,11 @@ func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	}
 
 	commandMap["d-list"] = func(pc *service.PromptConfig) error {
-		return ui.DeleteSystemCommand()
+		return system.DeleteSystemCommand()
 	}
 
 	commandMap["system"] = func(pc *service.PromptConfig) error {
-		message, err := ui.SendAsSystem()
+		message, err := system.SendAsSystem()
 		if err != nil {
 			return err
 		}
@@ -191,7 +165,7 @@ func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	}
 
 	commandMap["default"] = func(pc *service.PromptConfig) error {
-		commandToAdd, err := ui.SetSystemDefault(false)
+		commandToAdd, err := system.SetSystemDefault(false)
 		if err != nil {
 			return err
 		}
@@ -201,7 +175,7 @@ func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
 		return nil
 	}
 	commandMap["d-default"] = func(pc *service.PromptConfig) error {
-		commandToAdd, err := ui.SetSystemDefault(true)
+		commandToAdd, err := system.SetSystemDefault(true)
 		if err != nil {
 			return err
 		}

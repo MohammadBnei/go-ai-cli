@@ -141,17 +141,4 @@ func SendAudio(ctx context.Context, filename string, lang string) (string, error
 	return response.Text, nil
 }
 
-func GetModelList() ([]string, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
-	models, err := c.ListModels(context.Background())
-	if err != nil {
-		return nil, err
-	}
 
-	modelsList := []string{}
-	for _, model := range models.Models {
-		modelsList = append(modelsList, model.ID)
-	}
-
-	return modelsList, nil
-}
