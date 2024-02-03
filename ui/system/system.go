@@ -120,11 +120,17 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				}
 
 				return func() tea.Msg {
+					found := true
+					if _, err := promptConfig.ChatMessages.FindMessageByContent(v); err != nil {
+						if errors.Is(err, service.ErrNotFound) {
+							found = false
+						}
+					}
 					dft := "❌"
 					if isDefault {
 						dft = "✅"
 					}
-					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: ❌", "| Default: "+dft, " | Date: "+s)}
+					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(found), "| Default: "+dft, " | Date: "+s)}
 				}
 			})
 
