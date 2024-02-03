@@ -23,11 +23,19 @@ type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 
 func reset(m *chatModel) (tea.Model, tea.Cmd) {
 	m.textarea.Reset()
-	paragraphStyle := lipgloss.NewStyle().Padding(2)
-	m.aiResponse = lipgloss.JoinHorizontal(lipgloss.Center,
-		paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens)),
-		paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages))),
+	paragraphStyle := lipgloss.NewStyle().Margin(2).Width(m.viewport.Width)
+	m.aiResponse = lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.NewStyle().AlignHorizontal(lipgloss.Center).Bold(true).Faint(true).Padding(2).MarginLeft(4).Render("GO-AI-CLI"),
+		lipgloss.JoinHorizontal(lipgloss.Left,
+			paragraphStyle.Render("API : "+viper.GetString("API_TYPE")),
+			paragraphStyle.Render("Model : "+viper.GetString("model")),
+		),
+		lipgloss.JoinHorizontal(lipgloss.Left,
+			paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens)),
+			paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages))),
+		),
 	)
+
 	m.userPrompt = "Infos"
 	m.currentChatIndices = &currentChatIndexes{
 		user:      -1,
@@ -97,11 +105,16 @@ func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
-	minIndex := lo.Min(lo.Filter[int]([]int{m.currentChatIndices.user, m.currentChatIndices.assistant}, func(i int, _ int) bool { return i >= 0 }))
+	currentIndexes := lo.Filter[int]([]int{m.currentChatIndices.user, m.currentChatIndices.assistant}, func(i int, _ int) bool { return i >= 0 })
+	minIndex := lo.Min(currentIndexes)
 	previous := minIndex - 1
+	if len(currentIndexes) == 0 {
+		previous = len(m.promptConfig.ChatMessages.Messages) - 1
+	}
 	c := m.promptConfig.ChatMessages.FindById(previous)
 	if c == nil {
-		c = &m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1]
+		reset(m)
+		return m, event.UpdateContent
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
@@ -116,7 +129,8 @@ func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
 	next := maxIndex + 1
 	c := m.promptConfig.ChatMessages.FindById(next)
 	if c == nil {
-		c = &m.promptConfig.ChatMessages.Messages[0]
+		reset(m)
+		return m, event.UpdateContent
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()

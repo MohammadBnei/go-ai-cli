@@ -21,8 +21,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-
-	"moul.io/banner"
 )
 
 var (
@@ -95,8 +93,6 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	vp := viewport.New(0, 0)
 
-	vp.SetContent(banner.Inline("go ai cli - prompt"))
-
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
 	modelStruct := chatModel{
@@ -115,11 +111,13 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		errorList: []error{},
 	}
 
+	reset(&modelStruct)
+
 	return modelStruct
 }
 
 func (m chatModel) Init() tea.Cmd {
-	return tea.EnterAltScreen
+	return nil
 }
 
 var commandSelectionFn = CommandSelectionFactory()
@@ -267,7 +265,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.userPrompt != "" {
 		aiRes := m.aiResponse
-		if m.promptConfig.MdMode {
+		if m.promptConfig.MdMode && m.userPrompt != "Infos" {
 			aiRes = string(markdown.Render(m.aiResponse, m.size.Width, 0))
 		}
 		userPrompt := m.userPrompt
