@@ -56,17 +56,27 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 	delegateFn := &uiList.DelegateFunctions{
 		ChooseFn: func(s string) tea.Cmd {
 			v, ok := viper.GetStringMapString("systems")[s]
-			if ok {
-				exists, err := promptConfig.ChatMessages.AddMessage(v, service.RoleSystem)
-				if err != nil {
-					if errors.Is(err, service.ErrAlreadyExist) {
-						promptConfig.ChatMessages.DeleteMessage(exists.Id)
-						return nil
-					}
-					return event.Error(err)
-				}
+			if !ok {
+				return event.Error(errors.New(s + " not found in systems"))
 			}
-			return nil
+			newItem := uiList.Item{ItemId: s, ItemTitle: v}
+			_, isDefault := savedDefaultSystemPrompt[s]
+			exists, err := promptConfig.ChatMessages.AddMessage(v, service.RoleSystem)
+			if err != nil {
+				if errors.Is(err, service.ErrAlreadyExist) {
+					promptConfig.ChatMessages.DeleteMessage(exists.Id)
+					newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+yesNoHelper(false), " | Default: "+yesNoHelper(isDefault), " | Date: "+s)
+					return func() tea.Msg {
+						return newItem
+					}
+				}
+				return event.Error(err)
+			}
+
+			newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+yesNoHelper(true), " | Default: "+yesNoHelper(isDefault), " | Date: "+s)
+			return func() tea.Msg {
+				return newItem
+			}
 		},
 		EditFn: func(s string) tea.Cmd {
 			v, ok := viper.GetStringMapString("systems")[s]
@@ -95,7 +105,7 @@ func NewSystemModel(promptConfig *service.PromptConfig) uiList.Model {
 					if isDefault {
 						dft = "✅"
 					}
-					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center,"Added: ❌" ,  "| Default: "+dft, " | Date: "+s)}
+					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: ❌", "| Default: "+dft, " | Date: "+s)}
 				}
 			})
 
