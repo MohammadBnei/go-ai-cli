@@ -195,14 +195,14 @@ func SetDefaultSystem(id string) error {
 	savedDefaultSystemPrompt[id] = ""
 	viper.Set("default-systems", savedDefaultSystemPrompt)
 
-	return viper.GetViper().WriteConfig()
+	return viper.WriteConfig()
 }
 
 func UnsetDefaultSystem(id string) error {
 	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
 	delete(savedDefaultSystemPrompt, id)
 	viper.Set("default-systems", savedDefaultSystemPrompt)
-	return viper.GetViper().WriteConfig()
+	return viper.WriteConfig()
 }
 
 func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
@@ -250,9 +250,8 @@ func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
 	}
 
 	viper.Set("default-systems", savedDefaultSystemPrompt)
-	viper.GetViper().WriteConfig()
 
-	err = viper.GetViper().WriteConfig()
+	err = viper.WriteConfig()
 
 	return
 }
@@ -324,18 +323,18 @@ func AddToSystemList(content string, key string) {
 	systems := viper.GetStringMapString("systems")
 	systems[key] = content
 	viper.Set("systems", systems)
-	viper.GetViper().WriteConfig()
+	viper.WriteConfig()
 }
 func RemoveFromSystemList(time string) {
 	systems := viper.GetStringMapString("systems")
 	delete(systems, time)
 	viper.Set("systems", systems)
-	viper.GetViper().WriteConfig()
+	viper.WriteConfig()
 }
 
 func UpdateFromSystemList(time string, content string) {
 	systems := viper.GetStringMapString("systems")
 	systems[time] = content
 	viper.Set("systems", systems)
-	viper.GetViper().WriteConfig()
+	viper.WriteConfig()
 }
