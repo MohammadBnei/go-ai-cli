@@ -12,6 +12,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/file"
 	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	"github.com/MohammadBnei/go-openai-cli/ui/list"
 	"github.com/MohammadBnei/go-openai-cli/ui/message"
@@ -26,6 +27,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
+	"moul.io/banner"
 )
 
 var (
@@ -98,7 +100,16 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	ta.ShowLineNumbers = false
 
-	vp := viewport.New(0, 0)
+	smallTitleStyle := style.TitleStyle.Margin(0).Padding(0, 2)
+
+	vp := viewport.New(w, 0)
+	vp.SetContent(banner.Inline("go ai cli") + "\n" +
+		banner.Inline("bnei") + "\n\n" +
+		"Api : " + smallTitleStyle.Render(viper.GetString("API_TYPE")) + "\n" +
+		"Model : " + smallTitleStyle.Render(viper.GetString("model")) + "\n" +
+		"Messages : " + smallTitleStyle.Render(fmt.Sprintf("%d", len(pc.ChatMessages.Messages))) + "\n" +
+		"Tokens : " + smallTitleStyle.Render(fmt.Sprintf("%d", pc.ChatMessages.TotalTokens)) + "\n",
+	)
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
@@ -218,6 +229,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlL:
 			if len(m.stack) == 0 {
 				return m, event.AddStack(system.NewSystemModel(m.promptConfig))
+			}
+
+		case tea.KeyCtrlF:
+			if len(m.stack) == 0 {
+				return m, event.AddStack(file.NewFilePicker())
 			}
 
 		case tea.KeyCtrlE:

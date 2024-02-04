@@ -16,9 +16,9 @@ import (
 
 var (
 	titleStyle     = lipgloss.NewStyle()
-	systemColor    = titleStyle.Foreground(lipgloss.Color("#FFFFD9"))
-	userColor      = titleStyle.Foreground(lipgloss.Color("#C2CCB8"))
-	assistantColor = titleStyle.Foreground(lipgloss.Color("#6C8073"))
+	systemColor    = titleStyle.Background(lipgloss.Color("#FFFFD9"))
+	userColor      = titleStyle.Background(lipgloss.Color("#B32D00"))
+	assistantColor = titleStyle.Background(lipgloss.Color("#243333"))
 )
 
 func NewMessageModel(promptConfig *service.PromptConfig) tea.Model {
@@ -40,19 +40,19 @@ func getItemsAslist(promptConfig *service.PromptConfig) []list.Item {
 }
 
 func toItem(message service.ChatMessage) list.Item {
-	title := message.Content
+	choosenStyle := systemColor
 	switch message.Role {
 	case service.RoleSystem:
-		title = systemColor.Render(title)
+		choosenStyle = systemColor
 	case service.RoleAssistant:
-		title = assistantColor.Render(title)
+		choosenStyle = assistantColor
 	case service.RoleUser:
-		title = userColor.Render(title)
+		choosenStyle = userColor
 
 	}
 	return list.Item{
 		ItemId:          fmt.Sprintf("%d", message.Id),
-		ItemTitle:       title,
+		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + message.Content,
 		ItemDescription: string(message.Role),
 	}
 }

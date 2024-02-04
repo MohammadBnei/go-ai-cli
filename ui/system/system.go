@@ -2,12 +2,9 @@ package system
 
 import (
 	"errors"
-	"fmt"
-	"sort"
 	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/form"
 	"github.com/MohammadBnei/go-openai-cli/ui/helper"
@@ -15,11 +12,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/golang-module/carbon/v2"
-	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
-	"github.com/tigergraph/promptui"
 )
 
 func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
@@ -53,9 +47,6 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
 			ItemTitle:       v,
 			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(found), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+k),
 		}
-	})
-	sort.Slice(res, func(i, j int) bool {
-		return carbon.Parse(res[i].ItemId).Gt(carbon.Parse(res[j].ItemId))
 	})
 
 	return res
@@ -203,22 +194,6 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 	}
 }
 
-func SendAsSystem() (string, error) {
-	systemPrompt := promptui.Prompt{
-		Label: "specify model behavior",
-	}
-	command, err := systemPrompt.Run()
-	if err != nil {
-		return "", err
-	}
-
-	if helper.YesNoPrompt("save prompt ?") {
-		AddToSystemList(command, time.Now().Format("2006-01-02 15:04:05"))
-	}
-
-	return command, nil
-}
-
 func SetDefaultSystem(id string) error {
 	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
 	savedDefaultSystemPrompt[id] = ""
@@ -232,117 +207,6 @@ func UnsetDefaultSystem(id string) error {
 	delete(savedDefaultSystemPrompt, id)
 	viper.Set("default-systems", savedDefaultSystemPrompt)
 	return viper.WriteConfig()
-}
-
-func SetSystemDefault(unset bool) (commandToAdd []string, err error) {
-	savedSystemPrompt := viper.GetStringMapString("systems")
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
-	keyStringFromSP := lo.Keys[string](savedSystemPrompt)
-	sort.Slice(keyStringFromSP, func(i, j int) bool {
-		return carbon.Parse(keyStringFromSP[i]).Gt(carbon.Parse(keyStringFromSP[j]))
-	})
-	if savedDefaultSystemPrompt == nil {
-		savedDefaultSystemPrompt = make(map[string]string)
-	}
-	keys, err := SystemPrompt(savedSystemPrompt, func(i, w, h int) string {
-		defaultStr := "❌"
-		_, ok := savedDefaultSystemPrompt[keyStringFromSP[i]]
-
-		switch {
-		case i == -1:
-			return ""
-		case ok:
-			defaultStr = "✅"
-		}
-
-		return fmt.Sprintf("Date: %s\nDefault: %s\n%s", keyStringFromSP[i], defaultStr, ui.AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromSP[i]]))
-	})
-	if err != nil {
-		return
-	}
-
-	sendCommands := false
-	if !unset {
-		sendCommands = helper.YesNoPrompt("send commands ?")
-	}
-
-	for _, id := range keys {
-		if unset {
-			delete(savedDefaultSystemPrompt, id)
-		} else {
-			savedDefaultSystemPrompt[id] = ""
-			if sendCommands {
-				commandToAdd = append(commandToAdd, savedSystemPrompt[id])
-			}
-		}
-
-	}
-
-	viper.Set("default-systems", savedDefaultSystemPrompt)
-
-	err = viper.WriteConfig()
-
-	return
-}
-
-func SelectSystemCommand() ([]string, error) {
-	savedSystemPrompt := viper.GetStringMapString("systems")
-	keys, err := SystemPrompt(savedSystemPrompt, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	commandToSend := []string{}
-	for _, id := range keys {
-		commandToSend = append(commandToSend, savedSystemPrompt[id])
-	}
-	return commandToSend, nil
-}
-
-func SystemPrompt(savedSystemPrompt map[string]string, previewWindowFunc func(int, int, int) string) ([]string, error) {
-	keyStringFromMap := lo.Keys[string](savedSystemPrompt)
-	if len(keyStringFromMap) == 0 {
-		return nil, errors.New("no saved systems")
-	}
-	sort.Slice(keyStringFromMap, func(i, j int) bool {
-		return carbon.Parse(keyStringFromMap[i]).Gt(carbon.Parse(keyStringFromMap[j]))
-	})
-	if previewWindowFunc == nil {
-		previewWindowFunc = func(i, w, h int) string {
-			if i == -1 {
-				return ""
-			}
-			return fmt.Sprintf("Date: %s\n%s", keyStringFromMap[i], ui.AddReturnOnWidth(w/3-1, savedSystemPrompt[keyStringFromMap[i]]))
-		}
-	}
-
-	idx, err := fuzzyfinder.FindMulti(
-		keyStringFromMap,
-		func(i int) string {
-			return savedSystemPrompt[keyStringFromMap[i]]
-		},
-		fuzzyfinder.WithPreviewWindow(previewWindowFunc),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return lo.Map[int, string](idx, func(i int, _ int) string {
-		return keyStringFromMap[i]
-	}), nil
-}
-
-func DeleteSystemCommand() error {
-	savedSystemPrompt := viper.GetStringMapString("systems")
-	keys, err := SystemPrompt(savedSystemPrompt, nil)
-	if err != nil {
-		return err
-	}
-	for _, id := range keys {
-		RemoveFromSystemList(id)
-		fmt.Printf("removed %s \n", id)
-	}
-	return nil
 }
 
 func AddToSystemList(content string, key string) {

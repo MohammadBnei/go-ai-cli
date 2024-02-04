@@ -5,17 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
-	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
-	"github.com/spf13/viper"
-	"moul.io/banner"
 )
 
 func SendPrompt(pc *service.PromptConfig, streamFunc ...func(*api.GPTChanResponse)) error {
@@ -99,93 +95,7 @@ func AddFileCommand(commandMap map[string]func(*service.PromptConfig) error) {
 	}
 }
 
-func AddConfigCommand(commandMap map[string]func(*service.PromptConfig) error) {
-	commandMap["markdown"] = func(pc *service.PromptConfig) error {
-		viper.Set("md", !viper.GetBool("md"))
-		return nil
-	}
-}
-
 func AddSystemCommand(commandMap map[string]func(*service.PromptConfig) error) {
-	commandMap["list"] = func(pc *service.PromptConfig) error {
-		messages, err := system.SelectSystemCommand()
-		if err != nil {
-			return err
-		}
-		for _, message := range messages {
-			pc.ChatMessages.AddMessage(message, service.RoleSystem)
-		}
-		return nil
-	}
-
-	commandMap["d-list"] = func(pc *service.PromptConfig) error {
-		return system.DeleteSystemCommand()
-	}
-
-	commandMap["system"] = func(pc *service.PromptConfig) error {
-		message, err := system.SendAsSystem()
-		if err != nil {
-			return err
-		}
-		pc.ChatMessages.AddMessage(message, service.RoleAssistant)
-		return nil
-	}
-
-	commandMap["filter"] = func(pc *service.PromptConfig) error {
-		messageIds, err := ui.FilterMessages(pc.ChatMessages.Messages)
-		if err != nil {
-			return err
-		}
-
-		for _, id := range messageIds {
-			_err := pc.ChatMessages.DeleteMessage(id)
-			if _err != nil {
-				err = errors.Join(err, _err)
-			}
-		}
-
-		return err
-	}
-
-	commandMap["cli-clear"] = func(pc *service.PromptConfig) error {
-		return nil
-	}
-
-	commandMap["reuse"] = func(pc *service.PromptConfig) error {
-		message, err := ui.ReuseMessage(pc.ChatMessages.Messages)
-		if err != nil {
-			return err
-		}
-		pc.PreviousPrompt = message
-		return nil
-	}
-
-	commandMap["responses"] = func(pc *service.PromptConfig) error {
-		_, err := ui.ShowPreviousMessage(pc.ChatMessages.Messages, viper.GetBool("md"))
-		return err
-	}
-
-	commandMap["default"] = func(pc *service.PromptConfig) error {
-		commandToAdd, err := system.SetSystemDefault(false)
-		if err != nil {
-			return err
-		}
-		for _, command := range commandToAdd {
-			pc.ChatMessages.AddMessage(command, service.RoleAssistant)
-		}
-		return nil
-	}
-	commandMap["d-default"] = func(pc *service.PromptConfig) error {
-		commandToAdd, err := system.SetSystemDefault(true)
-		if err != nil {
-			return err
-		}
-		for _, command := range commandToAdd {
-			pc.ChatMessages.AddMessage(command, service.RoleAssistant)
-		}
-		return nil
-	}
-
 	commandMap["copy"] = func(pc *service.PromptConfig) error {
 		assistantMessages, _ := pc.ChatMessages.FilterMessages(service.RoleAssistant)
 		if len(assistantMessages) < 1 {
@@ -219,19 +129,6 @@ func AddHuggingFaceCommand(commandMap map[string]func(*service.PromptConfig) err
 		}
 		fmt.Println("Result : ", result)
 
-		return nil
-	}
-}
-
-func AddMiscCommand(commandMap map[string]func(*service.PromptConfig) error) {
-	commandMap["help"] = func(_ *service.PromptConfig) error {
-		fmt.Println(HELP)
-		return nil
-	}
-
-	commandMap["quit"] = func(_ *service.PromptConfig) error {
-		fmt.Println(banner.Inline("bye!"))
-		os.Exit(0)
 		return nil
 	}
 }
