@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,16 +18,6 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Set the configuration in a file",
 	Run: func(cmd *cobra.Command, args []string) {
-		if l, _ := cmd.Flags().GetBool("list-model"); l {
-			modelList, err := api.GetOpenAiModelList()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Println(strings.Join(modelList, "\n"))
-			return
-		}
-
 		filePath := viper.GetString("config-path")
 		folders := strings.Split(filePath, "/")
 		created := false
@@ -62,9 +51,6 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	configCmd.Flags().BoolP("list-model", "l", false, "list the avalaible models")
-	configCmd.Flags().IntP("messages-length", "d", 20, "the number of messages to remember (all messages will be sent for every requests)")
-
 	configCmd.Flags().Bool("md", false, "markdown mode enabled")
 
 	viper.BindPFlags(configCmd.Flags())

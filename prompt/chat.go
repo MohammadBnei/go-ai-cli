@@ -14,6 +14,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	"github.com/MohammadBnei/go-openai-cli/ui/list"
+	"github.com/MohammadBnei/go-openai-cli/ui/message"
 	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -202,6 +203,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlP:
 			if len(m.stack) == 0 {
 				return addPagerToStack(&m)
+			}
+
+		case tea.KeyCtrlO:
+			if len(m.stack) == 0 {
+				return m, event.AddStack(message.NewMessageModel(m.promptConfig))
 			}
 
 		case tea.KeyCtrlI:
