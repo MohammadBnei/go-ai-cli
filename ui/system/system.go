@@ -100,11 +100,20 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			}
 			_, isDefault := savedDefaultSystemPrompt[s]
 
+			tRue := true
+
 			editModel := form.NewEditModel("Editing system ["+s+"]", huh.NewForm(huh.NewGroup(
 				huh.NewText().Title("Content").Key(s).Value(&v).Lines(10),
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Value(&isDefault).Options(huh.NewOptions[bool](true, false)...),
+				huh.NewSelect[bool]().Key("add").Title("Add it ?").Options(huh.NewOptions[bool](true, false)...).Value(&tRue),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)
+				addIt := form.GetBool("add")
+
+				if addIt {
+					promptConfig.ChatMessages.AddMessage(content, service.RoleSystem)
+				}
+
 				UpdateFromSystemList(s, content)
 
 				isDefault := form.GetBool("default")
@@ -136,20 +145,40 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 
 			return event.AddStack(editModel)
 		},
-		AddFn: func(s string) tea.Cmd {
+		AddFn: func(_ string) tea.Cmd {
+			tRue := true
+
 			addModel := form.NewEditModel("New system", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key(s).Lines(10),
+				huh.NewText().Title("Content").Key("content").Lines(10).Validate(func(s string) error {
+					if s == "" {
+						return errors.New("content cannot be empty")
+					}
+					return nil
+				}),
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Options(huh.NewOptions[bool](true, false)...),
+				huh.NewSelect[bool]().Key("save").Title("Save it ?").Options(huh.NewOptions[bool](true, false)...).Value(&tRue),
+				huh.NewSelect[bool]().Key("add").Title("Add it ?").Options(huh.NewOptions[bool](true, false)...).Value(&tRue),
 			)), func(form *huh.Form) tea.Cmd {
-				content := form.GetString(s)
-				UpdateFromSystemList(s, content)
+				content := form.GetString("content")
+				saveIt := form.GetBool("save")
+				addIt := form.GetBool("add")
+
+				if addIt {
+					promptConfig.ChatMessages.AddMessage(content, service.RoleSystem)
+				}
+
+				if !saveIt {
+					return nil
+				}
+				title := time.Now().Format("2006-01-02 15:04:05")
+				UpdateFromSystemList(title, content)
 
 				isDefault := form.GetBool("default")
 				var err error
 				if isDefault {
-					err = SetDefaultSystem(s)
+					err = SetDefaultSystem(title)
 				} else {
-					err = UnsetDefaultSystem(s)
+					err = UnsetDefaultSystem(title)
 				}
 
 				if err != nil {
@@ -161,7 +190,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 					if isDefault {
 						dft = "✅"
 					}
-					return uiList.Item{ItemId: s, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: ❌", "| Default: "+dft, " | Date: "+s)}
+					return uiList.Item{ItemId: title, ItemTitle: content, ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: ❌", "| Default: "+dft, " | Date: "+title)}
 				}
 			})
 

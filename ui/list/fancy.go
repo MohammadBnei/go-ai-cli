@@ -25,7 +25,6 @@ type listKeyMap struct {
 	toggleStatusBar  key.Binding
 	togglePagination key.Binding
 	toggleHelpMenu   key.Binding
-	insertItem       key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -92,7 +91,6 @@ func NewFancyListModel(title string, items []Item, delegateFn *DelegateFunctions
 	groceryList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
 			listKeys.toggleSpinner,
-			listKeys.insertItem,
 			listKeys.toggleTitleBar,
 			listKeys.toggleStatusBar,
 			listKeys.togglePagination,

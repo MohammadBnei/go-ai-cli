@@ -8,11 +8,11 @@ import (
 	"log"
 	"reflect"
 
-	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	"github.com/MohammadBnei/go-openai-cli/ui/list"
 	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	"github.com/MohammadBnei/go-openai-cli/ui/system"
@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
@@ -69,6 +70,8 @@ type chatModel struct {
 	currentChatIndices *currentChatIndexes
 	size               tea.WindowSizeMsg
 
+	history *helper.HistoryManager
+
 	stack     []tea.Model
 	errorList []error
 }
@@ -109,6 +112,7 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		},
 
 		errorList: []error{},
+		history:   helper.NewHistoryManager(),
 	}
 
 	reset(&modelStruct)
@@ -172,6 +176,16 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyShiftDown:
 			return changeResponseDown(&m)
 
+		case tea.KeyUp:
+			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
+				m.textarea.SetValue(m.history.Previous())
+			}
+
+		case tea.KeyDown:
+			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
+				m.textarea.SetValue(m.history.Next())
+			}
+
 		case tea.KeyCtrlP:
 			if len(m.stack) == 0 {
 				return addPagerToStack(&m)
@@ -205,6 +219,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if len(m.stack) == 0 {
+				m.history.Add(m.textarea.Value())
 				if e, c := callFunction(&m); e != nil {
 					return e, c
 				}
@@ -266,7 +281,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.userPrompt != "" {
 		aiRes := m.aiResponse
 		if viper.GetBool("md") && m.userPrompt != "Infos" {
-			aiRes = string(markdown.Render(m.aiResponse, m.size.Width, 0))
+			str, err := glamour.Render(aiRes, "dark")
+			if err != nil {
+				cmds = append(cmds, event.Error(err))
+			}
+			aiRes = str
 		}
 		userPrompt := m.userPrompt
 		if m.currentChatIndices.user >= 0 {

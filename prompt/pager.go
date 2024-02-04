@@ -13,6 +13,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/viper"
 )
@@ -76,7 +77,11 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		headerHeight := lipgloss.Height(m.headerView())
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
-		m.content = string(markdown.Render(m.content, msg.Width, 3))
+		str, err := glamour.Render(m.content, "dark")
+		if err != nil {
+			cmds = append(cmds, event.Error(err))
+		}
+		m.content = str
 
 		if !m.ready {
 			// Since this program is using the full size of the viewport we

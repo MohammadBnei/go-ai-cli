@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -101,6 +102,20 @@ func getEditModel(id string) (tea.Model, error) {
 				})}
 			}
 
+		case "config-path":
+			afterCmd = func() tea.Msg {
+				path := viper.GetString("config-path")
+				viper.SetConfigFile(path)
+				err := viper.ReadInConfig()
+				if err != nil {
+					if errors.Is(err, viper.ConfigFileNotFoundError{}) {
+						return viper.WriteConfig()
+					}
+					return err
+				}
+				return nil
+			}
+
 		default:
 			editModel = huh.NewForm(huh.NewGroup(
 				huh.NewText().Title(id).Key(id).Value(&value).Lines(10)),
@@ -116,7 +131,11 @@ func getEditModel(id string) (tea.Model, error) {
 			huh.NewSelect[bool]().Key(id).Title(id).Options(huh.NewOptions[bool](true, false)...)),
 		), func(form *huh.Form) tea.Cmd {
 			result := form.GetBool(id)
-			return UpdateConfigValue(id, result, helper.CheckedStringHelper(result))
+			updateEvent := UpdateConfigValue(id, result, helper.CheckedStringHelper(result))
+			if id == "md" {
+				return tea.Sequence(updateEvent, event.UpdateContent)
+			}
+			return updateEvent
 		},
 		), nil
 

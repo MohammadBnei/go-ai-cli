@@ -14,11 +14,37 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 		var title string
 		var id string
 
+		help := []key.Binding{}
+
+		if delegateFn.AddFn != nil {
+			help = append(help, keys.add)
+		}
+
+		itemSelected := true
 		if i, ok := m.SelectedItem().(Item); ok {
 			title = i.Title()
 			id = i.Id()
+
+			switch {
+			case delegateFn.ChooseFn != nil:
+				help = append(help, keys.choose)
+				fallthrough
+			case delegateFn.EditFn != nil:
+				help = append(help, keys.edit)
+				fallthrough
+			case delegateFn.RemoveFn != nil:
+				help = append(help, keys.remove)
+			}
 		} else {
-			return nil
+			itemSelected = false
+		}
+
+		d.ShortHelpFunc = func() []key.Binding {
+			return help
+		}
+
+		d.FullHelpFunc = func() [][]key.Binding {
+			return [][]key.Binding{help}
 		}
 
 		cmds := []tea.Cmd{}
@@ -27,7 +53,7 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.choose):
-				if delegateFn.ChooseFn == nil {
+				if !itemSelected || delegateFn.ChooseFn == nil {
 					return nil
 				}
 				cmds = append(cmds, delegateFn.ChooseFn(id))
@@ -35,7 +61,7 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 				return tea.Batch(cmds...)
 
 			case key.Matches(msg, keys.remove):
-				if delegateFn.RemoveFn == nil {
+				if !itemSelected || delegateFn.RemoveFn == nil {
 					return nil
 				}
 				cmds = append(cmds, delegateFn.RemoveFn(id))
@@ -48,7 +74,7 @@ func newItemDelegate(keys *delegateKeyMap, delegateFn *DelegateFunctions) list.D
 				return tea.Batch(cmds...)
 
 			case key.Matches(msg, keys.edit):
-				if delegateFn.EditFn == nil {
+				if !itemSelected || delegateFn.EditFn == nil {
 					return nil
 				}
 				cmds = append(cmds, delegateFn.EditFn(id), m.NewStatusMessage(style.StatusMessageStyle("Edited "+title)))
