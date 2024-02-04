@@ -43,11 +43,12 @@ type pagerContentUpdate string
 type pagerTitleUpdate string
 
 type pagerModel struct {
-	content  string
-	title    string
-	ready    bool
-	viewport viewport.Model
-	pc       *service.PromptConfig
+	content    string
+	title      string
+	ready      bool
+	viewport   viewport.Model
+	pc         *service.PromptConfig
+	mdRenderer *glamour.TermRenderer
 }
 
 func (m pagerModel) Init() tea.Cmd {
@@ -76,11 +77,7 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		headerHeight := lipgloss.Height(m.headerView())
 		footerHeight := lipgloss.Height(m.footerView())
 		verticalMarginHeight := headerHeight + footerHeight
-		str, err := glamour.Render(m.content, "dark")
-		if err != nil {
-			cmds = append(cmds, event.Error(err))
-		}
-		m.content = str
+		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
 
 		if !m.ready {
 			// Since this program is using the full size of the viewport we
@@ -117,14 +114,15 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
 
+	content := m.content
 	if viper.GetBool("md") {
-		str, err := glamour.Render(m.content, "dark")
+		str, err := m.mdRenderer.Render(content)
 		if err != nil {
-			cmds = append(cmds, event.Error(err))
+			return m, event.Error(err)
 		}
-		m.content = str
+		content = str
 	}
-	m.viewport.SetContent(m.content)
+	m.viewport.SetContent(content)
 
 	return m, tea.Batch(cmds...)
 }

@@ -75,6 +75,8 @@ type chatModel struct {
 
 	stack     []tea.Model
 	errorList []error
+
+	mdRenderer *glamour.TermRenderer
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
@@ -99,6 +101,8 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
+	mdRenderer, _ := glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(80))
+
 	modelStruct := chatModel{
 		textarea:     ta,
 		promptConfig: pc,
@@ -114,9 +118,9 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 		errorList: []error{},
 		history:   helper.NewHistoryManager(),
-	}
 
-	reset(&modelStruct)
+		mdRenderer: mdRenderer,
+	}
 
 	return modelStruct
 }
@@ -137,7 +141,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		h, v := AppStyle.GetFrameSize()
+		msg.Height = msg.Height - v
+		msg.Width = msg.Width - h
 		m.size = msg
+
+		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
 
 		style.TitleStyle.Width(msg.Width)
 
@@ -145,6 +154,10 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = msg.Height - m.textarea.Height()
 
 	case tea.KeyMsg:
+		if m.err != nil {
+			m.err = nil
+			return m, nil
+		}
 		switch msg.Type {
 
 		case tea.KeyCtrlR:
@@ -281,9 +294,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.userPrompt != "" {
 		aiRes := m.aiResponse
 		if viper.GetBool("md") && m.userPrompt != "Infos" {
-			str, err := glamour.Render(aiRes, "dark")
+			str, err := m.mdRenderer.Render(aiRes)
 			if err != nil {
-				cmds = append(cmds, event.Error(err))
+				return m, event.Error(err)
 			}
 			aiRes = str
 		}

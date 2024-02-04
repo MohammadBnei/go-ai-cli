@@ -24,16 +24,12 @@ type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 func reset(m *chatModel) (tea.Model, tea.Cmd) {
 	m.textarea.Reset()
 	paragraphStyle := lipgloss.NewStyle().Margin(2).Width(m.viewport.Width)
-	m.aiResponse = lipgloss.JoinVertical(lipgloss.Left,
+	m.aiResponse = fmt.Sprintf("\n%s\n\n%s\n%s",
 		lipgloss.NewStyle().AlignHorizontal(lipgloss.Center).Bold(true).Faint(true).Padding(2).MarginLeft(4).Render("GO-AI-CLI"),
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			paragraphStyle.Render("API : "+viper.GetString("API_TYPE")),
+		paragraphStyle.Render("API : "+viper.GetString("API_TYPE"))+"\t"+
 			paragraphStyle.Render("Model : "+viper.GetString("model")),
-		),
-		lipgloss.JoinHorizontal(lipgloss.Left,
-			paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens)),
+		paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens))+"\t"+
 			paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages))),
-		),
 	)
 
 	m.userPrompt = "Infos"
@@ -94,7 +90,7 @@ func addPagerToStack(m *chatModel) (tea.Model, tea.Cmd) {
 
 		m.stack = append(m.stack, pager)
 
-		return m, tea.Batch(m.stack[len(m.stack)-1].Init(), cmd)
+		return m, tea.Sequence(m.stack[len(m.stack)-1].Init(), cmd)
 	} else {
 		m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
 	}
@@ -113,8 +109,7 @@ func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
 	}
 	c := m.promptConfig.ChatMessages.FindById(previous)
 	if c == nil {
-		reset(m)
-		return m, event.UpdateContent
+		return m, event.Error(errors.New("no previous message"))
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
@@ -129,8 +124,7 @@ func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
 	next := maxIndex + 1
 	c := m.promptConfig.ChatMessages.FindById(next)
 	if c == nil {
-		reset(m)
-		return m, event.UpdateContent
+		return m, event.Error(errors.New("no next message"))
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
