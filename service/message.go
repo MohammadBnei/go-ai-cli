@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -78,7 +79,7 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 		return err
 	}
 
-	err = tool.SaveToFile(data, viper.GetString("configPath")+"/"+filename+".yaml")
+	err = tool.SaveToFile(data, filepath.Dir(viper.ConfigFileUsed())+"/"+filename+".yaml")
 	if err != nil {
 		return err
 	}

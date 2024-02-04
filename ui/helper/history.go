@@ -14,7 +14,7 @@ func NewHistoryManager() *HistoryManager {
 
 func (h *HistoryManager) Add(text string) {
 	h.history = append(h.history, text)
-	h.position = len(h.history)
+	h.position = len(h.history) - 1
 }
 
 func (h *HistoryManager) Current() string {
@@ -26,23 +26,19 @@ func (h *HistoryManager) Length() int {
 }
 
 func (h *HistoryManager) Previous() string {
-	if len(h.history) == 0 {
+	h.position -= 1
+	if h.position <= 0 {
+		h.position = 0
 		return ""
 	}
-	if h.position == 0 {
-		h.position = len(h.history)
-	}
-	h.position--
-	return h.history[h.position]
+	return h.history[h.position+1]
 }
 
 func (h *HistoryManager) Next() string {
-	if len(h.history) == 0 {
-		return ""
-	}
-	h.position++
+	h.position += 1
 	if h.position >= len(h.history) {
-		h.position = 0
+		h.position = len(h.history) - 1
+		return ""
 	}
 	return h.history[h.position]
 }

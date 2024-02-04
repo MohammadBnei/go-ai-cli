@@ -201,7 +201,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyShiftDown:
 			return changeResponseDown(&m)
 
-		case tea.KeyCtrlH:
+		case tea.KeyCtrlU:
 			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
 				m.textarea.SetValue(m.history.Previous())
 			}

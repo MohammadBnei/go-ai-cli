@@ -26,7 +26,7 @@ func NewMessageModel(promptConfig *service.PromptConfig) tea.Model {
 
 	delegateFn := getDelegateFn(promptConfig)
 
-	return list.NewFancyListModel("system", items, delegateFn)
+	return list.NewFancyListModel("message", items, delegateFn)
 }
 
 func getItemsAslist(promptConfig *service.PromptConfig) []list.Item {
