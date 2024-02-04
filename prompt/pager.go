@@ -8,7 +8,6 @@ import (
 	"log"
 	"strings"
 
-	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -119,7 +118,11 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	if viper.GetBool("md") {
-		m.content = string(markdown.Render(m.content, terminalWidth, 3))
+		str, err := glamour.Render(m.content, "dark")
+		if err != nil {
+			cmds = append(cmds, event.Error(err))
+		}
+		m.content = str
 	}
 	m.viewport.SetContent(m.content)
 

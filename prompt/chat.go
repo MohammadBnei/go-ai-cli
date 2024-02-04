@@ -6,10 +6,10 @@ package prompt
 import (
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui"
 	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/helper"
@@ -24,6 +24,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
 
 var (
@@ -76,8 +77,6 @@ type chatModel struct {
 	errorList []error
 }
 
-var terminalWidth, terminalHeight, _ = ui.GetTerminalSize()
-
 func initialChatModel(pc *service.PromptConfig) chatModel {
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
@@ -86,7 +85,9 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 	ta.Prompt = "┃ "
 	ta.CharLimit = 0
 
-	ta.SetWidth(terminalWidth)
+	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
+
+	ta.SetWidth(w)
 	ta.SetHeight(2)
 
 	// Remove cursor line styling
@@ -136,10 +137,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := AppStyle.GetFrameSize()
-		msg.Width = msg.Width - h
-		msg.Height = msg.Height - v
 		m.size = msg
+
+		style.TitleStyle.Width(msg.Width)
 
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - m.textarea.Height()
@@ -306,7 +306,7 @@ func (m chatModel) View() string {
 	if len(m.stack) > 0 {
 		return AppStyle.Render(m.stack[len(m.stack)-1].View())
 	}
-	return AppStyle.Render(lipgloss.JoinVertical(lipgloss.Left,
+	return AppStyle.Render(fmt.Sprintf("%s\n%s",
 		m.viewport.View(),
 		m.textarea.View(),
 	))
