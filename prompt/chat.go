@@ -148,7 +148,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
 
-		style.TitleStyle.Width(msg.Width)
+		style.TitleStyle.MaxWidth(msg.Width)
 
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - m.textarea.Height()
