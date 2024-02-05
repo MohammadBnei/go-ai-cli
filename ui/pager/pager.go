@@ -1,4 +1,4 @@
-package prompt
+package pager
 
 // An example program demonstrating the pager component from the Bubbles
 // component library.
@@ -42,7 +42,7 @@ var (
 type pagerContentUpdate string
 type pagerTitleUpdate string
 
-type pagerModel struct {
+type PagerModel struct {
 	content    string
 	title      string
 	ready      bool
@@ -51,11 +51,23 @@ type pagerModel struct {
 	mdRenderer *glamour.TermRenderer
 }
 
-func (m pagerModel) Init() tea.Cmd {
+func NewPagerModel(title, content string, pc *service.PromptConfig) tea.Model {
+	mdRenderer, _ := glamour.NewTermRenderer()
+	pager := PagerModel{
+		title:      title,
+		content:    content,
+		pc:         pc,
+		mdRenderer: mdRenderer,
+	}
+
+	return pager
+}
+
+func (m PagerModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m PagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -127,7 +139,7 @@ func (m pagerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m pagerModel) View() string {
+func (m PagerModel) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
 	}
@@ -135,13 +147,13 @@ func (m pagerModel) View() string {
 	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.viewport.View(), m.footerView())
 }
 
-func (m pagerModel) headerView() string {
+func (m PagerModel) headerView() string {
 	title := titleStyle.Render(m.title)
 	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(title)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
 }
 
-func (m pagerModel) footerView() string {
+func (m PagerModel) footerView() string {
 	info := infoStyle.Render(fmt.Sprintf("%3.f%%", m.viewport.ScrollPercent()*100))
 	line := strings.Repeat("─", max(0, m.viewport.Width-lipgloss.Width(info)))
 	return lipgloss.JoinHorizontal(lipgloss.Center, line, info)
@@ -156,7 +168,7 @@ func max(a, b int) int {
 
 func Pager(userPrompt, content string) {
 	p := tea.NewProgram(
-		pagerModel{title: userPrompt, content: content},
+		PagerModel{title: userPrompt, content: content},
 	)
 
 	if _, err := p.Run(); err != nil {

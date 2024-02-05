@@ -1,4 +1,4 @@
-package prompt
+package chat
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/pager"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
@@ -70,21 +71,11 @@ func addPagerToStack(m *chatModel) (tea.Model, tea.Cmd) {
 	}
 
 	_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
-		_, ok := item.(pagerModel)
+		_, ok := item.(pager.PagerModel)
 		return ok
 	})
 	if !ok {
-		pager := pagerModel{
-			title:   m.userPrompt,
-			content: m.aiResponse,
-			pc:      m.promptConfig,
-		}
-		p, cmd := pager.Update(m.size)
-		pager = p.(pagerModel)
-
-		m.stack = append(m.stack, pager)
-
-		return m, tea.Sequence(m.stack[len(m.stack)-1].Init(), cmd)
+		return m, event.AddStack(pager.NewPagerModel(m.userPrompt, m.aiResponse, m.promptConfig))
 	} else {
 		m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
 	}

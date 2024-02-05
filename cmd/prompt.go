@@ -5,8 +5,8 @@ package cmd
 
 import (
 	"github.com/MohammadBnei/go-openai-cli/command"
-	"github.com/MohammadBnei/go-openai-cli/prompt"
 	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-openai-cli/ui/chat"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -36,7 +36,7 @@ var promptCmd = &cobra.Command{
 		defer close(updateChan)
 		promptConfig.UpdateChan = updateChan
 
-		prompt.Chat(promptConfig)
+		chat.Chat(promptConfig)
 
 	},
 }
