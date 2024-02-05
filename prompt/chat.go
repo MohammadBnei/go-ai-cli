@@ -153,9 +153,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		h, v := AppStyle.GetFrameSize()
-		msg.Height = msg.Height - v
-		msg.Width = msg.Width - h
 		m.size = msg
 
 		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
