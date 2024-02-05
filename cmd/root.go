@@ -25,26 +25,30 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/cmd/speech"
+	"github.com/fsnotify/fsnotify"
+	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "go-openai-cli",
-	Short: "Go-OpenAI-CLI is a command-line interface that allows users to generate text using OpenAI's GPT-3 language generation service.",
-	Long:  `Go-OpenAI-CLI is a command-line interface tool that provides users with convenient access to OpenAI's GPT-3 language generation service. With this app, users can easily send prompts to the OpenAI API and receive generated responses, which can then be printed on the command-line or saved to a markdown file. Go-OpenAI-CLI is an excellent tool for creatives, content creators, chatbot developers and virtual assistants, as they can use it to quickly generate text for various purposes. By configuring their OpenAI API key and model, users can customize the behavior of the app to suit their specific needs. Moreover, Go-OpenAI-CLI is an open-source project that welcomes contributions from the community, and it is licensed under the MIT License.`,
+// RootCmd represents the base command when called without any subcommands
+var RootCmd = &cobra.Command{
+	Use:   "go-ai-cli",
+	Short: "go-ai-cli is a command-line interface that allows users to generate text using OpenAI's GPT-3 language generation service.",
+	Long:  `go-ai-cli is a command-line interface tool that provides users with convenient access to OpenAI's GPT-3 language generation service. With this app, users can easily send prompts to the OpenAI API and receive generated responses, which can then be printed on the command-line or saved to a markdown file. go-ai-cli is an excellent tool for creatives, content creators, chatbot developers and virtual assistants, as they can use it to quickly generate text for various purposes. By configuring their OpenAI API key and model, users can customize the behavior of the app to suit their specific needs. Moreover, go-ai-cli is an open-source project that welcomes contributions from the community, and it is licensed under the MIT License.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
+// This is called by main.main(). It only needs to happen once to the RootCmd.
 func Execute() {
-	err := rootCmd.Execute()
+	err := RootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
@@ -59,11 +63,39 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yaml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
+	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	RootCmd.PersistentFlags().StringP("API_TYPE", "t", api.API_OLLAMA, "the api type to be added to config")
+	RootCmd.RegisterFlagCompletionFunc("API_TYPE", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{api.API_HUGGINGFACE, api.API_OLLAMA, api.API_OPENAI}, cobra.ShellCompDirectiveDefault
+	})
+
+	RootCmd.PersistentFlags().StringP("model", "m", openai.GPT4, "the model to use")
+	RootCmd.RegisterFlagCompletionFunc("model", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		apiType, err := cmd.Flags().GetString("API_TYPE")
+		if err != nil || apiType == "" {
+			apiType = api.API_OLLAMA
+		}
+		switch apiType {
+		case api.API_OLLAMA:
+			models, err := api.GetOllamaModelList()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return models, cobra.ShellCompDirectiveDefault
+		case api.API_OPENAI:
+			models, err := api.GetOpenAiModelList()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			return models, cobra.ShellCompDirectiveDefault
+		}
+		return nil, cobra.ShellCompDirectiveDefault
+	})
+
+	RootCmd.AddCommand(speech.SpeechCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -74,27 +106,20 @@ func initConfig() {
 	// Use config file from the flag.
 	viper.SetConfigFile(cfgFile)
 
-	err := viper.BindPFlag("OPENAI_KEY", rootCmd.Flags().Lookup("OPENAI_KEY"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	err = viper.BindPFlag("messages-length", rootCmd.Flags().Lookup("messages-length"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	viper.BindPFlags(RootCmd.PersistentFlags())
 
-	err = viper.BindPFlag("config-path", rootCmd.Flags().Lookup("config"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	viper.SetDefault("OLLAMA_HOST", "http://127.0.0.1:11434")
+	viper.SetDefault("auto-save", true)
 
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
 	}
+
+	viper.OnConfigChange(func(e fsnotify.Event) {
+		viper.ReadInConfig()
+	})
+	go viper.WatchConfig()
 }

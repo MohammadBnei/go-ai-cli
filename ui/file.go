@@ -3,49 +3,49 @@ package ui
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/disiqueira/gotree"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/manifoldco/promptui"
 	"github.com/samber/lo"
-	"github.com/sashabaranov/go-openai"
 )
 
-func FileSelectionFzf(fileNumber *int) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
+func FileSelectionFzf(path string) (fileContents []string, err error) {
+	if path == "" {
+		path, err = os.Getwd()
+		if err != nil {
+			return
+		}
 	}
 
-	selected := []os.FileInfo{}
+	var selected []os.FileInfo
 
 FileLoop:
 	for {
-		files, err := ioutil.ReadDir(cwd)
-		if err != nil {
-			fmt.Println("Error while getting current working directory:", err)
-			return errors.Join(errors.New("Error while getting current working directory : "), err)
+		files, _err := os.ReadDir(path)
+		if _err != nil {
+			fmt.Println("Error while getting current working directory:", _err)
+			err = errors.Join(errors.New("error while getting current working directory : "), _err)
+			return
 		}
 		files = append(files, &myFileInfo{"..", 0, 0, time.Now(), true})
-		files = lo.Filter[os.FileInfo](files, func(f os.FileInfo, _ int) bool {
+		files = lo.Filter(files, func(f os.DirEntry, _ int) bool {
 			if f.IsDir() {
 				return true
 			}
-			fileContent, err := os.ReadFile(cwd + "/" + f.Name())
+			fileContent, err := os.ReadFile(path + "/" + f.Name())
 			if err != nil {
 				return false
 			}
-			return strings.Contains(http.DetectContentType(fileContent), "text/plain")
+			return strings.Contains(http.DetectContentType(fileContent), "text/plain") || strings.Contains(f.Name(), ".svelte")
 		})
 
-		idx, err := fuzzyfinder.FindMulti(
+		idx, _err := fuzzyfinder.FindMulti(
 			files,
 			func(i int) string {
 				return files[i].Name()
@@ -56,14 +56,14 @@ FileLoop:
 				}
 				if files[i].IsDir() {
 					root := gotree.New(files[i].Name())
-					subFiles, err := ioutil.ReadDir(cwd + "/" + files[i].Name())
-					if err != nil {
+					subFiles, _err := os.ReadDir(path + "/" + files[i].Name())
+					if _err != nil {
 						return "📁"
 					}
 					for _, f := range subFiles {
 						sub := root.Add(f.Name())
 						if f.IsDir() {
-							subFiles, err := ioutil.ReadDir(cwd + "/" + files[i].Name())
+							subFiles, err := os.ReadDir(path + "/" + files[i].Name())
 							if err == nil {
 								for _, f := range subFiles {
 									sub.Add(f.Name())
@@ -74,7 +74,7 @@ FileLoop:
 
 					return root.Print()
 				}
-				fileContent, err := os.ReadFile(cwd + "/" + files[i].Name())
+				fileContent, err := os.ReadFile(path + "/" + files[i].Name())
 				if err != nil {
 					return fmt.Sprintf("Error while reading file: %s\n", err)
 				}
@@ -86,26 +86,35 @@ FileLoop:
 				)
 			}))
 
-		if err != nil {
-			return err
+		if _err != nil {
+			err = _err
+			return
 		}
 		if len(idx) == 1 {
 			file := files[idx[0]]
 
 			switch {
 			case file.Name() == "..":
-				cwd = filepath.Dir(cwd)
+				path = filepath.Dir(path)
 			case file.IsDir():
-				cwd += "/" + file.Name()
+				path += "/" + file.Name()
 			default:
 				selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
-					return files[i]
+					info, err := files[i].Info()
+					if err != nil {
+						return nil
+					}
+					return info
 				})
 				break FileLoop
 			}
 		} else {
 			selected = lo.Map[int, os.FileInfo](idx, func(i int, _ int) os.FileInfo {
-				return files[i]
+				info, err := files[i].Info()
+				if err != nil {
+					return nil
+				}
+				return info
 			})
 			break FileLoop
 		}
@@ -117,24 +126,68 @@ FileLoop:
 			continue
 		}
 
-		fileContent, err := os.ReadFile(cwd + "/" + file.Name())
-		if err != nil {
-			return err
+		fileContent, _err := os.ReadFile(path + "/" + file.Name())
+		if _err != nil {
+			err = _err
+			return
 		}
-		service.AddMessage(service.ChatMessage{
-			Content: fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent),
-			Role:    openai.ChatMessageRoleUser,
-			Date:    time.Now(),
-		})
-		*fileNumber++
 
-		fmt.Println("added file:", file.Name())
+		fileContents = append(fileContents, fmt.Sprintf("// Filename : %s\n%s", file.Name(), fileContent))
+
+		fmt.Println("loaded file:", file.Name())
 	}
 
-	return nil
+	return
+}
+func PathSelectionFzf(startPath string) (path string, err error) {
+	if startPath == "" {
+		startPath, err = os.Getwd()
+		if err != nil {
+			return
+		}
+	}
+
+	path = startPath
+
+FileLoop:
+	for {
+		dirs, _err := os.ReadDir(path)
+		if _err != nil {
+			err = errors.Join(errors.New("error while getting current working directory : "), _err)
+			return
+		}
+		dirs = lo.Filter[os.DirEntry](dirs, func(item os.DirEntry, _ int) bool {
+			return item.IsDir()
+		})
+		dirs = append(dirs, &myFileInfo{".", 0, 0, time.Now(), true}, &myFileInfo{"..", 0, 0, time.Now(), true})
+
+		id, _err := fuzzyfinder.Find(
+			dirs,
+			func(i int) string {
+				return dirs[i].Name()
+			},
+		)
+		if _err != nil {
+			err = _err
+			return
+		}
+
+		dir := dirs[id]
+		switch dir.Name() {
+		case "..":
+			path = filepath.Dir(path)
+		case ".":
+			return
+		default:
+			path += "/" + dir.Name()
+			break FileLoop
+		}
+	}
+
+	return
 }
 
-func AddToFile(content []byte, filename string) error {
+func AddToFile(content []byte, filename string, withTimestamp bool) error {
 	if filename == "" {
 		filePrompt := promptui.Prompt{
 			Label: "specify a filename (with extension)",
@@ -159,7 +212,9 @@ func AddToFile(content []byte, filename string) error {
 		}
 	}
 
-	content = append([]byte(time.Now().Format("15:04:05 --- \n")), content...)
+	if withTimestamp {
+		content = append([]byte(time.Now().Format("15:04:05 --- \n")), content...)
+	}
 
 	if _, err := os.Stat(filename); err == nil {
 		fileContent, err := os.ReadFile(filename)
@@ -180,11 +235,8 @@ func AddToFile(content []byte, filename string) error {
 
 func SaveToFile(content []byte, filename string) error {
 	if filename == "" {
-		filePrompt := promptui.Prompt{
-			Label: "specify a filename (with extension)",
-		}
 		var err error
-		filename, err = filePrompt.Run()
+		filename, err = StringPrompt("specify a filename (with extension)")
 		if err != nil {
 			return err
 		}

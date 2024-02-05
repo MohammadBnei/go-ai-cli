@@ -27,7 +27,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/MohammadBnei/go-openai-cli/cmd"
+	"github.com/MohammadBnei/go-ai-cli/cmd"
 )
 
 func main() {

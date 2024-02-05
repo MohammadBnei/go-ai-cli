@@ -54,25 +54,23 @@ func (mw *MarkdownWriter) Flush(raw string) {
 	mw.Raw = []string{}
 }
 
-var openBacktick = regexp.MustCompile("```[\\s\\S]*?")
-var closedBacktick = regexp.MustCompile("```[\\s\\S]*?```")
-
-var singleOpenBacktick = regexp.MustCompile("`[\\s]*?")
-var singleClosedBacktick = regexp.MustCompile("`[\\s]*?`")
+var watchThisChar = []string{
+	"`",
+	"```\\w*",
+}
 
 func (mw *MarkdownWriter) Write(p []byte) (n int, err error) {
 	mw.Buffer = mw.Buffer + string(p)
 	n = len(p)
 
-	if singleOpenBacktick.Match(p) {
-		if !singleClosedBacktick.Match(p) {
-			return
-		}
-	}
+	for _, c := range watchThisChar {
+		regOpen := regexp.MustCompile(c + "[\\s\\S]*?")
+		regClose := regexp.MustCompile(c + "[\\s\\S]*?" + c + "")
 
-	if openBacktick.MatchString(mw.Buffer) {
-		if !closedBacktick.MatchString(mw.Buffer) {
-			return
+		if regOpen.MatchString(mw.Buffer) {
+			if !regClose.MatchString(mw.Buffer) {
+				return
+			}
 		}
 	}
 
@@ -95,6 +93,11 @@ func (mw *MarkdownWriter) Print(text string, writer io.Writer) error {
 	byteText := markdown.Render(text, mw.TermWidth-10, 6)
 	_, err := writer.Write(byteText)
 	return err
+}
+
+func (mw *MarkdownWriter) ToMarkdown(text string) (string, error) {
+	byteText := markdown.Render(text, mw.TermWidth-10, 6)
+	return string(byteText), nil
 }
 
 func GetTerminalSize() (int, int, error) {

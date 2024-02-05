@@ -1,14 +1,16 @@
 //go:build portaudio
+// +build portaudio
 
-package cmd
+package speech
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/helper"
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
 )
@@ -34,8 +36,8 @@ var fileCmd = &cobra.Command{
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		ctx, closer := ui.LoadContext(cmd.Context())
-		text, err := service.SendAudio(ctx, args[0], cmd.Flag("lang").Value.String())
+		ctx, closer := service.LoadContext(cmd.Context())
+		text, err := api.SendAudio(ctx, args[0], cmd.Flag("lang").Value.String())
 		closer()
 		if err != nil {
 			fmt.Println(err)
@@ -43,14 +45,14 @@ var fileCmd = &cobra.Command{
 		}
 
 		fmt.Println("---\n\n", text, "\n\n---")
-		if ui.YesNoPrompt("Copy to clipboard?") {
+		if helper.YesNoPrompt("Copy to clipboard?") {
 			clipboard.WriteAll(text)
 		}
 	},
 }
 
 func init() {
-	speechCmd.AddCommand(fileCmd)
+	SpeechCmd.AddCommand(fileCmd)
 
 	// Here you will define your flags and configuration settings.
 

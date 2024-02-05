@@ -1,12 +1,13 @@
 //go:build portaudio
+// +build portaudio
 
-package cmd
+package speech
 
 import (
 	"fmt"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/audio"
 	"github.com/spf13/cobra"
 )
 
@@ -15,19 +16,18 @@ var recordCmd = &cobra.Command{
 	Use:   "record",
 	Short: "Record audio to file",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := service.RecordAudioToFile(4*time.Minute, false, cmd.Flag("file").Value.String()); err != nil {
+		if err := audio.RecordAudioToFile(1*time.Minute, false, cmd.Flag("filename").Value.String()); err != nil {
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("%s.wav saved\n", cmd.Flag("file").Value.String())
+		fmt.Printf("%s.wav saved\n", cmd.Flag("filename").Value.String())
 	},
 }
 
 func init() {
-	speechCmd.AddCommand(recordCmd)
+	SpeechCmd.AddCommand(recordCmd)
 
-	recordCmd.Flags().StringP("file", "f", "", "name of the file (without extension)")
-	recordCmd.MarkFlagRequired("file")
+	recordCmd.MarkFlagRequired("filename")
 
 	// Here you will define your flags and configuration settings.
 

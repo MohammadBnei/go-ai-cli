@@ -1,6 +1,7 @@
 //go:build portaudio
+// +build portaudio
 
-package service
+package audio
 
 import (
 	"bytes"
@@ -11,53 +12,52 @@ import (
 
 	"os"
 
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/briandowns/spinner"
 	"github.com/garlicgarrison/go-recorder/recorder"
 	"github.com/garlicgarrison/go-recorder/stream"
-	"github.com/sashabaranov/go-openai"
-	"github.com/spf13/viper"
 )
 
-func SpeechToText(ctx context.Context, lang string, maxTime time.Duration, detect bool) (string, error) {
-	err := RecordAudioToFile(maxTime, detect, "speech")
+type SpeechConfig struct {
+	MaxMinutes time.Duration
+	Lang       string
+	Detect     bool
+}
+
+func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
+	tmpFileName := fmt.Sprintf("speech-%d", time.Now().UnixNano())
+	err := RecordAudioToFile(config.MaxMinutes, config.Detect, tmpFileName)
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove("speech.wav")
+	defer os.Remove(tmpFileName + ".wav")
 
 	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond)
 	s.Start()
 	defer s.Stop()
 
-	return SendAudio(ctx, "speech.wav", lang)
-}
-
-func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
-
-	if lang == "" {
-		lang = "en"
-	}
-
-	response, err := c.CreateTranscription(ctx, openai.AudioRequest{
-		Model:    openai.Whisper1,
-		Format:   "text",
-		FilePath: filename,
-		Language: lang,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return response.Text, nil
+	return api.SendAudio(ctx, tmpFileName+".wav", config.Lang)
 }
 
 func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) error {
-	quit := make(chan bool)
+	quit := make(chan bool, 2)
 	go func(quit chan bool) {
 		fmt.Println("Press enter to stop recording")
 		fmt.Scanln()
+		select {
+		case _, ok := <-quit:
+			if !ok {
+				return
+			}
+		default:
+			quit <- true
+
+		}
+	}(quit)
+	go func(quit chan bool) {
+		time.Sleep(maxTime)
 		quit <- true
+		close(quit)
 	}(quit)
 
 	stream, err := stream.NewStream(stream.DefaultStreamConfig())

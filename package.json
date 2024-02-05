@@ -1,5 +1,5 @@
 {
-  "name": "go-openai-cli",
+  "name": "go-ai-cli",
   "version": "0.15.0",
   "description": "This project provides command-line access to OpenAI's GPT-3 language generation service. The \"prompt\" command in this CLI sends a prompt to OpenAI's API and receives a generated response, which can be printed on the command-line or saved to a markdown file with the \"--md\" flag. This project can be used to quickly generate text for various purposes such as creative writing, chatbots, virtual assistants, or content generation for websites.",
   "author": "Mohammad-Amine BANAEI",
@@ -22,7 +22,7 @@
     }
   },
   "devDependencies": {
-    "@release-it/conventional-changelog": "^5.1.1",
-    "release-it": "^15.10.3"
+    "@release-it/conventional-changelog": "^7.0.0",
+    "release-it": "^16.1.15"
   }
 }
