@@ -15,7 +15,7 @@ type SaveFunctionData struct {
 var SaveFileFunctionDef = FunctionDefinition[*SaveFunctionData]{
 	Id: "saveFile",
 	Function: func(data *SaveFunctionData) error {
-		return tool.SaveToFile([]byte(data.Content), data.Filename)
+		return tool.SaveToFile([]byte(data.Content), data.Filename, false)
 	},
 	Definition: openai.FunctionDefinition{
 		Name:        "saveFile",

@@ -14,6 +14,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/golang-module/carbon/v2"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
@@ -147,6 +148,19 @@ func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
 		return m, tea.ClearScreen
 	}
 	return nil, nil
+}
+
+func saveChat(m chatModel) error {
+	chatMessages := m.promptConfig.ChatMessages
+	chatMessages.Id = "last-chat"
+	chatMessages.Description = "Saved at : " + carbon.Now().Format("2006-01-02 15:04:05")
+
+	err := chatMessages.SaveToFile(chatMessages.Id)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {

@@ -122,7 +122,7 @@ func SpeechLoop(ctx context.Context, cfg *SpeechConfig) error {
 				break filenameLoop
 			}
 		}
-		tool.SaveToFile([]byte(speech), filename)
+		tool.SaveToFile([]byte(speech), filename, false)
 	case 2:
 		return nil
 	case 3:

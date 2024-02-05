@@ -8,6 +8,7 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/viper"
 )
 
 type listKeyMap struct {
@@ -93,6 +94,12 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.quit):
+			if viper.GetBool("auto-save") {
+				err := saveChat(m)
+				if err != nil {
+					panic(err)
+				}
+			}
 			return quit(m)
 
 		case key.Matches(msg, m.keys.toggleHelpMenu):

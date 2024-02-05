@@ -63,7 +63,7 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
 	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 
@@ -109,6 +109,7 @@ func initConfig() {
 	viper.BindPFlags(RootCmd.PersistentFlags())
 
 	viper.SetDefault("OLLAMA_HOST", "http://127.0.0.1:11434")
+	viper.SetDefault("auto-save", true)
 
 	viper.AutomaticEnv() // read in environment variables that match
 

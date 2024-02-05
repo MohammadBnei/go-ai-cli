@@ -3,7 +3,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"sort"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
@@ -98,9 +97,9 @@ func getEditModel(id string) (tea.Model, error) {
 				})}
 			}
 
-		case "config-path":
+		case "configfile":
 			afterCmd = func() tea.Msg {
-				path := viper.GetString("config-path")
+				path := viper.GetString("configfile")
 				viper.SetConfigFile(path)
 				err := viper.ReadInConfig()
 				if err != nil {
@@ -178,8 +177,5 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
 		}
 	}
 
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].FilterValue() < items[j].FilterValue()
-	})
 	return items
 }

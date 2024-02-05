@@ -36,7 +36,7 @@ func SaveChat(chatmessages *service.ChatMessages) error {
 		return err
 	}
 
-	err = tool.SaveToFile(data, viper.GetString("configPath")+"/"+name+".yaml")
+	err = tool.SaveToFile(data, viper.GetString("configPath")+"/"+name+".yaml", false)
 	if err != nil {
 		return err
 	}

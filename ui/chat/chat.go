@@ -87,6 +87,10 @@ type chatModel struct {
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
+	var err error
+	if viper.GetBool("auto-save") {
+		err = pc.ChatMessages.LoadFromFile(viper.GetString("configpath") + "/last-chat.yml")
+	}
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -123,7 +127,7 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		textarea:     ta,
 		promptConfig: pc,
 		viewport:     vp,
-		err:          nil,
+		err:          err,
 		spinner:      spinner.New(),
 		aiResponse:   "",
 		userPrompt:   "",

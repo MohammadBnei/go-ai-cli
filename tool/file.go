@@ -4,8 +4,6 @@ import (
 	"errors"
 	"os"
 	"strings"
-
-	"github.com/manifoldco/promptui"
 )
 
 func ReadFile(filename string) ([]byte, error) {
@@ -20,7 +18,7 @@ func ReadFile(filename string) ([]byte, error) {
 	return os.ReadFile(filename)
 }
 
-func SaveToFile(content []byte, filename string) error {
+func SaveToFile(content []byte, filename string, append bool) error {
 	if filename == "" {
 		return errors.New("filename cannot be empty")
 	}
@@ -42,35 +40,17 @@ func SaveToFile(content []byte, filename string) error {
 
 	}
 
-	if _, err := os.Stat(filename); err == nil {
-		replaceSelect := promptui.Select{
-			Label: filename + " exists. What to do ?",
-			Items: []string{"Append", "Erase", "Cancel"},
-		}
-
-		i, _, err := replaceSelect.Run()
+	if append {
+		f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return err
 		}
-
-		switch i {
-		case 0:
-			f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			if _, err := f.WriteString(string(content)); err != nil {
-				return err
-			}
-
-			return nil
-		case 1:
-			break
-		case 2:
-			return nil
+		defer f.Close()
+		if _, err := f.WriteString(string(content)); err != nil {
+			return err
 		}
 
+		return nil
 	}
 
 	f, err := os.Create(filename)
