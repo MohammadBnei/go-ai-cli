@@ -3,7 +3,8 @@ name: Go Build to release
 
 on:
   release:
-    types: [created]
+    types: [released]
+  workflow_dispatch:
 
 jobs:
   releases-matrix:
