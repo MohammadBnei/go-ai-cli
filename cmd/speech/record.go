@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/audio"
+	"github.com/MohammadBnei/go-ai-cli/audio"
 	"github.com/spf13/cobra"
 )
 

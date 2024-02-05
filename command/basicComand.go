@@ -7,9 +7,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
-	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 )

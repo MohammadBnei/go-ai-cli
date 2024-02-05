@@ -5,7 +5,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"

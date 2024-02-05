@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-ai-cli/ui"
 	"github.com/spf13/cobra"
 	"moul.io/banner"
 )

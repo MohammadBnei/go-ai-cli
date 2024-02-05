@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
-	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui/helper"
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/helper"
 	"github.com/atotto/clipboard"
 	"github.com/spf13/cobra"
 )

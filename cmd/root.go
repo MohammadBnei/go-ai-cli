@@ -25,8 +25,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
-	"github.com/MohammadBnei/go-openai-cli/cmd/speech"
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/cmd/speech"
 	"github.com/fsnotify/fsnotify"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
@@ -37,9 +37,9 @@ var cfgFile string
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "go-openai-cli",
-	Short: "Go-OpenAI-CLI is a command-line interface that allows users to generate text using OpenAI's GPT-3 language generation service.",
-	Long:  `Go-OpenAI-CLI is a command-line interface tool that provides users with convenient access to OpenAI's GPT-3 language generation service. With this app, users can easily send prompts to the OpenAI API and receive generated responses, which can then be printed on the command-line or saved to a markdown file. Go-OpenAI-CLI is an excellent tool for creatives, content creators, chatbot developers and virtual assistants, as they can use it to quickly generate text for various purposes. By configuring their OpenAI API key and model, users can customize the behavior of the app to suit their specific needs. Moreover, Go-OpenAI-CLI is an open-source project that welcomes contributions from the community, and it is licensed under the MIT License.`,
+	Use:   "go-ai-cli",
+	Short: "go-ai-cli is a command-line interface that allows users to generate text using OpenAI's GPT-3 language generation service.",
+	Long:  `go-ai-cli is a command-line interface tool that provides users with convenient access to OpenAI's GPT-3 language generation service. With this app, users can easily send prompts to the OpenAI API and receive generated responses, which can then be printed on the command-line or saved to a markdown file. go-ai-cli is an excellent tool for creatives, content creators, chatbot developers and virtual assistants, as they can use it to quickly generate text for various purposes. By configuring their OpenAI API key and model, users can customize the behavior of the app to suit their specific needs. Moreover, go-ai-cli is an open-source project that welcomes contributions from the community, and it is licensed under the MIT License.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
@@ -63,7 +63,7 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-openai-cli/config.yaml", "config file (default is $HOME/.config/go-openai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yaml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
 	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 

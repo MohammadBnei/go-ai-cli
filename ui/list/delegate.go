@@ -1,7 +1,7 @@
 package list
 
 import (
-	"github.com/MohammadBnei/go-openai-cli/ui/style"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"

@@ -30,4 +30,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-openai-cli:${{ steps.get_version.outputs.version-without-v }}, ${{ secrets.DOCKERHUB_USERNAME }}/go-openai-cli:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/go-ai-cli:${{ steps.get_version.outputs.version-without-v }}, ${{ secrets.DOCKERHUB_USERNAME }}/go-ai-cli:latest

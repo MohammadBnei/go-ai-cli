@@ -10,9 +10,9 @@ RUN go mod download
 
 ADD . .
 
-RUN go build  -o go-openai-cli
+RUN go build  -o go-ai-cli
 
-ENTRYPOINT [ "./go-openai-cli" ]
+ENTRYPOINT [ "./go-ai-cli" ]
 
 CMD ["prompt"]
 
@@ -20,7 +20,7 @@ CMD ["prompt"]
 
 # RUN apt update && apt install -y libc6
 
-# COPY --from=0 /app/go-openai-cli /go-openai-cli
+# COPY --from=0 /app/go-ai-cli /go-ai-cli
 
 # VOLUME /.config
 

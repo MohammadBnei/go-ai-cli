@@ -1,7 +1,7 @@
 package function
 
 import (
-	"github.com/MohammadBnei/go-openai-cli/tool"
+	"github.com/MohammadBnei/go-ai-cli/tool"
 	"github.com/sashabaranov/go-openai"
 	"github.com/sashabaranov/go-openai/jsonschema"
 )

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/tool"
+	"github.com/MohammadBnei/go-ai-cli/tool"
 	"github.com/jinzhu/copier"
 	"github.com/pkoukk/tiktoken-go"
 	"github.com/samber/lo"
@@ -41,6 +41,12 @@ type ChatMessage struct {
 
 	ToolCall openai.ToolCall
 	Date     time.Time
+
+	Meta Meta
+}
+
+type Meta struct {
+	ApiType, Model string
 }
 
 type ChatMessages struct {
@@ -150,6 +156,10 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 		Date:                time.Now(),
 		Type:                TypeUser,
 		AssociatedMessageId: -1,
+		Meta: Meta{
+			ApiType: viper.GetString("API_TYPE"),
+			Model:   viper.GetString("model"),
+		},
 	}
 
 	msg.Tokens = tokenCount

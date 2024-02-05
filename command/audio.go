@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/audio"
-	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/audio"
+	"github.com/MohammadBnei/go-ai-cli/service"
 )
 
 func AddAudioCommand(commandMap map[string]func(*service.PromptConfig) error) {

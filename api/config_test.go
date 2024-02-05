@@ -3,7 +3,7 @@ package api_test
 import (
 	"testing"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )

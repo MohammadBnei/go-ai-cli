@@ -1,4 +1,4 @@
-module github.com/MohammadBnei/go-openai-cli
+module github.com/MohammadBnei/go-ai-cli
 
 go 1.21
 

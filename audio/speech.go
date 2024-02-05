@@ -12,7 +12,7 @@ import (
 
 	"os"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/briandowns/spinner"
 	"github.com/garlicgarrison/go-recorder/recorder"
 	"github.com/garlicgarrison/go-recorder/stream"

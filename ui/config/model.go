@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/MohammadBnei/go-openai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/charmbracelet/huh"
 )
 

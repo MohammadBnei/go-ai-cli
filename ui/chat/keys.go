@@ -1,11 +1,11 @@
 package chat
 
 import (
-	"github.com/MohammadBnei/go-openai-cli/ui/config"
-	"github.com/MohammadBnei/go-openai-cli/ui/event"
-	"github.com/MohammadBnei/go-openai-cli/ui/info"
-	"github.com/MohammadBnei/go-openai-cli/ui/message"
-	"github.com/MohammadBnei/go-openai-cli/ui/system"
+	"github.com/MohammadBnei/go-ai-cli/ui/config"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/info"
+	"github.com/MohammadBnei/go-ai-cli/ui/message"
+	"github.com/MohammadBnei/go-ai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/viper"

@@ -4,9 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/MohammadBnei/go-openai-cli/command"
-	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui/chat"
+	"github.com/MohammadBnei/go-ai-cli/command"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/chat"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

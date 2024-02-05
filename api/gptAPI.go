@@ -5,7 +5,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/MohammadBnei/go-openai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/service"
 )
 
 type GPTChanResponse struct {

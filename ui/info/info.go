@@ -3,7 +3,7 @@ package info
 import (
 	"fmt"
 
-	"github.com/MohammadBnei/go-openai-cli/ui/style"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"

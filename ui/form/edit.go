@@ -3,8 +3,8 @@ package form
 import (
 	"fmt"
 
-	"github.com/MohammadBnei/go-openai-cli/ui/event"
-	"github.com/MohammadBnei/go-openai-cli/ui/style"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 )

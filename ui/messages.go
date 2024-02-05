@@ -6,9 +6,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/MohammadBnei/go-openai-cli/markdown"
-	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/tool"
+	"github.com/MohammadBnei/go-ai-cli/markdown"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/tool"
 	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"

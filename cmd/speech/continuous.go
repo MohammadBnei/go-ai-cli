@@ -1,3 +1,4 @@
+//go:build portaudio
 // +build portaudio
 
 package speech
@@ -5,7 +6,7 @@ package speech
 import (
 	"fmt"
 
-	"github.com/MohammadBnei/go-openai-cli/ui"
+	"github.com/MohammadBnei/go-ai-cli/ui"
 	"github.com/spf13/cobra"
 	"moul.io/banner"
 )

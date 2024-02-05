@@ -12,12 +12,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
-	"github.com/MohammadBnei/go-openai-cli/audio"
-	"github.com/MohammadBnei/go-openai-cli/markdown"
-	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/tool"
-	"github.com/MohammadBnei/go-openai-cli/ui/helper"
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/audio"
+	"github.com/MohammadBnei/go-ai-cli/markdown"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/tool"
+	"github.com/MohammadBnei/go-ai-cli/ui/helper"
 	"github.com/atotto/clipboard"
 	"github.com/manifoldco/promptui"
 )
