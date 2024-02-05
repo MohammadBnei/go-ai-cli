@@ -1,5 +1,53 @@
 
 
+# [0.16.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.15.0...0.16.0) (2024-02-05)
+
+
+### Bug Fixes
+
+* **all:** added config editing capacities ([02b1289](https://github.com/MohammadBnei/go-ai-cli/commit/02b1289c15734ed4f335820f2f36f7b9c8dc8e1f))
+* **build:** added mock speech cmd to permit build of app without portaudio ([960c930](https://github.com/MohammadBnei/go-ai-cli/commit/960c9303fccb1620555d6474003322a941217f11))
+* **chat.go:** change TitleStyle width property to MaxWidth to correctly set the maximum width of the title style ([e5896a0](https://github.com/MohammadBnei/go-ai-cli/commit/e5896a040b825d8e4d4cfc4cf06aac8d8dcdf208))
+* **chat.go:** remove unused code that sets the max width of the title style ([889cf4d](https://github.com/MohammadBnei/go-ai-cli/commit/889cf4d18533c7aeba64ef36cfa7517b3b1a1d86))
+* **chat:** fixed an error when changing messages ([68595d7](https://github.com/MohammadBnei/go-ai-cli/commit/68595d748719eaeac2b2b464b3c7c2cdcab8e46e))
+* **cmd/prompt.go:** remove unused variables and channels to improve code readability and maintainability ([b6673b0](https://github.com/MohammadBnei/go-ai-cli/commit/b6673b0a5b6caa8848571e4a6910dd1cf230bd67))
+* **cmd/root.go:** remove unused import of "path/filepath" ([ee4ac4f](https://github.com/MohammadBnei/go-ai-cli/commit/ee4ac4f357791de92ddf06f8ff7c67b123fa95e2))
+* **config.go:** change "config-path" to "configfile" to improve semantics ([530f829](https://github.com/MohammadBnei/go-ai-cli/commit/530f8291614992ced67c24913f71d30a6fc358d8))
+* **config.go:** remove unused import of api package to improve code cleanliness and remove unused code block ([7efef7a](https://github.com/MohammadBnei/go-ai-cli/commit/7efef7ad55395b702c5077683b92eb21ea600288))
+* **keys:** typo ([2979b48](https://github.com/MohammadBnei/go-ai-cli/commit/2979b4801f65d8523f497ad1938b8f8f186cb45a))
+* **markdown-mode:** modified prompt config to use viper config ([c6d5bbe](https://github.com/MohammadBnei/go-ai-cli/commit/c6d5bbeaf25a4aafc585e529acaf2c972393e1b0))
+* **message.go:** add condition to check if error is not nil when converting string to int in RemoveFn ([9a9d235](https://github.com/MohammadBnei/go-ai-cli/commit/9a9d23582926a5c98c2b79e8f1bccdc69522c2ac))
+* **old-commands:** started cleaning old command. Adding a filepicker. Different styles fix ([babcc08](https://github.com/MohammadBnei/go-ai-cli/commit/babcc088be282c9e185a057dd9e296b3be028efe))
+* **prompt.go:** replace fmt.Scanln with bufio.Scanner to handle user input with spaces correctly ([9c86caa](https://github.com/MohammadBnei/go-ai-cli/commit/9c86caa49afb2dbd8c6afd6c84d427cd1c107b76))
+* **prompt:** reverted to promptui for now ([bba4422](https://github.com/MohammadBnei/go-ai-cli/commit/bba442290a99a23d48c417d66278a42e7a06cebd))
+* **server.ts:** change port variable case from lowercase port to uppercase PORT to improve semantics ([aa43b48](https://github.com/MohammadBnei/go-ai-cli/commit/aa43b487edbc427dad27ef9356dde9ce83b8c860))
+* **sizing:** fixed sizing issue on the chat ([1ba85c8](https://github.com/MohammadBnei/go-ai-cli/commit/1ba85c8b2f4ecd31ab7bcd9bb108c81c1a5282c9))
+* **speech:** fixed pointer error and lang not being saved to speech config ([0e531c9](https://github.com/MohammadBnei/go-ai-cli/commit/0e531c96255fc5f8b8460d049037c2d756a263d0))
+* **system.go:** update getDelegateFn function to display correct "Added" status for chat messages ([9479ec3](https://github.com/MohammadBnei/go-ai-cli/commit/9479ec37c34a6353701413fd8e8096e865692f08))
+* **ui/file.go:** update file loop condition to include files with .svelte extension in the search results ([e27b5dd](https://github.com/MohammadBnei/go-ai-cli/commit/e27b5dd310267d51d977f13c3d60b5ffa7c70e91))
+* **ui/system.go:** handle case when system is not found in systems map by returning an error event ([7ee1eb5](https://github.com/MohammadBnei/go-ai-cli/commit/7ee1eb54cffb5c5f445cd0440b2163f2e3582d01))
+* **ui:** replace ioutil.ReadDir with os.ReadDir to use the updated function in Go 1.16 ([901ff10](https://github.com/MohammadBnei/go-ai-cli/commit/901ff10a5ebfc54aefffecec9ef2a5bb7ddfa710))
+
+
+### Features
+
+* **api:** add config.go file to handle API configuration ([fb4b9d0](https://github.com/MohammadBnei/go-ai-cli/commit/fb4b9d00e70a09fe861977885944308bb1514d33))
+* **bubble:** functionnal ([ffaa3ce](https://github.com/MohammadBnei/go-ai-cli/commit/ffaa3cec4df76a805cd106cd6c8cd822d323d9e2))
+* **bubble:** stable ([a4c12b9](https://github.com/MohammadBnei/go-ai-cli/commit/a4c12b9f887dc568abb001b75183cdae6ccd0292))
+* **chatUpdate.go:** refactor reset function to use getInfoContent function to generate AI response content ([3417b57](https://github.com/MohammadBnei/go-ai-cli/commit/3417b5749d6fb94fad2f4b1b91d2c1b2b96053c9))
+* **codebase:** full update of the architecure of the project ([a11e529](https://github.com/MohammadBnei/go-ai-cli/commit/a11e5294e19a4166b847c8479f059e8e80c0cba9))
+* **command, markdown, ui:** add new command "responses" to display previous messages, add method "ToMarkdown" to convert text to markdown format, add method "ShowPreviousMessage" to show previous messages with markdown support ([08b8b84](https://github.com/MohammadBnei/go-ai-cli/commit/08b8b84b44a56d18919d29baddd8289d8d4e4898))
+* **command, prompt, ui:** add support for 'cli-clear' command to clear the terminal screen ([a006028](https://github.com/MohammadBnei/go-ai-cli/commit/a0060286948399abbdbf07bd645e2117dcee086b))
+* **complete:** messages handling ([d0bd742](https://github.com/MohammadBnei/go-ai-cli/commit/d0bd7425c06ac139aceada4cdbc679fb4b7f5c6d))
+* **continuous:** working on continuous speech mode ([eeab278](https://github.com/MohammadBnei/go-ai-cli/commit/eeab278383c53776c5cadb2240ae3f3468d7c771))
+* **help:** added help for main menu ([3acbb9c](https://github.com/MohammadBnei/go-ai-cli/commit/3acbb9c6a3a5df2f2af08593daa7dc91569f2e30))
+* **langchain:** starting to implement langchain function ([f127802](https://github.com/MohammadBnei/go-ai-cli/commit/f127802b2b54c5de3f769440c20cc375a8e624f4))
+* **message.go:** add role selection to the message editing form ([8a7404f](https://github.com/MohammadBnei/go-ai-cli/commit/8a7404f0a7b44cd088c467d4eb75778878775df0))
+* **name:** changed name from openai to ai ([a845e22](https://github.com/MohammadBnei/go-ai-cli/commit/a845e2290f7a76c4c9895348e2af0b41d84964c5))
+* **name:** changed name from openai to ai ([8bce3ad](https://github.com/MohammadBnei/go-ai-cli/commit/8bce3ade7163b9483242c4414db7e82f2cd69182))
+* **prompt:** finally found a stable prompt ([c798320](https://github.com/MohammadBnei/go-ai-cli/commit/c798320dbfdd408340f4905431bd8b9d3da07999))
+* **styles:** adding style centralized file ([d8fc9a9](https://github.com/MohammadBnei/go-ai-cli/commit/d8fc9a9ded4c2882975eb965618297d9dcf9fb58))
+
 # [0.15.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.14.0...0.15.0) (2023-08-07)
 
 
