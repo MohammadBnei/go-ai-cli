@@ -3,6 +3,7 @@ package chat
 import (
 	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
+	"github.com/MohammadBnei/go-openai-cli/ui/info"
 	"github.com/MohammadBnei/go-openai-cli/ui/message"
 	"github.com/MohammadBnei/go-openai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/key"
@@ -12,7 +13,6 @@ import (
 type listKeyMap struct {
 	systemMessages       key.Binding
 	curMessages          key.Binding
-	deleteCurMessage     key.Binding
 	globalConfig         key.Binding
 	pager                key.Binding
 	changeCurMessageUp   key.Binding
@@ -20,6 +20,7 @@ type listKeyMap struct {
 	quit                 key.Binding
 	cancel               key.Binding
 	toggleHelpMenu       key.Binding
+	showInfo             key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -32,10 +33,6 @@ func newListKeyMap() *listKeyMap {
 			key.WithKeys("ctrl+o"),
 			key.WithHelp("ctrl+o", "current messages"),
 		),
-		deleteCurMessage: key.NewBinding(
-			key.WithKeys("ctrl+k"),
-			key.WithHelp("ctrl+k", "delete current message"),
-		),
 		globalConfig: key.NewBinding(
 			key.WithKeys("ctrl+g"),
 			key.WithHelp("ctrl+g", "global config"),
@@ -45,12 +42,12 @@ func newListKeyMap() *listKeyMap {
 			key.WithHelp("ctrl+p", "pager"),
 		),
 		changeCurMessageUp: key.NewBinding(
-			key.WithKeys("ctrl+k"),
-			key.WithHelp("ctrl+k", "previous message"),
+			key.WithKeys("ctrl+j"),
+			key.WithHelp("ctrl+j", "previous message"),
 		),
 		changeCurMessageDown: key.NewBinding(
-			key.WithKeys("ctrl+j"),
-			key.WithHelp("ctrl+j", "next message"),
+			key.WithKeys("ctrl+k"),
+			key.WithHelp("ctrl+k", "next message"),
 		),
 		toggleHelpMenu: key.NewBinding(
 			key.WithKeys("ctrl+h"),
@@ -62,8 +59,13 @@ func newListKeyMap() *listKeyMap {
 			key.WithHelp("ctrl+d", "quit"),
 		),
 		cancel: key.NewBinding(
-			key.WithKeys("ctrl+c"),
-			key.WithHelp("ctrl+c", "cancel"),
+			key.WithKeys("ctrl+c", "esc"),
+			key.WithHelp("ctrl+c/esc", "cancel"),
+		),
+
+		showInfo: key.NewBinding(
+			key.WithKeys("ctrl+t"),
+			key.WithHelp("ctrl+t", "show info"),
 		),
 	}
 }
@@ -73,19 +75,21 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.cancel):
-			if m.err != nil {
+			switch {
+			case m.err != nil:
 				m.err = nil
 				return m, nil
-			}
-			if len(m.stack) > 0 {
+
+			case len(m.stack) > 0:
 				return m, event.RemoveStack(m.stack[len(m.stack)-1])
-			}
-			if m.help.ShowAll {
+
+			case m.help.ShowAll:
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
-			}
-			if m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil {
+
+			case m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil && msg.String() == "ctrl+c":
 				return closeContext(m)
+
 			}
 
 		case key.Matches(msg, m.keys.quit):
@@ -110,11 +114,6 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				return m, event.AddStack(message.NewMessageModel(m.promptConfig))
 			}
 
-		case key.Matches(msg, m.keys.deleteCurMessage):
-			m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.user)
-			m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.assistant)
-			return reset(m)
-
 		case key.Matches(msg, m.keys.changeCurMessageUp):
 			return changeResponseUp(m)
 
@@ -124,6 +123,11 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.pager):
 			if len(m.stack) == 0 {
 				return addPagerToStack(m)
+			}
+
+		case key.Matches(msg, m.keys.showInfo):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(info.NewInfoModel("Info", getInfoContent(m)))
 			}
 
 		}
@@ -139,7 +143,8 @@ func (k *listKeyMap) ShortHelp() []key.Binding {
 func (k *listKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.systemMessages, k.curMessages, k.globalConfig},
-		{k.changeCurMessageDown, k.changeCurMessageUp, k.deleteCurMessage, k.pager},
+		{k.changeCurMessageDown, k.changeCurMessageUp, k.pager},
 		{k.cancel, k.quit, k.toggleHelpMenu},
+		{k.showInfo},
 	}
 }

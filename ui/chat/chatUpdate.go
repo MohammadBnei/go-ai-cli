@@ -11,25 +11,20 @@ import (
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/pager"
+	"github.com/MohammadBnei/go-openai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
+	"moul.io/banner"
 )
 
 type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 
 func reset(m chatModel) (chatModel, tea.Cmd) {
 	m.textarea.Reset()
-	paragraphStyle := lipgloss.NewStyle().Margin(2).Width(m.viewport.Width)
-	m.aiResponse = fmt.Sprintf("\n%s\n\n%s\n%s",
-		lipgloss.NewStyle().AlignHorizontal(lipgloss.Center).Bold(true).Faint(true).Padding(2).MarginLeft(4).Render("GO-AI-CLI"),
-		paragraphStyle.Render("API : "+viper.GetString("API_TYPE"))+"\t"+
-			paragraphStyle.Render("Model : "+viper.GetString("model")),
-		paragraphStyle.Render("Tokens : "+fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens))+"\t"+
-			paragraphStyle.Render("Messages : "+fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages))),
-	)
+	m.aiResponse = getInfoContent(m)
 
 	m.userPrompt = "Infos"
 	m.currentChatIndices = &currentChatIndexes{
@@ -43,6 +38,17 @@ func reset(m chatModel) (chatModel, tea.Cmd) {
 	}
 
 	return m, event.UpdateContent
+}
+
+func getInfoContent(m chatModel) string {
+	smallTitleStyle := style.TitleStyle.Margin(0).Padding(0, 2)
+	return banner.Inline("go ai cli") + "\n" +
+		lipgloss.NewStyle().AlignVertical(lipgloss.Center).Height(m.viewport.Height).Render(
+			"Api : "+smallTitleStyle.Render(viper.GetString("API_TYPE"))+"\n"+
+				"Model : "+smallTitleStyle.Render(viper.GetString("model"))+"\n"+
+				"Messages : "+smallTitleStyle.Render(fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages)))+"\n"+
+				"Tokens : "+smallTitleStyle.Render(fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens))+"\n",
+		)
 }
 
 func (m chatModel) resize() tea.Msg {
@@ -140,7 +146,7 @@ func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
 		}
 		return m, tea.ClearScreen
 	}
-	return m, nil
+	return nil, nil
 }
 
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
