@@ -58,9 +58,12 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 
 			editModel := form.NewEditModel("Editing message ["+s+"]", huh.NewForm(huh.NewGroup(
 				huh.NewText().Title("Content").Key(s).Value(&message.Content).Lines(10),
+				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)
+				role := form.Get("role").(service.ROLES)
 				message.Content = content
+				message.Role = role
 				err := promptConfig.ChatMessages.UpdateMessage(*message)
 				if err != nil {
 					return event.Error(err)
