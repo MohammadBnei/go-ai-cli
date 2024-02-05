@@ -20,7 +20,7 @@ import (
 
 type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 
-func reset(m *chatModel) (tea.Model, tea.Cmd) {
+func reset(m chatModel) (chatModel, tea.Cmd) {
 	m.textarea.Reset()
 	paragraphStyle := lipgloss.NewStyle().Margin(2).Width(m.viewport.Width)
 	m.aiResponse = fmt.Sprintf("\n%s\n\n%s\n%s",
@@ -45,11 +45,11 @@ func reset(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, event.UpdateContent
 }
 
-func (m *chatModel) resize() tea.Msg {
+func (m chatModel) resize() tea.Msg {
 	return tea.WindowSizeMsg{Width: m.size.Width, Height: m.size.Height}
 }
 
-func closeContext(m *chatModel) (tea.Model, tea.Cmd) {
+func closeContext(m chatModel) (chatModel, tea.Cmd) {
 	if m.err != nil {
 		m.err = nil
 		return m, nil
@@ -61,11 +61,11 @@ func closeContext(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func quit(m *chatModel) (tea.Model, tea.Cmd) {
+func quit(m chatModel) (chatModel, tea.Cmd) {
 	return m, tea.Quit
 }
 
-func addPagerToStack(m *chatModel) (tea.Model, tea.Cmd) {
+func addPagerToStack(m chatModel) (chatModel, tea.Cmd) {
 	if m.aiResponse == "" {
 		return m, nil
 	}
@@ -82,7 +82,7 @@ func addPagerToStack(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
+func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
@@ -101,7 +101,7 @@ func changeResponseUp(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, event.UpdateContent
 }
 
-func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
+func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
@@ -116,7 +116,7 @@ func changeResponseDown(m *chatModel) (tea.Model, tea.Cmd) {
 	return m, event.UpdateContent
 }
 
-func callFunction(m *chatModel) (tea.Model, tea.Cmd) {
+func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
 	v := m.textarea.Value()
 	switch v {
 	case "":
@@ -140,7 +140,7 @@ func callFunction(m *chatModel) (tea.Model, tea.Cmd) {
 		}
 		return m, tea.ClearScreen
 	}
-	return nil, nil
+	return m, nil
 }
 
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {

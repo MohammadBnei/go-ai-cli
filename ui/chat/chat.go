@@ -13,14 +13,12 @@ import (
 
 	"github.com/MohammadBnei/go-openai-cli/command"
 	"github.com/MohammadBnei/go-openai-cli/service"
-	"github.com/MohammadBnei/go-openai-cli/ui/config"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
 	"github.com/MohammadBnei/go-openai-cli/ui/file"
 	"github.com/MohammadBnei/go-openai-cli/ui/helper"
 	"github.com/MohammadBnei/go-openai-cli/ui/list"
-	"github.com/MohammadBnei/go-openai-cli/ui/message"
 	"github.com/MohammadBnei/go-openai-cli/ui/style"
-	"github.com/MohammadBnei/go-openai-cli/ui/system"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -84,6 +82,8 @@ type chatModel struct {
 	errorList []error
 
 	mdRenderer *glamour.TermRenderer
+	keys       *listKeyMap
+	help       help.Model
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
@@ -132,10 +132,14 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 			assistant: -1,
 		},
 
+		keys: newListKeyMap(),
+
 		errorList: []error{},
 		history:   helper.NewHistoryManager(),
 
 		mdRenderer: mdRenderer,
+
+		help: help.New(),
 	}
 
 	return modelStruct
@@ -146,40 +150,6 @@ func (m chatModel) Init() tea.Cmd {
 }
 
 var commandSelectionFn = CommandSelectionFactory()
-
-func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error {
-	commandMap := make(map[string]func(*service.PromptConfig) error)
-
-	command.AddAllCommand(commandMap)
-	keys := lo.Keys[string](commandMap)
-
-	return func(cmd string, pc *service.PromptConfig) error {
-
-		var err error
-
-		switch {
-		case cmd == "":
-			commandMap["help"](pc)
-		case cmd == "\\":
-			selection, err2 := fuzzyfinder.Find(keys, func(i int) string {
-				return keys[i]
-			})
-			if err2 != nil {
-				return err2
-			}
-
-			err = commandMap[keys[selection]](pc)
-		case strings.HasPrefix(cmd, "\\"):
-			command, ok := commandMap[cmd[1:]]
-			if !ok {
-				return errors.New("command not found")
-			}
-			err = command(pc)
-		}
-
-		return err
-	}
-}
 
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
@@ -196,43 +166,23 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
 
 		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - m.textarea.Height()
+		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
 
 	case tea.KeyMsg:
 		if m.err != nil {
 			m.err = nil
 			return m, nil
 		}
+		var cmd tea.Cmd
+		m, cmd = keyMapUpdate(msg, m)
+		if cmd != nil {
+			return m, cmd
+		}
+
 		switch msg.Type {
 
 		case tea.KeyCtrlR:
-			return reset(&m)
-
-		case tea.KeyCtrlK:
-			m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.user)
-			m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.assistant)
-			return reset(&m)
-
-		case tea.KeyCtrlC:
-			if m.err != nil {
-				m.err = nil
-				return m, nil
-			}
-			if len(m.stack) > 0 {
-				return m, event.RemoveStack(m.stack[len(m.stack)-1])
-			}
-			if m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil {
-				return closeContext(&m)
-			}
-
-		case tea.KeyCtrlD:
-			return quit(&m)
-
-		case tea.KeyShiftUp:
-			return changeResponseUp(&m)
-
-		case tea.KeyShiftDown:
-			return changeResponseDown(&m)
+			return reset(m)
 
 		case tea.KeyCtrlU:
 			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
@@ -242,26 +192,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlJ:
 			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
 				m.textarea.SetValue(m.history.Next())
-			}
-
-		case tea.KeyCtrlP:
-			if len(m.stack) == 0 {
-				return addPagerToStack(&m)
-			}
-
-		case tea.KeyCtrlO:
-			if len(m.stack) == 0 {
-				return m, event.AddStack(message.NewMessageModel(m.promptConfig))
-			}
-
-		case tea.KeyCtrlI:
-			if len(m.stack) == 0 {
-				return m, event.AddStack(config.NewConfigModel(m.promptConfig))
-			}
-
-		case tea.KeyCtrlL:
-			if len(m.stack) == 0 {
-				return m, event.AddStack(system.NewSystemModel(m.promptConfig))
 			}
 
 		case tea.KeyCtrlF:
@@ -374,14 +304,51 @@ func (m chatModel) View() string {
 	if len(m.stack) > 0 {
 		return AppStyle.Render(m.stack[len(m.stack)-1].View())
 	}
-	return AppStyle.Render(fmt.Sprintf("%s\n%s",
+
+	helpView := m.help.View(m.keys)
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
 		m.viewport.View(),
 		m.textarea.View(),
+		helpView,
 	))
 }
 
 func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
 	return func() tea.Msg {
 		return <-updateChan
+	}
+}
+
+func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error {
+	commandMap := make(map[string]func(*service.PromptConfig) error)
+
+	command.AddAllCommand(commandMap)
+	keys := lo.Keys[string](commandMap)
+
+	return func(cmd string, pc *service.PromptConfig) error {
+
+		var err error
+
+		switch {
+		case cmd == "":
+			commandMap["help"](pc)
+		case cmd == "\\":
+			selection, err2 := fuzzyfinder.Find(keys, func(i int) string {
+				return keys[i]
+			})
+			if err2 != nil {
+				return err2
+			}
+
+			err = commandMap[keys[selection]](pc)
+		case strings.HasPrefix(cmd, "\\"):
+			command, ok := commandMap[cmd[1:]]
+			if !ok {
+				return errors.New("command not found")
+			}
+			err = command(pc)
+		}
+
+		return err
 	}
 }
