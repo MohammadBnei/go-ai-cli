@@ -116,6 +116,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.List.SetSize(msg.Width, msg.Height)
+		m.List.Styles.Title = m.List.Styles.Title.MaxWidth(msg.Width)
 
 	case Item:
 		items := lo.Map[list.Item, Item](m.List.Items(), func(item list.Item, index int) Item {

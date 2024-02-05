@@ -3,6 +3,7 @@ package message
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
@@ -27,34 +28,6 @@ func NewMessageModel(promptConfig *service.PromptConfig) tea.Model {
 	delegateFn := getDelegateFn(promptConfig)
 
 	return list.NewFancyListModel("message", items, delegateFn)
-}
-
-func getItemsAslist(promptConfig *service.PromptConfig) []list.Item {
-	messages := promptConfig.ChatMessages.FilterByOpenAIRoles()
-
-	res := lo.Map(messages, func(m service.ChatMessage, _ int) list.Item {
-		return toItem(m)
-	})
-
-	return res
-}
-
-func toItem(message service.ChatMessage) list.Item {
-	choosenStyle := systemColor
-	switch message.Role {
-	case service.RoleSystem:
-		choosenStyle = systemColor
-	case service.RoleAssistant:
-		choosenStyle = assistantColor
-	case service.RoleUser:
-		choosenStyle = userColor
-
-	}
-	return list.Item{
-		ItemId:          fmt.Sprintf("%d", message.Id),
-		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + message.Content,
-		ItemDescription: string(message.Role),
-	}
 }
 
 func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
@@ -125,4 +98,32 @@ func getMessage(promptConfig *service.PromptConfig, id string) (*service.ChatMes
 	}
 
 	return message, nil
+}
+
+func getItemsAslist(promptConfig *service.PromptConfig) []list.Item {
+	messages := promptConfig.ChatMessages.FilterByOpenAIRoles()
+
+	res := lo.Map(messages, func(m service.ChatMessage, _ int) list.Item {
+		return toItem(m)
+	})
+
+	return res
+}
+
+func toItem(message service.ChatMessage) list.Item {
+	choosenStyle := systemColor
+	switch message.Role {
+	case service.RoleSystem:
+		choosenStyle = systemColor
+	case service.RoleAssistant:
+		choosenStyle = assistantColor
+	case service.RoleUser:
+		choosenStyle = userColor
+
+	}
+	return list.Item{
+		ItemId:          fmt.Sprintf("%d", message.Id),
+		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + strings.TrimSpace(message.Content),
+		ItemDescription: string(message.Role),
+	}
 }

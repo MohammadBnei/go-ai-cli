@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/MohammadBnei/go-openai-cli/api"
 	"github.com/MohammadBnei/go-openai-cli/command"
@@ -16,7 +15,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
-	"golang.org/x/term"
 )
 
 type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
@@ -47,11 +45,7 @@ func reset(m *chatModel) (tea.Model, tea.Cmd) {
 }
 
 func (m *chatModel) resize() tea.Msg {
-	w, h, _ := term.GetSize(int(os.Stdout.Fd()))
-	return tea.WindowSizeMsg{
-		Width:  w,
-		Height: h,
-	}
+	return tea.WindowSizeMsg{Width: m.size.Width, Height: m.size.Height}
 }
 
 func closeContext(m *chatModel) (tea.Model, tea.Cmd) {
