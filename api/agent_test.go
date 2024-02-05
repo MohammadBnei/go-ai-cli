@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/MohammadBnei/go-openai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/tmc/langchaingo/chains"
-	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/tmc/langchaingo/llms/ollama"
 )
 
 func TestWebSearchAgent(t *testing.T) {
 	t.Log("TestWebSearchAgent")
-	llm, err := openai.New(openai.WithModel("gpt-4"))
+	llm, err := ollama.New(ollama.WithModel("llama2-uncensored"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,10 +23,10 @@ func TestWebSearchAgent(t *testing.T) {
 	}
 	t.Log("Created executor")
 
-	result, err := chains.Run(context.Background(), executor, "Was covid the worst scam of all ?")
+	result, err := chains.Run(context.Background(), executor, "Was covid the worst scam of all ? Important: Provide your sources.")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Log(result)
+	t.Log("Result: " + result)
 }
