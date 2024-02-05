@@ -30,7 +30,7 @@ func newListKeyMap() *listKeyMap {
 		),
 		curMessages: key.NewBinding(
 			key.WithKeys("ctrl+o"),
-			key.WithHelp("ctrl+mo", "current messages"),
+			key.WithHelp("ctrl+o", "current messages"),
 		),
 		deleteCurMessage: key.NewBinding(
 			key.WithKeys("ctrl+k"),
