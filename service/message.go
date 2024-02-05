@@ -125,7 +125,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 	}
 
 	if exists, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
-		return item.Content == content
+		return item.Content == content && item.Role == role
 	}); ok && content != "" {
 		return &exists, ErrAlreadyExist
 	}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/MohammadBnei/go-openai-cli/service"
 	"github.com/MohammadBnei/go-openai-cli/ui/event"
@@ -95,10 +94,7 @@ func getEditModel(id string) (tea.Model, error) {
 				}
 				return event.AddStackEvent{Stack: form.NewEditModel("Editing config model after updating the api type", modelSelectForm, func(form *huh.Form) tea.Cmd {
 					result := form.GetString("model")
-					msg := UpdateConfigValue("model", result, result)()
-					return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
-						return msg
-					})
+					return UpdateConfigValue("model", result, result)
 				})}
 			}
 

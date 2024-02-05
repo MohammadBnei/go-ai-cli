@@ -59,6 +59,24 @@ func toItem(message service.ChatMessage) list.Item {
 
 func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
+		AddFn: func(s string) tea.Cmd {
+			editModel := form.NewEditModel("Creating message", huh.NewForm(huh.NewGroup(
+				huh.NewText().Title("Content").Key("content").Lines(10),
+				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
+			)), func(form *huh.Form) tea.Cmd {
+				content := form.GetString("content")
+				role := form.Get("role").(service.ROLES)
+				msg, err := promptConfig.ChatMessages.AddMessage(content, role)
+				if err != nil {
+					return event.Error(err)
+				}
+				return func() tea.Msg {
+					return toItem(*msg)
+				}
+			})
+
+			return event.AddStack(editModel)
+		},
 		ChooseFn: func(s string) tea.Cmd {
 			message, err := getMessage(promptConfig, s)
 			if err != nil {
@@ -83,7 +101,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 		},
 		RemoveFn: func(s string) tea.Cmd {
 			id, err := strconv.Atoi(s)
-			if err == nil {
+			if err != nil {
 				return event.Error(err)
 			}
 			err = promptConfig.ChatMessages.DeleteMessage(id)

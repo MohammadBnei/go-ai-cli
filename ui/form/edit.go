@@ -10,8 +10,9 @@ import (
 )
 
 type editModel struct {
-	form  *huh.Form
-	title string
+	form      *huh.Form
+	title     string
+	submitted bool
 
 	onSubmit func(form *huh.Form) tea.Cmd
 }
@@ -37,9 +38,11 @@ func (m editModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	if m.form.State == huh.StateCompleted {
+	if m.form.State == huh.StateCompleted && !m.submitted {
+		m.submitted = true
 		if m.onSubmit != nil {
-			cmds = append(cmds, tea.Sequence(m.onSubmit(m.form), event.RemoveStack(m)))
+			cmds = append(cmds, event.RemoveStack(m), m.onSubmit(m.form))
+			return m, tea.Sequence(cmds...)
 		}
 	}
 
