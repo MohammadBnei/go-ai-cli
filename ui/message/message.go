@@ -122,11 +122,17 @@ func toItem(message service.ChatMessage) list.Item {
 		choosenStyle = assistantColor
 	case service.RoleUser:
 		choosenStyle = userColor
-
 	}
+
+	splitted := strings.Split(strings.TrimSpace(message.Content), "\n")
+	title := splitted[0]
+	if len(splitted) > 1 {
+		title += "..."
+	}
+	
 	return list.Item{
 		ItemId:          fmt.Sprintf("%d", message.Id),
-		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + strings.TrimSpace(message.Content),
+		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + title,
 		ItemDescription: string(message.Role),
 	}
 }

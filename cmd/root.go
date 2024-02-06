@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -115,6 +116,13 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if err = viper.WriteConfig(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+
+		}
 		fmt.Fprintln(os.Stderr, err)
 	}
 
