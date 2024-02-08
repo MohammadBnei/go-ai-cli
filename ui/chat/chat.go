@@ -60,10 +60,6 @@ func Chat(pc *service.PromptConfig) {
 	}
 }
 
-type (
-	errMsg error
-)
-
 type currentChatIndexes struct {
 	user      int
 	assistant int
@@ -90,6 +86,8 @@ type chatModel struct {
 
 	transition      bool
 	transitionModel *transition.Model
+
+	loading bool
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
@@ -162,6 +160,7 @@ func (m chatModel) Init() tea.Cmd {
 var commandSelectionFn = CommandSelectionFactory()
 
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.LoadingTitle()
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
@@ -262,10 +261,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				aiRes = str
 			}
 
-			if m.transition && m.transitionModel.Title == m.userPrompt {
-				m.transition = false
-			}
-
 			m.viewport.SetContent(aiRes)
 			m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
 
@@ -337,6 +332,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
+	m.LoadingTitle()
+
 	return m, tea.Batch(cmds...)
 }
 
@@ -360,6 +357,15 @@ func (m chatModel) View() string {
 		m.textarea.View(),
 		helpView,
 	))
+}
+
+func (m chatModel) LoadingTitle() {
+	m.loading = len(m.promptConfig.Contexts) != 0
+	if m.loading {
+		style.TitleStyle = style.TitleStyle.Background(style.LoadingBackgroundColor)
+	} else {
+		style.TitleStyle = style.TitleStyle.Background(style.NormalBackgroundColor)
+	}
 }
 
 func (m chatModel) GetTitleView() string {
