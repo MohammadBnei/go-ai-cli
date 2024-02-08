@@ -51,9 +51,13 @@ func DefaultStyle() *Styles {
 	return s
 }
 
+var chatProgram *tea.Program
+
 func Chat(pc *service.PromptConfig) {
 	p := tea.NewProgram(initialChatModel(pc),
 		tea.WithAltScreen())
+
+	chatProgram = p
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)

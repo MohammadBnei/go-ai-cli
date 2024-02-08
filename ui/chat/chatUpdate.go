@@ -22,24 +22,6 @@ import (
 
 type ChatUpdateFunc func(m *chatModel) (tea.Model, tea.Cmd)
 
-func reset(m chatModel) (chatModel, tea.Cmd) {
-	m.textarea.Reset()
-	m.aiResponse = getInfoContent(m)
-
-	m.userPrompt = "Infos"
-	m.currentChatIndices = &currentChatIndexes{
-		user:      -1,
-		assistant: -1,
-	}
-
-	err := viper.ReadInConfig()
-	if err != nil {
-		m.err = err
-	}
-
-	return m, event.UpdateChatContent("", "")
-}
-
 func getInfoContent(m chatModel) string {
 	smallTitleStyle := style.TitleStyle.Copy().Margin(0).Padding(0, 2)
 	return banner.Inline("go ai cli") + "\n" +
@@ -210,7 +192,6 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 }
 
 func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) error {
-
 	generate, err := api.GetGenerateFunction()
 	if err != nil {
 		return err
@@ -242,6 +223,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) er
 	}))
 
 	if err != nil {
+		chatProgram.Send(err)
 		return err
 	}
 
