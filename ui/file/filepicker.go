@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,6 +20,7 @@ type model struct {
 	selectedFiles []filetree.Item
 	keys          *keyMap
 	help          help.Model
+	title         string
 }
 
 // New creates a new instance of the UI.
@@ -41,6 +43,7 @@ func NewFilePicker(multipleMode bool) model {
 		selectedFiles: []filetree.Item{},
 		keys:          newKeyMap(),
 		help:          help.New(),
+		title:         "File Picker",
 	}
 }
 
@@ -58,7 +61,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.filetree.SetSize(msg.Width, msg.Height-lipgloss.Height(m.help.View(m.keys)))
+		m.filetree.SetSize(msg.Width, msg.Height-lipgloss.Height(m.help.View(m.keys))-lipgloss.Height(m.GetTitleView()))
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.selectFile):
@@ -72,7 +75,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.selectedFiles = append(m.selectedFiles, m.filetree.GetSelectedItem())
 		case key.Matches(msg, m.keys.submit):
-			return m, tea.Sequence(event.RemoveStack(m), event.FileSelection(m.selectedFiles, m.multiMode))
+			if len(m.selectedFiles) != 0 {
+				return m, tea.Sequence(event.RemoveStack(m), event.FileSelection(m.selectedFiles, m.multiMode))
+			}
 		}
 	}
 
@@ -84,5 +89,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View returns a string representation of the UI.
 func (m model) View() string {
-	return fmt.Sprintf("%s\n%s", m.filetree.View(), m.help.View(m.keys))
+	return fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filetree.View(), m.help.View(m.keys))
+}
+
+func (m model) GetTitleView() string {
+	numberOfItems := ""
+	if len(m.selectedFiles) > 0 {
+		numberOfItems = fmt.Sprintf(" (%d)", len(m.selectedFiles))
+	}
+	return style.TitleStyle.Render(m.title + numberOfItems)
 }

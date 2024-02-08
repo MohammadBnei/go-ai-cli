@@ -68,8 +68,8 @@ func newListKeyMap() *listKeyMap {
 			key.WithHelp("ctrl+d", "quit"),
 		),
 		cancel: key.NewBinding(
-			key.WithKeys("ctrl+c", "esc"),
-			key.WithHelp("ctrl+c/esc", "cancel"),
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "cancel"),
 		),
 
 		showInfo: key.NewBinding(
@@ -109,7 +109,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
 
-			case m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil && msg.String() == "ctrl+c":
+			case m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil:
 				return closeContext(m)
 
 			}
