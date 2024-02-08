@@ -107,7 +107,7 @@ func initConfig() {
 	viper.BindPFlags(RootCmd.PersistentFlags())
 
 	viper.SetDefault("OLLAMA_HOST", "http://127.0.0.1:11434")
-	viper.SetDefault("auto-save", true)
+	viper.SetDefault("auto-load", false)
 
 	viper.AutomaticEnv() // read in environment variables that match
 

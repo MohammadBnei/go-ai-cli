@@ -152,12 +152,13 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		transitionModel: transition.NewTransitionModel(""),
 	}
 
-	modelStruct.LoadLastChat()
-
 	return modelStruct
 }
 
 func (m chatModel) Init() tea.Cmd {
+	if viper.GetBool("auto-load") {
+		m.LoadLastChat()
+	}
 	return tea.SetWindowTitle("Go AI cli")
 }
 
