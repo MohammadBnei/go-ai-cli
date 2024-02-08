@@ -160,10 +160,15 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.textToSpeech):
-			if m.aiResponse != "" && len(m.stack) == 0 {
-				return m, func() tea.Msg {
-					return audio.PlayTextToSpeech(context.Background(), m.aiResponse)
-				}
+			if m.aiResponse != "" && m.currentChatIndices.assistant >= 0 && len(m.stack) == 0 {
+				ctx, cancel := context.WithCancel(context.Background())
+				m.promptConfig.AddContextWithId(ctx, cancel, m.currentChatIndices.assistant)
+				return m, tea.Sequence(func() tea.Msg {
+					return audio.PlayTextToSpeech(ctx, m.aiResponse)
+				}, func() tea.Msg {
+					m.promptConfig.DeleteContextById(m.currentChatIndices.assistant)
+					return nil
+				})
 			}
 
 		case key.Matches(msg, m.keys.addFile):

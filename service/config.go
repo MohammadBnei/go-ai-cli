@@ -58,9 +58,9 @@ func (pc *PromptConfig) DeleteContextById(id int) {
 }
 
 func (pc *PromptConfig) CloseContextById(id int) error {
-	ctx, ok := lo.Find(pc.Contexts, func(item ContextHold) bool { return item.UserChatId == id })
+	ctx, _, ok := lo.FindLastIndexOf(pc.Contexts, func(item ContextHold) bool { return item.UserChatId == id })
 	if !ok {
-		return errors.New(fmt.Sprintf("no context found with id %d, %s", id, pc.Contexts))
+		return fmt.Errorf("no context found with id %d, %s", id, pc.Contexts)
 	}
 	ctx.CancelFn()
 
@@ -71,3 +71,6 @@ func (pc *PromptConfig) CloseContextById(id int) error {
 	return nil
 }
 
+func (c ContextHold) String() string {
+	return fmt.Sprintf("[%d %s]", c.UserChatId, c.Ctx)
+}

@@ -42,8 +42,7 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	}
-	err := m.promptConfig.CloseContextById(m.currentChatIndices.user)
-	if err != nil {
+	if err := m.promptConfig.CloseContextById(m.currentChatIndices.user); err != nil {
 		m.err = err
 	}
 	return m, nil
