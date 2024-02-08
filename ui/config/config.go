@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
@@ -176,6 +177,10 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
 
 		}
 	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].ItemId < items[j].ItemId
+	})
 
 	return items
 }
