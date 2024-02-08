@@ -1,14 +1,18 @@
 package event
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mistakenelf/teacup/filetree"
+)
 
 type AddStackEvent struct {
 	Stack tea.Model
+	Title string
 }
 
-func AddStack(stack tea.Model) tea.Cmd {
+func AddStack(stack tea.Model, title string) tea.Cmd {
 	return func() tea.Msg {
-		return AddStackEvent{Stack: stack}
+		return AddStackEvent{Stack: stack, Title: title}
 	}
 }
 
@@ -28,15 +32,25 @@ func Error(err error) tea.Cmd {
 	}
 }
 
-type UpdateContentEvent struct {
+type UpdateChatContentEvent struct {
+	UserPrompt string
+	Content    string
+}
+
+type UpdateAiResponseEvent UpdateChatContentEvent
+type UpdateUserPromptEvent UpdateChatContentEvent
+
+type SetChatTextviewEvent struct {
 	Content string
 }
 
-type UpdateAiResponseEvent UpdateContentEvent
-type UpdateUserPromptEvent UpdateContentEvent
-
-func UpdateContent() tea.Msg {
-	return UpdateContentEvent{}
+func UpdateChatContent(userPromt, content string) tea.Cmd {
+	return func() tea.Msg {
+		return UpdateChatContentEvent{
+			UserPrompt: userPromt,
+			Content:    content,
+		}
+	}
 }
 
 func UpdateAiResponse(content string) tea.Cmd {
@@ -47,5 +61,55 @@ func UpdateAiResponse(content string) tea.Cmd {
 func UpdateUserPrompt(content string) tea.Cmd {
 	return func() tea.Msg {
 		return UpdateUserPromptEvent{Content: content}
+	}
+}
+
+func SetChatTextview(content string) tea.Cmd {
+	return func() tea.Msg {
+		return SetChatTextviewEvent{Content: content}
+	}
+}
+
+type ClearScreenEvent struct{}
+
+func ClearScreen() tea.Msg {
+	return ClearScreenEvent{}
+}
+
+type StartSpinnerEvent struct{}
+type StopSpinnerEvent struct{}
+
+func StartSpinner() tea.Msg {
+	return StartSpinnerEvent{}
+}
+func StopSpinner() tea.Msg {
+	return StopSpinnerEvent{}
+}
+
+type CancelEvent struct{}
+
+func Cancel() tea.Msg {
+	return CancelEvent{}
+}
+
+type TransitionEvent struct {
+	Title string
+}
+
+func Transition(title string) tea.Cmd {
+
+	return func() tea.Msg {
+		return TransitionEvent{Title: title}
+	}
+}
+
+type FileSelectionEvent struct {
+	Files     []filetree.Item
+	MultiMode bool
+}
+
+func FileSelection(files []filetree.Item, multiMode bool) tea.Cmd {
+	return func() tea.Msg {
+		return FileSelectionEvent{Files: files, MultiMode: multiMode}
 	}
 }

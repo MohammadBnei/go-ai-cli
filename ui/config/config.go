@@ -40,7 +40,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				if err != nil {
 					return event.Error(err)
 				}
-				return event.AddStack(editModel)
+				return event.AddStack(editModel, "Loading Editing "+id+"...")
 			case bool:
 				viper.Set(id, !value)
 				err := viper.WriteConfig()
@@ -65,7 +65,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				return event.Error(err)
 			}
 
-			return event.AddStack(editModel)
+			return event.AddStack(editModel, "Loading Editing "+id+"...")
 		},
 	}
 }
@@ -128,7 +128,7 @@ func getEditModel(id string) (tea.Model, error) {
 			result := form.GetBool(id)
 			updateEvent := UpdateConfigValue(id, result, helper.CheckedStringHelper(result))
 			if id == "md" {
-				return tea.Sequence(updateEvent, event.UpdateContent)
+				return tea.Sequence(updateEvent, event.UpdateChatContent("", ""))
 			}
 			return updateEvent
 		},

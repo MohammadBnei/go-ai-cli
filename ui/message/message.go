@@ -48,7 +48,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				}
 			})
 
-			return event.AddStack(editModel)
+			return event.AddStack(editModel, "Creating Message...")
 		},
 		ChooseFn: func(s string) tea.Cmd {
 			message, err := getMessage(promptConfig, s)
@@ -73,7 +73,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				}
 			})
 
-			return event.AddStack(editModel)
+			return event.AddStack(editModel, "Editing Message...")
 		},
 		RemoveFn: func(s string) tea.Cmd {
 			id, err := strconv.Atoi(s)
@@ -129,7 +129,7 @@ func toItem(message service.ChatMessage) list.Item {
 	if len(splitted) > 1 {
 		title += "..."
 	}
-	
+
 	return list.Item{
 		ItemId:          fmt.Sprintf("%d", message.Id),
 		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + title,

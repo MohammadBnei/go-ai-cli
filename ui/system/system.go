@@ -134,7 +134,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				}
 			})
 
-			return event.AddStack(editModel)
+			return event.AddStack(editModel, "Editing "+s+"...")
 		},
 		AddFn: func(_ string) tea.Cmd {
 			tRue := true
@@ -185,7 +185,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				}
 			})
 
-			return event.AddStack(addModel)
+			return event.AddStack(addModel, "Adding new system...")
 		},
 		RemoveFn: func(s string) tea.Cmd {
 			RemoveFromSystemList(s)

@@ -14,7 +14,6 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/golang-module/carbon/v2"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
@@ -38,11 +37,11 @@ func reset(m chatModel) (chatModel, tea.Cmd) {
 		m.err = err
 	}
 
-	return m, event.UpdateContent
+	return m, event.UpdateChatContent("", "")
 }
 
 func getInfoContent(m chatModel) string {
-	smallTitleStyle := style.TitleStyle.Margin(0).Padding(0, 2)
+	smallTitleStyle := style.TitleStyle.Copy().Margin(0).Padding(0, 2)
 	return banner.Inline("go ai cli") + "\n" +
 		lipgloss.NewStyle().AlignVertical(lipgloss.Center).Height(m.viewport.Height).Render(
 			"Api : "+smallTitleStyle.Render(viper.GetString("API_TYPE"))+"\n"+
@@ -68,10 +67,6 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 	return m, nil
 }
 
-func quit(m chatModel) (chatModel, tea.Cmd) {
-	return m, tea.Quit
-}
-
 func addPagerToStack(m chatModel) (chatModel, tea.Cmd) {
 	if m.aiResponse == "" {
 		return m, nil
@@ -82,7 +77,7 @@ func addPagerToStack(m chatModel) (chatModel, tea.Cmd) {
 		return ok
 	})
 	if !ok {
-		return m, event.AddStack(pager.NewPagerModel(m.userPrompt, m.aiResponse, m.promptConfig))
+		return m, event.AddStack(pager.NewPagerModel(m.userPrompt, m.aiResponse, m.promptConfig), "Loading Pager...")
 	} else {
 		m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
 	}
@@ -105,7 +100,7 @@ func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
-	return m, event.UpdateContent
+	return m, event.UpdateChatContent("", "")
 }
 
 func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
@@ -120,7 +115,7 @@ func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 	}
 	m.changeCurrentChatHelper(c)
 	m.viewport.GotoTop()
-	return m, event.UpdateContent
+	return m, event.UpdateChatContent("", "")
 }
 
 func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
@@ -150,22 +145,23 @@ func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
 	return nil, nil
 }
 
-func saveChat(m chatModel) error {
-	chatMessages := m.promptConfig.ChatMessages
-	chatMessages.Id = "last-chat"
-	chatMessages.Description = "Saved at : " + carbon.Now().Format("2006-01-02 15:04:05")
-
-	err := chatMessages.SaveToFile(chatMessages.Id)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 	m.userPrompt = m.textarea.Value()
 	m.promptConfig.UserPrompt = m.userPrompt
+
+	userMsg, err := m.promptConfig.ChatMessages.AddMessage(m.promptConfig.UserPrompt, service.RoleUser)
+	if err != nil {
+		return m, event.Error(err)
+	}
+	assistantMessage, err := m.promptConfig.ChatMessages.AddMessage("", service.RoleAssistant)
+	if err != nil {
+		return m, event.Error(err)
+	}
+
+	m.currentChatIndices.user = userMsg.Id
+	m.currentChatIndices.assistant = assistantMessage.Id
+
+	m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
 
 	go func() {
 		err := sendPrompt(m.promptConfig, m.currentChatIndices)
@@ -177,8 +173,10 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 	m.textarea.Reset()
 	m.aiResponse = ""
 
+	m.viewport.SetContent("")
+
 	m.viewport.GotoBottom()
-	return m, waitForUpdate(m.promptConfig.UpdateChan)
+	return m, tea.Sequence(event.Transition(m.userPrompt), waitForUpdate(m.promptConfig.UpdateChan))
 }
 
 func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
@@ -207,19 +205,6 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 }
 
 func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) error {
-	userMsg, err := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
-	if err != nil {
-		return err
-	}
-	assistantMessage, err := pc.ChatMessages.AddMessage("", service.RoleAssistant)
-	if err != nil {
-		return err
-	}
-
-	currentChatIds.user = userMsg.Id
-	currentChatIds.assistant = assistantMessage.Id
-
-	pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
 
 	generate, err := api.GetGenerateFunction()
 	if err != nil {
@@ -227,20 +212,20 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) er
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	pc.AddContextWithId(ctx, cancel, userMsg.Id)
-	defer pc.DeleteContextById(userMsg.Id)
+	pc.AddContextWithId(ctx, cancel, currentChatIds.user)
+	defer pc.DeleteContextById(currentChatIds.user)
 
 	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(), llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 		if err := ctx.Err(); err != nil {
-			pc.DeleteContextById(userMsg.Id)
+			pc.DeleteContextById(currentChatIds.user)
 			if err == io.EOF {
 				return nil
 			}
 			return err
 		}
-		previous := pc.ChatMessages.FindById(assistantMessage.Id)
+		previous := pc.ChatMessages.FindById(currentChatIds.assistant)
 		if previous == nil {
-			pc.DeleteContextById(userMsg.Id)
+			pc.DeleteContextById(currentChatIds.user)
 			return errors.New("previous message not found")
 		}
 		previous.Content += string(chunk)

@@ -1,11 +1,15 @@
 package service
 
 import (
+	"context"
 	"errors"
+	"io"
 	"os"
 	"sort"
 	"time"
 
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/audio"
 	"github.com/MohammadBnei/go-ai-cli/tool"
 	"github.com/jinzhu/copier"
 	"github.com/pkoukk/tiktoken-go"
@@ -42,6 +46,8 @@ type ChatMessage struct {
 	ToolCall openai.ToolCall
 	Date     time.Time
 
+	Audio io.ReadCloser
+
 	Meta Meta
 }
 
@@ -77,7 +83,7 @@ func (c *ChatMessages) SetDescription(description string) *ChatMessages {
 
 func (c *ChatMessages) SaveToFile(filename string) error {
 	if filename == "" {
-		filename = c.Id
+		return errors.New("filename cannot be empty")
 	}
 
 	data, err := yaml.Marshal(c)
@@ -85,7 +91,7 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 		return err
 	}
 
-	err = tool.SaveToFile(data, viper.GetString("configpath")+"/"+filename+".yml", false)
+	err = tool.SaveToFile(data, filename, false)
 	if err != nil {
 		return err
 	}
@@ -99,7 +105,13 @@ func (c *ChatMessages) LoadFromFile(filename string) error {
 		return err
 	}
 
-	if err := yaml.Unmarshal(content, c); err != nil {
+	marshalledC := &ChatMessages{}
+
+	if err := yaml.Unmarshal(content, marshalledC); err != nil {
+		return err
+	}
+
+	if err = copier.Copy(c, marshalledC); err != nil {
 		return err
 	}
 
@@ -174,9 +186,37 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 	return &msg, nil
 }
 
+func (c *ChatMessages) AddMessageFromFile(filename string) (*ChatMessage, error) {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.AddMessage(string(content), RoleUser)
+}
+
 func (c *ChatMessage) AsTypeFile() *ChatMessage {
 	c.Type = TypeFile
 	return c
+}
+
+func (c *ChatMessage) FetchAudio(ctx context.Context) error {
+	data, err := api.TextToSpeech(ctx, c.Content)
+	if err != nil {
+		return err
+	}
+
+	c.Audio = data
+	return nil
+}
+
+func (c *ChatMessage) SetAudio(data io.ReadCloser) *ChatMessage {
+	c.Audio = data
+	return c
+}
+
+func (c *ChatMessage) PlayAudio(ctx context.Context) error {
+	return audio.PlaySound(ctx, c.Audio)
 }
 
 func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int) error {

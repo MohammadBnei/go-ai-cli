@@ -1,14 +1,19 @@
 package chat
 
 import (
+	"context"
+
+	"github.com/MohammadBnei/go-ai-cli/audio"
 	"github.com/MohammadBnei/go-ai-cli/ui/config"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/info"
 	"github.com/MohammadBnei/go-ai-cli/ui/message"
+	"github.com/MohammadBnei/go-ai-cli/ui/quit"
+	"github.com/MohammadBnei/go-ai-cli/ui/speech"
 	"github.com/MohammadBnei/go-ai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/viper"
 )
 
 type listKeyMap struct {
@@ -22,6 +27,9 @@ type listKeyMap struct {
 	cancel               key.Binding
 	toggleHelpMenu       key.Binding
 	showInfo             key.Binding
+	speechToText         key.Binding
+	textToSpeech         key.Binding
+	addFile              key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -68,6 +76,19 @@ func newListKeyMap() *listKeyMap {
 			key.WithKeys("ctrl+t"),
 			key.WithHelp("ctrl+t", "show info"),
 		),
+
+		speechToText: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "speech to text"),
+		),
+		textToSpeech: key.NewBinding(
+			key.WithKeys("ctrl+b"),
+			key.WithHelp("ctrl+b", "text to speech"),
+		),
+		addFile: key.NewBinding(
+			key.WithKeys("ctrl+a"),
+			key.WithHelp("ctrl+a", "add file(s)"),
+		),
 	}
 }
 
@@ -82,7 +103,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				return m, nil
 
 			case len(m.stack) > 0:
-				return m, event.RemoveStack(m.stack[len(m.stack)-1])
+				return m, tea.Sequence(event.Cancel, event.RemoveStack(m.stack[len(m.stack)-1]))
 
 			case m.help.ShowAll:
 				m.help.ShowAll = false
@@ -94,13 +115,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.quit):
-			if viper.GetBool("auto-save") {
-				err := saveChat(m)
-				if err != nil {
-					panic(err)
-				}
-			}
-			return quit(m)
+			return m, event.AddStack(quit.NewQuitModel(m.promptConfig), "Quitting...")
 
 		case key.Matches(msg, m.keys.toggleHelpMenu):
 			m.help.ShowAll = !m.help.ShowAll
@@ -108,25 +123,27 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.systemMessages):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(system.NewSystemModel(m.promptConfig))
+				return m, event.AddStack(system.NewSystemModel(m.promptConfig), "Loading system...")
 			}
 
 		case key.Matches(msg, m.keys.globalConfig):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(config.NewConfigModel(m.promptConfig))
+				return m, event.AddStack(config.NewConfigModel(m.promptConfig), "Loading config...")
 			}
 
 		case key.Matches(msg, m.keys.curMessages):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(message.NewMessageModel(m.promptConfig))
+				return m, event.AddStack(message.NewMessageModel(m.promptConfig), "Loading messages...")
 			}
 
 		case key.Matches(msg, m.keys.changeCurMessageUp):
-			return changeResponseUp(m)
-
+			if len(m.stack) == 0 {
+				return changeResponseUp(m)
+			}
 		case key.Matches(msg, m.keys.changeCurMessageDown):
-			return changeResponseDown(m)
-
+			if len(m.stack) == 0 {
+				return changeResponseDown(m)
+			}
 		case key.Matches(msg, m.keys.pager):
 			if len(m.stack) == 0 {
 				return addPagerToStack(m)
@@ -134,9 +151,25 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.showInfo):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(info.NewInfoModel("Info", getInfoContent(m)))
+				return m, event.AddStack(info.NewInfoModel("Info", getInfoContent(m)), "Loading info...")
 			}
 
+		case key.Matches(msg, m.keys.speechToText):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(speech.NewSpeechModel(m.promptConfig, m.textarea.Value()), "Loading speech...")
+			}
+
+		case key.Matches(msg, m.keys.textToSpeech):
+			if m.aiResponse != "" && len(m.stack) == 0 {
+				return m, func() tea.Msg {
+					return audio.PlayTextToSpeech(context.Background(), m.aiResponse)
+				}
+			}
+
+		case key.Matches(msg, m.keys.addFile):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(file.NewFilePicker(true), "Loading filepicker...")
+			}
 		}
 	}
 
@@ -152,6 +185,7 @@ func (k *listKeyMap) FullHelp() [][]key.Binding {
 		{k.systemMessages, k.curMessages, k.globalConfig},
 		{k.changeCurMessageDown, k.changeCurMessageUp, k.pager},
 		{k.cancel, k.quit, k.toggleHelpMenu},
-		{k.showInfo},
+		{k.showInfo, k.speechToText, k.textToSpeech},
+		{k.addFile},
 	}
 }

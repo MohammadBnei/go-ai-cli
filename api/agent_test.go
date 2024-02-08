@@ -11,7 +11,7 @@ import (
 
 func TestWebSearchAgent(t *testing.T) {
 	t.Log("TestWebSearchAgent")
-	llm, err := ollama.New(ollama.WithModel("llama2-uncensored"))
+	llm, err := ollama.New(ollama.WithModel("llava"))
 	if err != nil {
 		t.Fatal(err)
 	}

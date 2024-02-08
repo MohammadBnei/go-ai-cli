@@ -1,19 +1,28 @@
 package file
 
 import (
+	"fmt"
 	"os"
 
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/mistakenelf/teacup/filetree"
+	"github.com/samber/lo"
 )
 
 type model struct {
-	filetree filetree.Model
+	filetree      filetree.Model
+	multiMode     bool
+	selectedFiles []filetree.Item
+	keys          *keyMap
+	help          help.Model
 }
 
 // New creates a new instance of the UI.
-func NewFilePicker() model {
+func NewFilePicker(multipleMode bool) model {
 	startDir, _ := os.Getwd()
 	filetreeModel := filetree.New(
 		true,
@@ -27,7 +36,11 @@ func NewFilePicker() model {
 	)
 
 	return model{
-		filetree: filetreeModel,
+		filetree:      filetreeModel,
+		multiMode:     multipleMode,
+		selectedFiles: []filetree.Item{},
+		keys:          newKeyMap(),
+		help:          help.New(),
 	}
 }
 
@@ -45,13 +58,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.filetree.SetSize(msg.Width, msg.Height)
+		m.filetree.SetSize(msg.Width, msg.Height-lipgloss.Height(m.help.View(m.keys)))
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch {
+		case key.Matches(msg, m.keys.selectFile):
+			if _, ok := lo.Find(m.selectedFiles, func(item filetree.Item) bool {
+				return item.FileName() == m.filetree.GetSelectedItem().FileName()
+			}); ok {
+				m.selectedFiles = lo.Filter(m.selectedFiles, func(item filetree.Item, _ int) bool {
+					return item.FileName() != m.filetree.GetSelectedItem().FileName()
+				})
+				return m, nil
+			}
+			m.selectedFiles = append(m.selectedFiles, m.filetree.GetSelectedItem())
+		case key.Matches(msg, m.keys.submit):
+			return m, tea.Sequence(event.RemoveStack(m), event.FileSelection(m.selectedFiles, m.multiMode))
 		}
 	}
-
-	m.filetree.GetSelectedItem()
 
 	m.filetree, cmd = m.filetree.Update(msg)
 	cmds = append(cmds, cmd)
@@ -61,5 +84,5 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View returns a string representation of the UI.
 func (m model) View() string {
-	return m.filetree.View()
+	return fmt.Sprintf("%s\n%s", m.filetree.View(), m.help.View(m.keys))
 }

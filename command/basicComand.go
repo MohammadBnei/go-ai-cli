@@ -1,10 +1,8 @@
 package command
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
@@ -14,39 +12,39 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func SendPrompt(pc *service.PromptConfig, streamFunc ...func(*api.GPTChanResponse)) error {
-	userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
-	assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
+func SendPrompt(pc *service.PromptConfig, streamFunc ...any) error {
+	// userMsg, _ := pc.ChatMessages.AddMessage(pc.UserPrompt, service.RoleUser)
+	// assistantMessage, _ := pc.ChatMessages.AddMessage("", service.RoleAssistant)
 
-	pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
+	// pc.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	pc.AddContextWithId(ctx, cancel, userMsg.Id)
+	// ctx, cancel := context.WithCancel(context.Background())
+	// pc.AddContextWithId(ctx, cancel, userMsg.Id)
 
-	stream, err := api.SendPromptToOpenAi(ctx, &api.GPTChanRequest{
-		Messages: pc.ChatMessages.FilterByOpenAIRoles(),
-	})
-	if err != nil {
-		return err
-	}
+	// stream, err := api.SendPromptToOpenAi(ctx, &api.GPTChanRequest{
+	// 	Messages: pc.ChatMessages.FilterByOpenAIRoles(),
+	// })
+	// if err != nil {
+	// 	return err
+	// }
 
-	go func(stream <-chan *api.GPTChanResponse) {
-		defer pc.DeleteContext(ctx)
-		for v := range stream {
-			for _, fn := range streamFunc {
-				fn(v)
-			}
-			previous := pc.ChatMessages.FindById(assistantMessage.Id)
-			if previous == nil {
-				log.Fatalln("previous message not found")
-			}
-			previous.Content += string(v.Content)
-			pc.ChatMessages.UpdateMessage(*previous)
-			if pc.UpdateChan != nil {
-				pc.UpdateChan <- *previous
-			}
-		}
-	}(stream)
+	// go func(stream <-chan *api.GPTChanResponse) {
+	// 	defer pc.DeleteContext(ctx)
+	// 	for v := range stream {
+	// 		for _, fn := range streamFunc {
+	// 			fn(v)
+	// 		}
+	// 		previous := pc.ChatMessages.FindById(assistantMessage.Id)
+	// 		if previous == nil {
+	// 			log.Fatalln("previous message not found")
+	// 		}
+	// 		previous.Content += string(v.Content)
+	// 		pc.ChatMessages.UpdateMessage(*previous)
+	// 		if pc.UpdateChan != nil {
+	// 			pc.UpdateChan <- *previous
+	// 		}
+	// 	}
+	// }(stream)
 
 	return nil
 }

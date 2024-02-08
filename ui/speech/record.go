@@ -1,45 +1,42 @@
-//go:build portaudio
-// +build portaudio
-
-package audio
+package speech
 
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"os"
 	"time"
 
-	"os"
-
 	"github.com/MohammadBnei/go-ai-cli/api"
-	"github.com/briandowns/spinner"
 	"github.com/garlicgarrison/go-recorder/recorder"
 	"github.com/garlicgarrison/go-recorder/stream"
 )
 
 type SpeechConfig struct {
-	MaxMinutes time.Duration
-	Lang       string
-	Detect     bool
+	Duration time.Duration
+	Lang     string
 }
 
-func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
-	tmpFileName := fmt.Sprintf("speech-%d", time.Now().UnixNano())
-	err := RecordAudioToFile(ctx, config.MaxMinutes, tmpFileName)
+func SpeechToText(ctx context.Context, aiContext context.Context, config *SpeechConfig) (string, error) {
+	tmpFileName := fmt.Sprintf("speech-%d.wav", time.Now().UnixNano())
+	err := recordAudio(ctx, tmpFileName, config.Duration)
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpFileName + ".wav")
+	defer os.Remove(tmpFileName)
 
-	s := spinner.New(spinner.CharSets[35], 100*time.Millisecond)
-	s.Start()
-	defer s.Stop()
+	if f, err := os.Open(tmpFileName); err == nil {
+		stat, _ := f.Stat()
+		if stat.Size() >= 26214400 {
+			return "", errors.New("file too big")
+		}
+	}
 
-	return api.SpeechToText(ctx, tmpFileName+".wav", config.Lang)
+	return api.SpeechToText(aiContext, tmpFileName, config.Lang)
 }
 
-func RecordAudioToFile(ctx context.Context, maxTime time.Duration, filename string) error {
-
+func recordAudio(ctx context.Context, filename string, maxDuration time.Duration) error {
 	stream, err := stream.NewStream(stream.DefaultStreamConfig())
 	if err != nil {
 		return err
@@ -47,7 +44,7 @@ func RecordAudioToFile(ctx context.Context, maxTime time.Duration, filename stri
 	defer stream.Terminate()
 
 	cfg := recorder.DefaultRecorderConfig()
-	cfg.MaxTime = int(maxTime)
+	cfg.MaxTime = int(maxDuration / time.Millisecond)
 
 	rec, err := recorder.NewRecorder(cfg, stream)
 
@@ -60,10 +57,8 @@ func RecordAudioToFile(ctx context.Context, maxTime time.Duration, filename stri
 	defer stream.Close()
 	doneChan := make(chan bool)
 	go func() {
-		select {
-		case <-ctx.Done():
-			doneChan <- true
-		}
+		<-ctx.Done()
+		doneChan <- true
 	}()
 	recording, err = rec.Record(recorder.WAV, doneChan)
 	if err != nil {

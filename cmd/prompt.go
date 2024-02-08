@@ -38,6 +38,8 @@ var promptCmd = &cobra.Command{
 
 		chat.Chat(promptConfig)
 
+		recover()
+
 	},
 }
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -18,6 +19,8 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/ui/helper"
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
+	"github.com/MohammadBnei/go-ai-cli/ui/transition"
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -84,13 +87,14 @@ type chatModel struct {
 	mdRenderer *glamour.TermRenderer
 	keys       *listKeyMap
 	help       help.Model
+
+	transition      bool
+	transitionModel *transition.Model
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
 	var err error
-	if viper.GetBool("auto-save") {
-		err = pc.ChatMessages.LoadFromFile(viper.GetString("configpath") + "/last-chat.yml")
-	}
+
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -108,15 +112,13 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	ta.ShowLineNumbers = false
 
-	smallTitleStyle := style.TitleStyle.Margin(0).Padding(0, 2)
+	smallTitleStyle := style.TitleStyle.Copy().Margin(0).Padding(0, 2)
 
 	vp := viewport.New(w, 0)
 	vp.SetContent(banner.Inline("go ai cli") + "\n" +
 		banner.Inline("bnei") + "\n\n" +
 		"Api : " + smallTitleStyle.Render(viper.GetString("API_TYPE")) + "\n" +
-		"Model : " + smallTitleStyle.Render(viper.GetString("model")) + "\n" +
-		"Messages : " + smallTitleStyle.Render(fmt.Sprintf("%d", len(pc.ChatMessages.Messages))) + "\n" +
-		"Tokens : " + smallTitleStyle.Render(fmt.Sprintf("%d", pc.ChatMessages.TotalTokens)) + "\n",
+		"Model : " + smallTitleStyle.Render(viper.GetString("model")) + "\n",
 	)
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
@@ -144,13 +146,17 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		mdRenderer: mdRenderer,
 
 		help: help.New(),
+
+		transitionModel: transition.NewTransitionModel(""),
 	}
+
+	modelStruct.LoadLastChat()
 
 	return modelStruct
 }
 
 func (m chatModel) Init() tea.Cmd {
-	return nil
+	return tea.SetWindowTitle("Go AI cli")
 }
 
 var commandSelectionFn = CommandSelectionFactory()
@@ -162,15 +168,18 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	cmds := []tea.Cmd{}
-
 	switch msg := msg.(type) {
+	// Prevent the cursor of the textarea from blinking
+	// Prevents screen blinking issues
+	case cursor.BlinkMsg:
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.size = msg
 
 		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
 
 		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
+		m.viewport.Height = msg.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
 
 	case tea.KeyMsg:
 		if m.err != nil {
@@ -185,9 +194,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 
-		case tea.KeyCtrlR:
-			return reset(m)
-
 		case tea.KeyCtrlU:
 			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
 				m.textarea.SetValue(m.history.Previous())
@@ -200,18 +206,18 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyCtrlF:
 			if len(m.stack) == 0 {
-				return m, event.AddStack(file.NewFilePicker())
+				return m, event.AddStack(file.NewFilePicker(true), "Loading Filepicker...")
 			}
 
 		case tea.KeyCtrlE:
 			if len(m.stack) == 0 {
-				return m, event.AddStack(list.NewFancyListModel("Errors", lo.Map(m.errorList, func(e error, _ int) list.Item {
+				return m, event.AddStack(list.NewFancyListModel("Errors", lo.Map(m.errorList, func(e error, index int) list.Item {
 					return list.Item{
-						ItemId:          e.Error(),
+						ItemId:          fmt.Sprintf("%d", index),
 						ItemTitle:       e.Error(),
-						ItemDescription: e.Error(),
+						ItemDescription: "",
 					}
-				}), nil))
+				}), nil), "Loading Errors...")
 			}
 
 		case tea.KeyEnter:
@@ -230,8 +236,40 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-	case event.UpdateContentEvent:
-		cmds = append(cmds, event.UpdateAiResponse(m.aiResponse), event.UpdateUserPrompt(m.userPrompt))
+	case event.ClearScreenEvent:
+		m.viewport.SetContent("")
+		return m, nil
+
+	case event.SetChatTextviewEvent:
+		m.textarea.SetValue(msg.Content)
+
+	case event.UpdateChatContentEvent:
+		if msg.UserPrompt != "" {
+			m.userPrompt = msg.UserPrompt
+		}
+
+		if msg.Content != "" {
+			m.aiResponse = msg.Content
+			cmds = append(cmds, event.UpdateAiResponse(m.aiResponse))
+		}
+		if m.userPrompt != "" {
+			aiRes := m.aiResponse
+			if viper.GetBool("md") && m.userPrompt != "Infos" {
+				str, err := m.mdRenderer.Render(aiRes)
+				if err != nil {
+					return m, event.Error(err)
+				}
+				aiRes = str
+			}
+
+			if m.transition && m.transitionModel.Title == m.userPrompt {
+				m.transition = false
+			}
+
+			m.viewport.SetContent(aiRes)
+			m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
+
+		}
 
 	case event.RemoveStackEvent:
 		if msg.Stack != nil {
@@ -245,11 +283,17 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// TODO: find better solutions, direct comparison provokes panic
 		m.stack = m.stack[:len(m.stack)-1]
-		return m, m.resize
-
+		if len(m.stack) == 0 {
+			return m, tea.Sequence(event.Transition("..."), m.Init(), event.Transition(""), m.resize)
+		}
+		return m, nil
 	case event.AddStackEvent:
 		m.stack = append(m.stack, msg.Stack)
-		return m, tea.Sequence(m.stack[len(m.stack)-1].Init(), m.resize, event.UpdateContent)
+		return m, tea.Sequence(event.Transition(msg.Title), m.stack[len(m.stack)-1].Init(), event.Transition(""), m.resize, event.UpdateChatContent(m.userPrompt, m.aiResponse))
+
+	case event.TransitionEvent:
+		m.transition = msg.Title != ""
+		m.transitionModel.Title = msg.Title
 
 	case service.ChatMessage:
 		if msg.Id == m.currentChatIndices.user {
@@ -260,7 +304,20 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.aiResponse = msg.Content
 		}
 
-		cmds = append(cmds, waitForUpdate(m.promptConfig.UpdateChan), event.UpdateContent)
+		cmds = append(cmds, tea.Sequence(event.UpdateChatContent(m.userPrompt, m.aiResponse), waitForUpdate(m.promptConfig.UpdateChan)))
+
+	case event.StartSpinnerEvent:
+		return m, nil
+
+	case event.FileSelectionEvent:
+		if len(m.stack) == 0 {
+			for _, item := range msg.Files {
+				_, err := m.promptConfig.ChatMessages.AddMessageFromFile(item.FileName())
+				if err != nil {
+					return m, event.Error(err)
+				}
+			}
+		}
 
 	case error:
 		m.err = msg
@@ -280,23 +337,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
-	if m.userPrompt != "" {
-		aiRes := m.aiResponse
-		if viper.GetBool("md") && m.userPrompt != "Infos" {
-			str, err := m.mdRenderer.Render(aiRes)
-			if err != nil {
-				return m, event.Error(err)
-			}
-			aiRes = str
-		}
-		userPrompt := m.userPrompt
-		if m.currentChatIndices.user >= 0 {
-			_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatIndices.user })
-			userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
-		}
-		m.viewport.SetContent(fmt.Sprintf("%s\n%s", style.TitleStyle.Render(userPrompt), aiRes))
-	}
-
 	return m, tea.Batch(cmds...)
 }
 
@@ -305,16 +345,33 @@ func (m chatModel) View() string {
 		return fmt.Sprintf("Error: %s", style.StatusMessageStyle(m.err.Error()))
 	}
 
+	if m.transition {
+		return AppStyle.Render(m.transitionModel.View())
+	}
+
 	if len(m.stack) > 0 {
 		return AppStyle.Render(m.stack[len(m.stack)-1].View())
 	}
 
 	helpView := m.help.View(m.keys)
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s\n%s",
+		m.GetTitleView(),
 		m.viewport.View(),
 		m.textarea.View(),
 		helpView,
 	))
+}
+
+func (m chatModel) GetTitleView() string {
+	userPrompt := m.userPrompt
+	if m.currentChatIndices.user >= 0 {
+		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatIndices.user })
+		userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
+	}
+	if userPrompt == "" {
+		userPrompt = "Chat"
+	}
+	return style.TitleStyle.Render(userPrompt)
 }
 
 func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
@@ -354,5 +411,12 @@ func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error 
 		}
 
 		return err
+	}
+}
+
+func (m *chatModel) LoadLastChat() {
+	lastChatPath := filepath.Dir(viper.GetViper().ConfigFileUsed()) + "/last-chat.yml"
+	if stat, err := os.Stat(lastChatPath); err == nil && !stat.IsDir() {
+		m.err = m.promptConfig.ChatMessages.LoadFromFile(lastChatPath)
 	}
 }

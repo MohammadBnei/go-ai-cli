@@ -5,6 +5,18 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch test function",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${file}",
+      "args": [],
+      "env": {
+        "OPENAI_API_KEY": "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"
+      },
+      "showLog": true
+    },
+    {
       "name": "Launch file",
       "type": "go",
       "request": "launch",
@@ -13,6 +25,5 @@
       "args": ["prompt"],
       "console": "integratedTerminal"
     }
-
   ]
 }

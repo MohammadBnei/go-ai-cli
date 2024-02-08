@@ -27,7 +27,6 @@ import (
 	"os"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
-	"github.com/MohammadBnei/go-ai-cli/cmd/speech"
 	"github.com/fsnotify/fsnotify"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
@@ -64,7 +63,7 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yaml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
 	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
 	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
 
@@ -95,8 +94,6 @@ func init() {
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	})
-
-	RootCmd.AddCommand(speech.SpeechCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
