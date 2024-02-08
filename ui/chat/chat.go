@@ -32,7 +32,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
-	"moul.io/banner"
 )
 
 var (
@@ -114,14 +113,7 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	ta.ShowLineNumbers = false
 
-	smallTitleStyle := style.TitleStyle.Copy().Margin(0).Padding(0, 2)
-
 	vp := viewport.New(w, 0)
-	vp.SetContent(banner.Inline("go ai cli") + "\n" +
-		banner.Inline("bnei") + "\n\n" +
-		"Api : " + smallTitleStyle.Render(viper.GetString("API_TYPE")) + "\n" +
-		"Model : " + smallTitleStyle.Render(viper.GetString("model")) + "\n",
-	)
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
@@ -337,6 +329,13 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
+	if m.currentChatIndices.assistant == -1 &&
+		m.currentChatIndices.user == -1 &&
+		m.userPrompt == "" &&
+		m.aiResponse == "" {
+		m.Intro()
+	}
+
 	m.LoadingTitle()
 
 	return m, tea.Batch(cmds...)
@@ -430,4 +429,8 @@ func (m *chatModel) LoadLastChat() {
 	if stat, err := os.Stat(lastChatPath); err == nil && !stat.IsDir() {
 		m.err = m.promptConfig.ChatMessages.LoadFromFile(lastChatPath)
 	}
+}
+
+func (m *chatModel) Intro() {
+	m.viewport.SetContent(getInfoContent(*m))
 }
