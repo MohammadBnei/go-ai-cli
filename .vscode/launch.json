@@ -11,9 +11,6 @@
       "mode": "test",
       "program": "${file}",
       "args": [],
-      "env": {
-        "OPENAI_API_KEY": "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"
-      },
       "showLog": true
     },
     {
