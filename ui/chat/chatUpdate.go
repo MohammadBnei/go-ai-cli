@@ -144,17 +144,7 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 
 	m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
 
-	go sendPrompt(m.promptConfig, m.currentChatIndices)
-	// if err != nil {
-	// 	m.err = err
-
-	// 	m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.user)
-	// 	m.promptConfig.ChatMessages.DeleteMessage(m.currentChatIndices.assistant)
-	// 	m.currentChatIndices.assistant = -1
-	// 	m.currentChatIndices.user = -1
-
-	// 	m.userPrompt = ""
-	// }
+	go sendPrompt(m.promptConfig, *m.currentChatIndices)
 
 	m.textarea.Reset()
 	m.aiResponse = ""
@@ -190,7 +180,7 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 
 }
 
-func sendPrompt(pc *service.PromptConfig, currentChatIds *currentChatIndexes) error {
+func sendPrompt(pc *service.PromptConfig, currentChatIds currentChatIndexes) error {
 	generate, err := api.GetGenerateFunction()
 	if err != nil {
 		return err

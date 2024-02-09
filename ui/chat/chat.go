@@ -144,13 +144,14 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		transitionModel: transition.NewTransitionModel(""),
 	}
 
+	if viper.GetBool("auto-load") {
+		modelStruct.LoadLastChat()
+	}
+
 	return modelStruct
 }
 
 func (m chatModel) Init() tea.Cmd {
-	if viper.GetBool("auto-load") {
-		m.LoadLastChat()
-	}
 	return tea.SetWindowTitle("Go AI cli")
 }
 
@@ -170,12 +171,15 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case cursor.BlinkMsg:
 		return m, nil
 	case tea.WindowSizeMsg:
-		m.size = msg
 
-		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
+		w, h := AppStyle.GetFrameSize()
+		m.size.Height = msg.Height
+		m.size.Width = msg.Width
 
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
+		m.viewport.Width = m.size.Width - w
+		m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
+
+		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width-w))
 
 	case tea.KeyMsg:
 		if m.err != nil {
