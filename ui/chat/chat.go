@@ -175,6 +175,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		w, h := AppStyle.GetFrameSize()
 		m.size.Height = msg.Height
 		m.size.Width = msg.Width
+		style.TitleStyle.Width(m.size.Width -w)
 
 		m.viewport.Width = m.size.Width - w
 		m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
@@ -193,6 +194,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Type {
+		case tea.KeyCtrlW:
+			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
 
 		case tea.KeyCtrlU:
 			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
