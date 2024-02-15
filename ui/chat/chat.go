@@ -182,7 +182,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Width = m.size.Width - w
 		m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
 
-		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.size.Width-w))
+		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
 
 	case tea.KeyMsg:
 		if m.err != nil {
@@ -200,9 +200,17 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.stack) == 0 {
 				switch {
 				case m.currentChatIndices.user != -1:
-					m.userPrompt = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user).Content
+					if c := m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user); c != nil {
+						m.userPrompt = c.Content
+					} else {
+						m.currentChatIndices.user = -1
+					}
 				case m.currentChatIndices.assistant != -1:
-					m.aiResponse = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant).Content
+					if c := m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant); c != nil {
+						m.aiResponse = c.Content
+					} else {
+						m.currentChatIndices.assistant = -1
+					}
 				}
 			}
 			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
