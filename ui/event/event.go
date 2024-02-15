@@ -2,7 +2,6 @@ package event
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/mistakenelf/teacup/filetree"
 )
 
 type AddStackEvent struct {
@@ -104,11 +103,11 @@ func Transition(title string) tea.Cmd {
 }
 
 type FileSelectionEvent struct {
-	Files     []filetree.Item
+	Files     []string
 	MultiMode bool
 }
 
-func FileSelection(files []filetree.Item, multiMode bool) tea.Cmd {
+func FileSelection(files []string, multiMode bool) tea.Cmd {
 	return func() tea.Msg {
 		return FileSelectionEvent{Files: files, MultiMode: multiMode}
 	}

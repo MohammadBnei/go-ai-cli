@@ -34,7 +34,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
 		AddFn: func(s string) tea.Cmd {
 			editModel := form.NewEditModel("Creating message", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key("content").Lines(10),
+				huh.NewText().Title("Content").Key("content").Lines(10).CharLimit(0),
 				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString("content")
@@ -57,7 +57,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			}
 
 			editModel := form.NewEditModel("Editing message ["+s+"]", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key(s).Value(&message.Content).Lines(10),
+				huh.NewText().Title("Content").Key(s).Value(&message.Content).Lines(10).CharLimit(0),
 				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)

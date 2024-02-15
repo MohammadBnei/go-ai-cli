@@ -6,41 +6,37 @@ import (
 
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
+	"github.com/charmbracelet/bubbles/filepicker"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mistakenelf/teacup/filetree"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
 )
 
 type model struct {
-	filetree      filetree.Model
+	filepicker    filepicker.Model
 	multiMode     bool
-	selectedFiles []filetree.Item
+	selectedFiles []string
 	keys          *keyMap
 	help          help.Model
 	title         string
+	width         int
 }
 
 // New creates a new instance of the UI.
 func NewFilePicker(multipleMode bool) model {
 	startDir, _ := os.Getwd()
-	filetreeModel := filetree.New(
-		true,
-		true,
-		startDir,
-		"",
-		lipgloss.AdaptiveColor{Light: "#000000", Dark: "63"},
-		lipgloss.AdaptiveColor{Light: "#000000", Dark: "63"},
-		lipgloss.AdaptiveColor{Light: "63", Dark: "63"},
-		lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"},
-	)
+	fp := filepicker.New()
+	fp.CurrentDirectory = startDir
+	fp.ShowHidden = true
+	fp.AutoHeight = true
 
 	return model{
-		filetree:      filetreeModel,
+		filepicker:    fp,
 		multiMode:     multipleMode,
-		selectedFiles: []filetree.Item{},
+		selectedFiles: []string{},
 		keys:          newKeyMap(),
 		help:          help.New(),
 		title:         "File Picker",
@@ -49,7 +45,7 @@ func NewFilePicker(multipleMode bool) model {
 
 // Init intializes the UI.
 func (m model) Init() tea.Cmd {
-	return m.filetree.Init()
+	return m.filepicker.Init()
 }
 
 // Update handles all UI interactions.
@@ -59,21 +55,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds []tea.Cmd
 	)
 
+	m.filepicker, cmd = m.filepicker.Update(msg)
+	cmds = append(cmds, cmd)
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.filetree.SetSize(msg.Width, msg.Height-lipgloss.Height(m.help.View(m.keys))-lipgloss.Height(m.GetTitleView()))
+		m.filepicker.Height = msg.Height - lipgloss.Height(m.help.View(m.keys)) - lipgloss.Height(m.GetTitleView())
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.keys.selectFile):
-			if _, ok := lo.Find(m.selectedFiles, func(item filetree.Item) bool {
-				return item.FileName() == m.filetree.GetSelectedItem().FileName()
-			}); ok {
-				m.selectedFiles = lo.Filter(m.selectedFiles, func(item filetree.Item, _ int) bool {
-					return item.FileName() != m.filetree.GetSelectedItem().FileName()
-				})
-				return m, nil
-			}
-			m.selectedFiles = append(m.selectedFiles, m.filetree.GetSelectedItem())
 		case key.Matches(msg, m.keys.submit):
 			if len(m.selectedFiles) != 0 {
 				return m, tea.Sequence(event.RemoveStack(m), event.FileSelection(m.selectedFiles, m.multiMode))
@@ -81,15 +71,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.filetree, cmd = m.filetree.Update(msg)
-	cmds = append(cmds, cmd)
+	// Did the user select a file?
+	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
+		if _, ok := lo.Find(m.selectedFiles, func(item string) bool {
+			return item == path
+		}); ok {
+			m.selectedFiles = lo.Filter(m.selectedFiles, func(item string, _ int) bool {
+				return item != path
+			})
+			return m, nil
+		}
+		m.selectedFiles = append(m.selectedFiles, path)
+	}
 
 	return m, tea.Batch(cmds...)
 }
 
 // View returns a string representation of the UI.
 func (m model) View() string {
-	return fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filetree.View(), m.help.View(m.keys))
+	if len(m.selectedFiles) > 0 {
+		return lipgloss.JoinHorizontal(lipgloss.Top,
+			fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filepicker.View(), m.help.View(m.keys)),
+			wordwrap.String(lo.Reduce(m.selectedFiles,
+				func(agg string, item string, i int) string { return fmt.Sprintf("%s\n[%d] %s", agg, i, item) }, ""), (m.width/2)-5),
+		)
+	}
+	return fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filepicker.View(), m.help.View(m.keys))
 }
 
 func (m model) GetTitleView() string {

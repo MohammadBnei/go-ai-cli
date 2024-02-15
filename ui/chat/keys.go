@@ -14,6 +14,7 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/viper"
 )
 
 type listKeyMap struct {
@@ -30,6 +31,8 @@ type listKeyMap struct {
 	speechToText         key.Binding
 	textToSpeech         key.Binding
 	addFile              key.Binding
+
+	saveConfig key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -88,6 +91,11 @@ func newListKeyMap() *listKeyMap {
 		addFile: key.NewBinding(
 			key.WithKeys("ctrl+a"),
 			key.WithHelp("ctrl+a", "add file(s)"),
+		),
+
+		saveConfig: key.NewBinding(
+			key.WithKeys("ctrl+s"),
+			key.WithHelp("ctrl+s", "save config"),
 		),
 	}
 }
@@ -175,6 +183,12 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			if len(m.stack) == 0 {
 				return m, event.AddStack(file.NewFilePicker(true), "Loading filepicker...")
 			}
+
+		case key.Matches(msg, m.keys.saveConfig):
+			if err := viper.WriteConfig(); err != nil {
+				m.err = err
+				return m, nil
+			}
 		}
 	}
 
@@ -191,6 +205,6 @@ func (k *listKeyMap) FullHelp() [][]key.Binding {
 		{k.changeCurMessageDown, k.changeCurMessageUp, k.pager},
 		{k.cancel, k.quit, k.toggleHelpMenu},
 		{k.showInfo, k.speechToText, k.textToSpeech},
-		{k.addFile},
+		{k.addFile, k.saveConfig},
 	}
 }

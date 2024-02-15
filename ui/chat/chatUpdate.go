@@ -190,26 +190,43 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds currentChatIndexes) err
 	pc.AddContextWithId(ctx, cancel, currentChatIds.user)
 	defer pc.DeleteContextById(currentChatIds.user)
 
-	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(), llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
-		if err := ctx.Err(); err != nil {
-			pc.DeleteContextById(currentChatIds.user)
-			if err == io.EOF {
-				return nil
+	options := []llms.CallOption{
+		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+			if err := ctx.Err(); err != nil {
+				pc.DeleteContextById(currentChatIds.user)
+				if err == io.EOF {
+					return nil
+				}
+				return err
 			}
-			return err
-		}
-		previous := pc.ChatMessages.FindById(currentChatIds.assistant)
-		if previous == nil {
-			pc.DeleteContextById(currentChatIds.user)
-			return errors.New("previous message not found")
-		}
-		previous.Content += string(chunk)
-		pc.ChatMessages.UpdateMessage(*previous)
-		if pc.UpdateChan != nil {
-			pc.UpdateChan <- *previous
-		}
-		return nil
-	}))
+			previous := pc.ChatMessages.FindById(currentChatIds.assistant)
+			if previous == nil {
+				pc.DeleteContextById(currentChatIds.user)
+				return errors.New("previous message not found")
+			}
+			previous.Content += string(chunk)
+			pc.ChatMessages.UpdateMessage(*previous)
+			if pc.UpdateChan != nil {
+				pc.UpdateChan <- *previous
+			}
+			return nil
+		}),
+	}
+	
+	if v := viper.GetFloat64("temperature"); v >= 0 {
+		options = append(options, llms.WithTemperature(v))
+	}
+	if v := viper.GetInt("topK"); v >= 0 {
+		options = append(options, llms.WithTopK(v))
+
+	}
+	if v := viper.GetFloat64("topP"); v >= 0 {
+		options = append(options, llms.WithTopP(v))
+	}
+
+	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(),
+		options...,
+	)
 
 	if err != nil {
 		chatProgram.Send(err)

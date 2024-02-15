@@ -29,13 +29,14 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/ktr0731/go-fuzzyfinder"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
 )
 
 var (
-	AppStyle = lipgloss.NewStyle().Margin(1, 2, 0)
+	AppStyle = lipgloss.NewStyle().Margin(0, 2, 0)
 )
 
 type Styles struct {
@@ -114,10 +115,11 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 	ta.ShowLineNumbers = false
 
 	vp := viewport.New(w, 0)
+	vp.MouseWheelDelta = 1
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
-	mdRenderer, _ := glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(80))
+	mdRenderer, _ := glamour.NewTermRenderer(glamour.WithAutoStyle())
 
 	modelStruct := chatModel{
 		textarea:     ta,
@@ -175,12 +177,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		w, h := AppStyle.GetFrameSize()
 		m.size.Height = msg.Height
 		m.size.Width = msg.Width
-		style.TitleStyle.Width(m.size.Width -w)
+		style.TitleStyle.MaxWidth(m.size.Width - w)
 
 		m.viewport.Width = m.size.Width - w
 		m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
 
-		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width-w))
+		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.size.Width-w))
 
 	case tea.KeyMsg:
 		if m.err != nil {
@@ -195,6 +197,14 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.Type {
 		case tea.KeyCtrlW:
+			if len(m.stack) == 0 {
+				switch {
+				case m.currentChatIndices.user != -1:
+					m.userPrompt = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user).Content
+				case m.currentChatIndices.assistant != -1:
+					m.aiResponse = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant).Content
+				}
+			}
 			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
 
 		case tea.KeyCtrlU:
@@ -264,6 +274,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				aiRes = str
 			}
+			if !viper.GetBool("md") {
+				aiRes = wordwrap.String(aiRes, m.viewport.Width)
+			}
 
 			m.viewport.SetContent(aiRes)
 			m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
@@ -311,7 +324,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case event.FileSelectionEvent:
 		if len(m.stack) == 0 {
 			for _, item := range msg.Files {
-				_, err := m.promptConfig.ChatMessages.AddMessageFromFile(item.FileName())
+				_, err := m.promptConfig.ChatMessages.AddMessageFromFile(item)
 				if err != nil {
 					return m, event.Error(err)
 				}
@@ -349,6 +362,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m chatModel) View() string {
+
 	if m.err != nil {
 		return fmt.Sprintf("Error: %s", style.StatusMessageStyle(m.err.Error()))
 	}

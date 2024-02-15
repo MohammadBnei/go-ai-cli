@@ -25,8 +25,8 @@ func newKeyMap() *keyMap {
 			key.WithHelp("ctrl+a", "add file"),
 		),
 		submit: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "submit"),
+			key.WithKeys("ctrl+s"),
+			key.WithHelp("ctrl+s", "submit"),
 		),
 		changeCwd: key.NewBinding(
 			key.WithKeys("ctrl+r"),

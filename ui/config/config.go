@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
@@ -135,16 +136,46 @@ func getEditModel(id string) (tea.Model, error) {
 		},
 		), nil
 
+	case int:
+		strVal := fmt.Sprintf("%d", value)
+		return form.NewEditModel("Editing config ["+id+"]", huh.NewForm(huh.NewGroup(
+			huh.NewInput().Key(id).Title(id).
+				Validate(func(s string) error { _, err := strconv.Atoi(s); return err }).
+				Value(&strVal).CharLimit(3),
+		),
+		), func(form *huh.Form) tea.Cmd {
+			strValue := form.GetString(id)
+			result, err := strconv.Atoi(strValue)
+			if err != nil {
+				return event.Error(err)
+			}
+			return UpdateConfigValue(id, result, strValue)
+		},
+		), nil
+
+	case float64:
+		strVal := fmt.Sprintf("%.2f", value)
+		return form.NewEditModel("Editing config ["+id+"]", huh.NewForm(huh.NewGroup(
+			huh.NewInput().Key(id).Title(id).
+				Validate(func(s string) error { _, err := strconv.ParseFloat(s, 64); return err }).
+				Value(&strVal).CharLimit(3),
+		),
+		), func(form *huh.Form) tea.Cmd {
+			strValue := form.GetString(id)
+			result, err := strconv.ParseFloat(strValue, 64)
+			if err != nil {
+				return event.Error(err)
+			}
+			return UpdateConfigValue(id, result, strValue)
+		},
+		), nil
+
 	default:
 		return nil, fmt.Errorf("unknown type, : %T", value)
 	}
 }
 func UpdateConfigValue(id string, value any, strValue string) tea.Cmd {
 	viper.Set(id, value)
-	err := viper.WriteConfig()
-	if err != nil {
-		return event.Error(err)
-	}
 
 	return func() tea.Msg {
 		return list.Item{
@@ -162,6 +193,12 @@ func getBoolItem(key string, value bool) list.Item {
 func getStringItem(key, value string) list.Item {
 	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: value}
 }
+func getIntItem(key string, value int) list.Item {
+	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: fmt.Sprintf("%d", value)}
+}
+func getFloatItem(key string, value float64) list.Item {
+	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: fmt.Sprintf("%.2f", value)}
+}
 
 func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
 	items := []list.Item{}
@@ -174,6 +211,10 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
 			}
 		case bool:
 			items = append(items, getBoolItem(k, t))
+		case int:
+			items = append(items, getIntItem(k, t))
+		case float64:
+			items = append(items, getFloatItem(k, t))
 
 		}
 	}

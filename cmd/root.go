@@ -27,6 +27,7 @@ import (
 	"os"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/fsnotify/fsnotify"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
@@ -64,17 +65,21 @@ func init() {
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
-	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
-	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
+	RootCmd.PersistentFlags().StringP(config.AI_OPENAI_KEY, "o", "", "the open ai key to be added to config")
+	RootCmd.PersistentFlags().String(config.AI_HUGGINGFACE_KEY, "", "the hugging face key to be added to config")
 
-	RootCmd.PersistentFlags().StringP("API_TYPE", "t", api.API_OLLAMA, "the api type to be added to config")
-	RootCmd.RegisterFlagCompletionFunc("API_TYPE", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	RootCmd.PersistentFlags().StringP(config.AI_API_TYPE, "t", api.API_OLLAMA, "the api type to be added to config")
+	RootCmd.RegisterFlagCompletionFunc(config.AI_API_TYPE, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{api.API_HUGGINGFACE, api.API_OLLAMA, api.API_OPENAI}, cobra.ShellCompDirectiveDefault
 	})
 
-	RootCmd.PersistentFlags().StringP("model", "m", openai.GPT4, "the model to use")
-	RootCmd.RegisterFlagCompletionFunc("model", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		apiType, err := cmd.Flags().GetString("API_TYPE")
+	RootCmd.PersistentFlags().Float64(config.AI_TEMPERATURE, 0.7, "the temperature of the ai model's response")
+	RootCmd.PersistentFlags().Int(config.AI_TOP_K, 50, "The top-k parameter limits the model’s predictions to the top k most probable tokens at each step of generation")
+	RootCmd.PersistentFlags().Float64(config.AI_TOP_P, 0.5, "Top-p controls the cumulative probability of the generated tokens")
+
+	RootCmd.PersistentFlags().StringP(config.AI_MODEL_NAME, "m", openai.GPT4, "the model to use")
+	RootCmd.RegisterFlagCompletionFunc(config.AI_MODEL_NAME, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		apiType, err := cmd.Flags().GetString(config.AI_API_TYPE)
 		if err != nil || apiType == "" {
 			apiType = api.API_OLLAMA
 		}
@@ -105,9 +110,6 @@ func initConfig() {
 	viper.SetConfigFile(cfgFile)
 
 	viper.BindPFlags(RootCmd.PersistentFlags())
-
-	viper.SetDefault("OLLAMA_HOST", "http://127.0.0.1:11434")
-	viper.SetDefault("auto-load", false)
 
 	viper.AutomaticEnv() // read in environment variables that match
 

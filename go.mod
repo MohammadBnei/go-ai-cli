@@ -22,7 +22,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/ktr0731/go-fuzzyfinder v0.8.0
 	github.com/manifoldco/promptui v0.9.0
-	github.com/mistakenelf/teacup v0.4.1
+	github.com/muesli/reflow v0.3.0
 	github.com/pkoukk/tiktoken-go v0.1.6
 	github.com/samber/lo v1.39.0
 	github.com/sashabaranov/go-openai v1.17.10
@@ -93,7 +93,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
-	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/nikolalohinski/gonja v1.5.3 // indirect
 	github.com/nsf/termbox-go v1.1.1 // indirect

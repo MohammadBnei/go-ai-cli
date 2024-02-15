@@ -1,8 +1,10 @@
 package quit
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
@@ -55,7 +57,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, event.RemoveStack(m)
 		}
 		if m.form.GetBool("save") {
-			err := saveChat(*m.promptConfig)
+			err := saveChat(*m.promptConfig, m.form.GetString("name"))
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -74,21 +76,39 @@ func (m model) GetTitleView() string {
 	return style.TitleStyle.Render(m.title)
 }
 
+var filenamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_. -]*(\.[a-zA-Z]{1,4})?$`)
+
 func constructForm() *huh.Form {
 	tRue := true
 	group := huh.NewGroup(
 		huh.NewSelect[bool]().Key("save").Title("Save current chat ?").Options(huh.NewOptions[bool](true, false)...),
+		huh.NewInput().Key("name").Title("Saved chat name (leave blank for auto-load)").Validate(func(s string) error {
+			if s == "" {
+				return nil
+			}
+			if !filenamePattern.MatchString(s) {
+				return errors.New("the file name provided is not valid (alphanumerical character only)")
+			}
+			return nil
+		}),
 		huh.NewConfirm().Key("confirm").Title("Confirm").Value(&tRue),
 	)
 	return huh.NewForm(group)
 }
 
-func saveChat(pc service.PromptConfig) error {
+func saveChat(pc service.PromptConfig, filename string) error {
+	if filename == "" {
+		filename = "last-chat"
+	}
 	chatMessages := pc.ChatMessages
-	chatMessages.Id = "last-chat"
-	chatMessages.Description = "Saved at : " + time.Now().Format("2006-01-02 15:04:05")
+	chatMessages.Id = filename
+	if chatMessages.Description == "" {
+		chatMessages.Description = "Saved at : " + time.Now().Format("2006-01-02 15:04:05")
+	} else {
+		chatMessages.Description += "\nUpdated at : " + time.Now().Format("2006-01-02 15:04:05")
+	}
 
-	err := chatMessages.SaveToFile(filepath.Dir(viper.GetViper().ConfigFileUsed()) + "/last-chat.yml")
+	err := chatMessages.SaveToFile(filepath.Dir(viper.GetViper().ConfigFileUsed()) + fmt.Sprintf("/%s.yml", filename))
 	if err != nil {
 		return err
 	}
