@@ -18,8 +18,9 @@ type chatModel struct {
 }
 
 const (
-	SAVE = "save"
-	LOAD = "load"
+	SAVE  = "save"
+	LOAD  = "load"
+	CLEAR = "clear"
 )
 
 func NewChatOptionsModel(pc *service.PromptConfig) tea.Model {
@@ -32,6 +33,9 @@ func NewChatOptionsModel(pc *service.PromptConfig) tea.Model {
 				return event.AddStack(savechat.NewSaveChatModel(pc), "Loading Save chat...")
 			case LOAD:
 				return event.AddStack(loadchat.NewLoadChatModel(pc), "Loading Load chat...")
+			case CLEAR:
+				pc.ChatMessages.ClearMessages()
+				return event.RemoveStack(list.Model{})
 			}
 
 			return event.Error(errors.New("unknown option: " + id))
@@ -45,5 +49,6 @@ func getCOItemsAsUiList(pc *service.PromptConfig) []list.Item {
 	return []list.Item{
 		{ItemId: SAVE, ItemTitle: "Save"},
 		{ItemId: LOAD, ItemTitle: "Load"},
+		{ItemId: CLEAR, ItemTitle: "Clear"},
 	}
 }
