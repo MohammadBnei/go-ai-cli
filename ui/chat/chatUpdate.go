@@ -69,11 +69,11 @@ func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
-	currentIndexes := lo.Filter[int]([]int{m.currentChatIndices.user, m.currentChatIndices.assistant}, func(i int, _ int) bool { return i >= 0 })
+	currentIndexes := lo.Filter([]int64{m.currentChatIndices.user, m.currentChatIndices.assistant}, func(i int64, _ int) bool { return i >= 0 })
 	minIndex := lo.Min(currentIndexes)
 	previous := minIndex - 1
 	if len(currentIndexes) == 0 {
-		previous = len(m.promptConfig.ChatMessages.Messages) - 1
+		previous = m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1].Id.Int64()
 	}
 	c := m.promptConfig.ChatMessages.FindById(previous)
 	if c == nil {
@@ -88,7 +88,7 @@ func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
-	maxIndex := lo.Max([]int{m.currentChatIndices.assistant, m.currentChatIndices.user})
+	maxIndex := lo.Max([]int64{m.currentChatIndices.assistant, m.currentChatIndices.user})
 	next := maxIndex + 1
 	c := m.promptConfig.ChatMessages.FindById(next)
 	if c == nil {
@@ -139,10 +139,10 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 		return m, event.Error(err)
 	}
 
-	m.currentChatIndices.user = userMsg.Id
-	m.currentChatIndices.assistant = assistantMessage.Id
+	m.currentChatIndices.user = userMsg.Id.Int64()
+	m.currentChatIndices.assistant = assistantMessage.Id.Int64()
 
-	m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id, assistantMessage.Id)
+	m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id.Int64(), assistantMessage.Id.Int64())
 
 	go sendPrompt(m.promptConfig, *m.currentChatIndices)
 
@@ -159,15 +159,15 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 	if previous.AssociatedMessageId >= 0 {
 		switch previous.Role {
 		case service.RoleUser:
-			m.currentChatIndices.user = previous.Id
+			m.currentChatIndices.user = previous.Id.Int64()
 			m.currentChatIndices.assistant = previous.AssociatedMessageId
 		case service.RoleAssistant:
-			m.currentChatIndices.assistant = previous.Id
+			m.currentChatIndices.assistant = previous.Id.Int64()
 			m.currentChatIndices.user = previous.AssociatedMessageId
 		}
 	} else {
 		m.currentChatIndices.assistant = -1
-		m.currentChatIndices.user = previous.Id
+		m.currentChatIndices.user = previous.Id.Int64()
 	}
 
 	if m.currentChatIndices.assistant >= 0 {
@@ -212,7 +212,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds currentChatIndexes) err
 			return nil
 		}),
 	}
-	
+
 	if v := viper.GetFloat64("temperature"); v >= 0 {
 		options = append(options, llms.WithTemperature(v))
 	}
@@ -222,6 +222,10 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds currentChatIndexes) err
 	}
 	if v := viper.GetFloat64("topP"); v >= 0 {
 		options = append(options, llms.WithTopP(v))
+	}
+
+	if pc.UpdateChan != nil {
+		pc.UpdateChan <- *pc.ChatMessages.FindById(currentChatIds.assistant)
 	}
 
 	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(),

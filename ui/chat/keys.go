@@ -4,51 +4,32 @@ import (
 	"context"
 
 	"github.com/MohammadBnei/go-ai-cli/audio"
-	"github.com/MohammadBnei/go-ai-cli/ui/config"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/info"
-	"github.com/MohammadBnei/go-ai-cli/ui/message"
+	"github.com/MohammadBnei/go-ai-cli/ui/options"
 	"github.com/MohammadBnei/go-ai-cli/ui/quit"
 	"github.com/MohammadBnei/go-ai-cli/ui/speech"
-	"github.com/MohammadBnei/go-ai-cli/ui/system"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/viper"
 )
 
 type listKeyMap struct {
-	systemMessages       key.Binding
-	curMessages          key.Binding
-	globalConfig         key.Binding
 	pager                key.Binding
 	changeCurMessageUp   key.Binding
 	changeCurMessageDown key.Binding
 	quit                 key.Binding
+	options              key.Binding
 	cancel               key.Binding
 	toggleHelpMenu       key.Binding
 	showInfo             key.Binding
 	speechToText         key.Binding
 	textToSpeech         key.Binding
 	addFile              key.Binding
-
-	saveConfig key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
 	return &listKeyMap{
-		systemMessages: key.NewBinding(
-			key.WithKeys("ctrl+l"),
-			key.WithHelp("ctrl+l", "system messages"),
-		),
-		curMessages: key.NewBinding(
-			key.WithKeys("ctrl+o"),
-			key.WithHelp("ctrl+o", "current messages"),
-		),
-		globalConfig: key.NewBinding(
-			key.WithKeys("ctrl+g"),
-			key.WithHelp("ctrl+g", "global config"),
-		),
 		pager: key.NewBinding(
 			key.WithKeys("ctrl+p"),
 			key.WithHelp("ctrl+p", "pager"),
@@ -64,6 +45,11 @@ func newListKeyMap() *listKeyMap {
 		toggleHelpMenu: key.NewBinding(
 			key.WithKeys("ctrl+h"),
 			key.WithHelp("ctrl+h", "toggle help"),
+		),
+
+		options: key.NewBinding(
+			key.WithKeys("ctrl+g", "esc"),
+			key.WithHelp("ctrl+g, ", "options"),
 		),
 
 		quit: key.NewBinding(
@@ -92,11 +78,6 @@ func newListKeyMap() *listKeyMap {
 			key.WithKeys("ctrl+a"),
 			key.WithHelp("ctrl+a", "add file(s)"),
 		),
-
-		saveConfig: key.NewBinding(
-			key.WithKeys("ctrl+s"),
-			key.WithHelp("ctrl+s", "save config"),
-		),
 	}
 }
 
@@ -112,6 +93,8 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 			case len(m.stack) > 0:
 				return m, tea.Sequence(event.Cancel, event.RemoveStack(m.stack[len(m.stack)-1]))
+			case msg.String() == "esc":
+				return m, event.AddStack(options.NewOptionsModel(m.promptConfig), "Loading Options...")
 
 			case m.help.ShowAll:
 				m.help.ShowAll = false
@@ -129,21 +112,6 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			m.help.ShowAll = !m.help.ShowAll
 			return m, func() tea.Msg { return m.size }
 
-		case key.Matches(msg, m.keys.systemMessages):
-			if len(m.stack) == 0 {
-				return m, event.AddStack(system.NewSystemModel(m.promptConfig), "Loading system...")
-			}
-
-		case key.Matches(msg, m.keys.globalConfig):
-			if len(m.stack) == 0 {
-				return m, event.AddStack(config.NewConfigModel(m.promptConfig), "Loading config...")
-			}
-
-		case key.Matches(msg, m.keys.curMessages):
-			if len(m.stack) == 0 {
-				return m, event.AddStack(message.NewMessageModel(m.promptConfig), "Loading messages...")
-			}
-
 		case key.Matches(msg, m.keys.changeCurMessageUp):
 			if len(m.stack) == 0 {
 				return changeResponseUp(m)
@@ -155,6 +123,11 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.pager):
 			if len(m.stack) == 0 {
 				return addPagerToStack(m)
+			}
+
+		case key.Matches(msg, m.keys.options):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(options.NewOptionsModel(m.promptConfig), "Loading Options...")
 			}
 
 		case key.Matches(msg, m.keys.showInfo):
@@ -184,11 +157,6 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				return m, event.AddStack(file.NewFilePicker(true), "Loading filepicker...")
 			}
 
-		case key.Matches(msg, m.keys.saveConfig):
-			if err := viper.WriteConfig(); err != nil {
-				m.err = err
-				return m, nil
-			}
 		}
 	}
 
@@ -201,10 +169,9 @@ func (k *listKeyMap) ShortHelp() []key.Binding {
 
 func (k *listKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.systemMessages, k.curMessages, k.globalConfig},
 		{k.changeCurMessageDown, k.changeCurMessageUp, k.pager},
 		{k.cancel, k.quit, k.toggleHelpMenu},
 		{k.showInfo, k.speechToText, k.textToSpeech},
-		{k.addFile, k.saveConfig},
+		{k.addFile, k.options},
 	}
 }

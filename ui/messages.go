@@ -100,7 +100,7 @@ func FilterMessages(messages []service.ChatMessage) (messageIds []int, err error
 	}
 
 	for _, i := range idx {
-		messageIds = append(messageIds, messages[i].Id)
+		messageIds = append(messageIds, int(messages[i].Id.Int64()))
 	}
 
 	if err != nil {

@@ -1,14 +1,13 @@
 package message
 
 import (
-	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/form"
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
+	"github.com/bwmarrin/snowflake"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -34,7 +33,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
 		AddFn: func(s string) tea.Cmd {
 			editModel := form.NewEditModel("Creating message", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key("content").Lines(10).CharLimit(0),
+				huh.NewText().Title("Content").Key("content").Lines(10),
 				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString("content")
@@ -57,7 +56,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			}
 
 			editModel := form.NewEditModel("Editing message ["+s+"]", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key(s).Value(&message.Content).Lines(10).CharLimit(0),
+				huh.NewText().Title("Content").Key(s).Value(&message.Content).Lines(10),
 				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)
@@ -76,11 +75,12 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			return event.AddStack(editModel, "Editing Message...")
 		},
 		RemoveFn: func(s string) tea.Cmd {
-			id, err := strconv.Atoi(s)
+			snowflake.ParseBase64(s)
+			id, err := snowflake.ParseBase64(s)
 			if err != nil {
 				return event.Error(err)
 			}
-			err = promptConfig.ChatMessages.DeleteMessage(id)
+			err = promptConfig.ChatMessages.DeleteMessage(id.Int64())
 			if err != nil {
 				return event.Error(err)
 			}
@@ -91,11 +91,11 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 }
 
 func getMessage(promptConfig *service.PromptConfig, id string) (*service.ChatMessage, error) {
-	intId, err := strconv.Atoi(id)
+	intId, err := snowflake.ParseBase64(id)
 	if err != nil {
 		return nil, err
 	}
-	message := promptConfig.ChatMessages.FindById(intId)
+	message := promptConfig.ChatMessages.FindById(intId.Int64())
 	if message == nil {
 		return nil, err
 	}
@@ -131,8 +131,8 @@ func toItem(message service.ChatMessage) list.Item {
 	}
 
 	return list.Item{
-		ItemId:          fmt.Sprintf("%d", message.Id),
-		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Id)) + " " + title,
+		ItemId:          message.Id.Base64(),
+		ItemTitle:       choosenStyle.Render(title),
 		ItemDescription: string(message.Role),
 	}
 }

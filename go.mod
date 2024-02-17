@@ -9,6 +9,7 @@ require (
 	github.com/TannerKvarfordt/hfapigo v1.3.1
 	github.com/atotto/clipboard v0.1.4
 	github.com/briandowns/spinner v1.23.0
+	github.com/bwmarrin/snowflake v0.3.0
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500
 	github.com/charmbracelet/bubbles v0.17.2-0.20240108170749-ec883029c8e6
 	github.com/charmbracelet/bubbletea v0.25.0

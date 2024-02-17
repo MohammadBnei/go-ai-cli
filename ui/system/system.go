@@ -66,7 +66,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			exists, err := promptConfig.ChatMessages.AddMessage(v, service.RoleSystem)
 			if err != nil {
 				if errors.Is(err, service.ErrAlreadyExist) {
-					promptConfig.ChatMessages.DeleteMessage(exists.Id)
+					promptConfig.ChatMessages.DeleteMessage(exists.Id.Int64())
 					newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(false), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+s)
 					return func() tea.Msg {
 						return newItem

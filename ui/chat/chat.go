@@ -65,8 +65,7 @@ func Chat(pc *service.PromptConfig) {
 }
 
 type currentChatIndexes struct {
-	user      int
-	assistant int
+	user, assistant int64
 }
 type chatModel struct {
 	viewport           viewport.Model
@@ -316,11 +315,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionModel.Title = msg.Title
 
 	case service.ChatMessage:
-		if msg.Id == m.currentChatIndices.user {
+		if msg.Id.Int64() == m.currentChatIndices.user {
 			m.userPrompt = msg.Content
 		}
 
-		if msg.Id == m.currentChatIndices.assistant {
+		if msg.Id.Int64() == m.currentChatIndices.assistant {
 			m.aiResponse = msg.Content
 		}
 
@@ -404,7 +403,7 @@ func (m chatModel) LoadingTitle() {
 func (m chatModel) GetTitleView() string {
 	userPrompt := m.userPrompt
 	if m.currentChatIndices.user >= 0 {
-		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatIndices.user })
+		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id.Int64() == m.currentChatIndices.user })
 		userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
 	}
 	if userPrompt == "" {

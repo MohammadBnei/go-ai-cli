@@ -11,6 +11,7 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/MohammadBnei/go-ai-cli/audio"
 	"github.com/MohammadBnei/go-ai-cli/tool"
+	"github.com/bwmarrin/snowflake"
 	"github.com/jinzhu/copier"
 	"github.com/pkoukk/tiktoken-go"
 	"github.com/samber/lo"
@@ -35,13 +36,13 @@ const (
 )
 
 type ChatMessage struct {
-	Id      int
+	Id      snowflake.ID
 	Role    ROLES  `json:"role"`
 	Content string `json:"content"`
 	Tokens  int    `json:"tokens"`
 	Type    TYPE
 
-	AssociatedMessageId int
+	AssociatedMessageId int64
 
 	ToolCall openai.ToolCall
 	Date     time.Time
@@ -60,21 +61,26 @@ type ChatMessages struct {
 	Description string
 	Messages    []ChatMessage
 	TotalTokens int
+
+	node *snowflake.Node
 }
 
 func NewChatMessages(id string) *ChatMessages {
+	node, _ := snowflake.NewNode(1)
 	return &ChatMessages{
 		Id:          id,
 		Messages:    []ChatMessage{},
 		TotalTokens: 0,
+
+		node: node,
 	}
 }
 
 func (c *ChatMessages) SetId(id string) *ChatMessages {
 	c.Id = id
+
 	return c
 }
-
 func (c *ChatMessages) SetDescription(description string) *ChatMessages {
 	c.Description = description
 
@@ -118,9 +124,9 @@ func (c *ChatMessages) LoadFromFile(filename string) error {
 	return nil
 }
 
-func (c *ChatMessages) FindById(id int) *ChatMessage {
+func (c *ChatMessages) FindById(id int64) *ChatMessage {
 	_, index, ok := lo.FindIndexOf[ChatMessage](c.Messages, func(item ChatMessage) bool {
-		return item.Id == id
+		return item.Id == snowflake.ParseInt64(int64(id))
 	})
 	if !ok {
 		return nil
@@ -162,7 +168,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 	}
 
 	msg := ChatMessage{
-		Id:                  len(c.Messages),
+		Id:                  c.node.Generate(),
 		Role:                role,
 		Content:             content,
 		Date:                time.Now(),
@@ -219,7 +225,7 @@ func (c *ChatMessage) PlayAudio(ctx context.Context) error {
 	return audio.PlaySound(ctx, c.Audio)
 }
 
-func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int) error {
+func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int64) error {
 	msgUser := c.FindById(idUser)
 	if msgUser == nil {
 		return errors.New("user message not found")
@@ -250,7 +256,7 @@ func (c *ChatMessages) UpdateMessage(m ChatMessage) error {
 		return err
 	}
 
-	msg := c.FindById(m.Id)
+	msg := c.FindById(m.Id.Int64())
 	if msg == nil {
 		c.AddMessage(m.Content, m.Role)
 		return nil
@@ -265,9 +271,9 @@ func (c *ChatMessages) UpdateMessage(m ChatMessage) error {
 	return nil
 }
 
-func (c *ChatMessages) DeleteMessage(id int) error {
+func (c *ChatMessages) DeleteMessage(id int64) error {
 	message, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
-		return item.Id == id
+		return item.Id == snowflake.ParseInt64(id)
 	})
 	if !ok {
 		return errors.New("message not found")
@@ -276,7 +282,7 @@ func (c *ChatMessages) DeleteMessage(id int) error {
 	c.TotalTokens -= message.Tokens
 
 	c.Messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
-		return item.Id != id
+		return item.Id != snowflake.ParseInt64(id)
 	})
 
 	return nil
