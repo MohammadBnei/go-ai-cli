@@ -7,10 +7,8 @@ import (
 	"io"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
-	"github.com/MohammadBnei/go-ai-cli/command"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/pager"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -44,23 +42,6 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 	}
 	if err := m.promptConfig.CloseContextById(m.currentChatMessages.user.Id.Int64()); err != nil {
 		m.err = err
-	}
-	return m, nil
-}
-
-func addPagerToStack(m chatModel) (chatModel, tea.Cmd) {
-	if m.aiResponse == "" {
-		return m, nil
-	}
-
-	_, index, ok := lo.FindIndexOf[tea.Model](m.stack, func(item tea.Model) bool {
-		_, ok := item.(pager.PagerModel)
-		return ok
-	})
-	if !ok {
-		return m, event.AddStack(pager.NewPagerModel(m.userPrompt, m.aiResponse, m.promptConfig), "Loading Pager...")
-	} else {
-		m.stack = lo.Slice[tea.Model](m.stack, index-1, index)
 	}
 	return m, nil
 }
@@ -134,33 +115,6 @@ func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 	m.changeCurrentChatHelper(previous)
 	m.viewport.GotoTop()
 	return m, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition(""))
-}
-
-func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
-	v := m.textarea.Value()
-	switch v {
-	case "":
-		m.viewport.SetContent(command.HELP)
-		return m, nil
-	case "\\quit":
-		return m, tea.Quit
-	case "\\help":
-		m.viewport.SetContent(command.HELP)
-		m.textarea.Reset()
-		return m, nil
-	}
-
-	if v[0] == '\\' {
-		m.textarea.Blur()
-		err := commandSelectionFn(v, m.promptConfig)
-		m.textarea.Reset()
-		m.textarea.Focus()
-		if err != nil {
-			m.err = err
-		}
-		return m, tea.ClearScreen
-	}
-	return nil, nil
 }
 
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {

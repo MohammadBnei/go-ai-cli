@@ -4,14 +4,11 @@ package chat
 // component library.
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"os"
 	"reflect"
-	"strings"
 
-	"github.com/MohammadBnei/go-ai-cli/command"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/audio"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
@@ -27,7 +24,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ktr0731/go-fuzzyfinder"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
@@ -155,8 +151,6 @@ func (m chatModel) Init() tea.Cmd {
 	return tea.SetWindowTitle("Go AI cli")
 }
 
-var commandSelectionFn = CommandSelectionFactory()
-
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.LoadingTitle()
 	var (
@@ -198,16 +192,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
 
-		case tea.KeyCtrlU:
-			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
-				m.textarea.SetValue(m.history.Previous())
-			}
-
-		case tea.KeyCtrlJ:
-			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
-				m.textarea.SetValue(m.history.Next())
-			}
-
 		case tea.KeyCtrlE:
 			if len(m.stack) == 0 {
 				return m, event.AddStack(list.NewFancyListModel("Errors", lo.Map(m.errorList, func(e error, index int) list.Item {
@@ -227,9 +211,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if len(m.stack) == 0 {
 				m.history.Add(m.textarea.Value())
-				if e, c := callFunction(&m); e != nil {
-					return e, c
-				}
 
 				return promptSend(&m)
 			}
@@ -267,7 +248,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(aiRes)
 			m.Resize()
 		}
-		
 
 	case event.RemoveStackEvent:
 		if msg.Stack != nil {
@@ -394,40 +374,6 @@ func (m chatModel) GetTitleView() string {
 func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
 	return func() tea.Msg {
 		return <-updateChan
-	}
-}
-
-func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error {
-	commandMap := make(map[string]func(*service.PromptConfig) error)
-
-	command.AddAllCommand(commandMap)
-	keys := lo.Keys[string](commandMap)
-
-	return func(cmd string, pc *service.PromptConfig) error {
-
-		var err error
-
-		switch {
-		case cmd == "":
-			commandMap["help"](pc)
-		case cmd == "\\":
-			selection, err2 := fuzzyfinder.Find(keys, func(i int) string {
-				return keys[i]
-			})
-			if err2 != nil {
-				return err2
-			}
-
-			err = commandMap[keys[selection]](pc)
-		case strings.HasPrefix(cmd, "\\"):
-			command, ok := commandMap[cmd[1:]]
-			if !ok {
-				return errors.New("command not found")
-			}
-			err = command(pc)
-		}
-
-		return err
 	}
 }
 

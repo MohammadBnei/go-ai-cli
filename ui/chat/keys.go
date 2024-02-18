@@ -9,12 +9,13 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/ui/options"
 	"github.com/MohammadBnei/go-ai-cli/ui/quit"
 	"github.com/MohammadBnei/go-ai-cli/ui/speech"
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type listKeyMap struct {
-	pager                key.Binding
+	copy                 key.Binding
 	changeCurMessageUp   key.Binding
 	changeCurMessageDown key.Binding
 	quit                 key.Binding
@@ -30,9 +31,9 @@ type listKeyMap struct {
 
 func newListKeyMap() *listKeyMap {
 	return &listKeyMap{
-		pager: key.NewBinding(
-			key.WithKeys("ctrl+p"),
-			key.WithHelp("ctrl+p", "pager"),
+		copy: key.NewBinding(
+			key.WithKeys("ctrl+l"),
+			key.WithHelp("ctrl+l", "copy"),
 		),
 		changeCurMessageUp: key.NewBinding(
 			key.WithKeys("ctrl+j"),
@@ -117,6 +118,15 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			m.help.ShowAll = !m.help.ShowAll
 			return m, func() tea.Msg { return m.size }
 
+		case key.Matches(msg, m.keys.copy):
+			if len(m.stack) == 0 {
+				err := clipboard.WriteAll(m.currentChatMessages.assistant.Content)
+				if err != nil {
+					return m, event.Error(err)
+				}
+				return m, nil
+			}
+
 		case key.Matches(msg, m.keys.changeCurMessageUp):
 			if len(m.stack) == 0 {
 				return changeResponseUp(m)
@@ -124,10 +134,6 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.changeCurMessageDown):
 			if len(m.stack) == 0 {
 				return changeResponseDown(m)
-			}
-		case key.Matches(msg, m.keys.pager):
-			if len(m.stack) == 0 {
-				return addPagerToStack(m)
 			}
 
 		case key.Matches(msg, m.keys.options):
@@ -183,7 +189,7 @@ func (k *listKeyMap) ShortHelp() []key.Binding {
 
 func (k *listKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.changeCurMessageDown, k.changeCurMessageUp, k.pager},
+		{k.changeCurMessageDown, k.changeCurMessageUp, k.copy},
 		{k.cancel, k.quit, k.toggleHelpMenu},
 		{k.showInfo, k.speechToText, k.textToSpeech},
 		{k.addFile, k.options},

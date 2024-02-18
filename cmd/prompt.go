@@ -4,7 +4,6 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/MohammadBnei/go-ai-cli/command"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/chat"
 	"github.com/spf13/cobra"
@@ -17,10 +16,6 @@ var promptCmd = &cobra.Command{
 	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
 		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
-
-		commandMap := make(map[string]func(*service.PromptConfig) error)
-
-		command.AddAllCommand(commandMap)
 
 		promptConfig := &service.PromptConfig{
 			ChatMessages: service.NewChatMessages("default"),
