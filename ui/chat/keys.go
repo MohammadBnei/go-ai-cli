@@ -3,7 +3,6 @@ package chat
 import (
 	"context"
 
-	"github.com/MohammadBnei/go-ai-cli/audio"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/info"
@@ -26,6 +25,7 @@ type listKeyMap struct {
 	speechToText         key.Binding
 	textToSpeech         key.Binding
 	addFile              key.Binding
+	audiPlayer           key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -75,8 +75,13 @@ func newListKeyMap() *listKeyMap {
 			key.WithHelp("ctrl+b", "text to speech"),
 		),
 		addFile: key.NewBinding(
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("ctrl+f", "add file(s)"),
+		),
+
+		audiPlayer: key.NewBinding(
 			key.WithKeys("ctrl+a"),
-			key.WithHelp("ctrl+a", "add file(s)"),
+			key.WithHelp("ctrl+a", "audio player"),
 		),
 	}
 }
@@ -100,7 +105,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
 
-			case m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil:
+			case m.promptConfig.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
 				return closeContext(m)
 
 			}
@@ -141,13 +146,17 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.textToSpeech):
-			if m.aiResponse != "" && m.currentChatIndices.assistant >= 0 && len(m.stack) == 0 {
+			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
 				ctx, cancel := context.WithCancel(context.Background())
-				m.promptConfig.AddContextWithId(ctx, cancel, m.currentChatIndices.assistant)
+				m.promptConfig.AddContextWithId(ctx, cancel, m.currentChatMessages.assistant.Id.Int64())
 				return m, tea.Sequence(func() tea.Msg {
-					return audio.PlayTextToSpeech(ctx, m.aiResponse)
+					err := m.promptConfig.ChatMessages.FindById(m.currentChatMessages.assistant.Id.Int64()).FetchAudio(ctx)
+					if err != nil {
+						return err
+					}
+					return m.audioPlayer.InitSpeaker(m.currentChatMessages.assistant.Id.Int64())
 				}, func() tea.Msg {
-					m.promptConfig.DeleteContextById(m.currentChatIndices.assistant)
+					m.promptConfig.DeleteContextById(m.currentChatMessages.assistant.Id.Int64())
 					return nil
 				})
 			}
@@ -155,6 +164,11 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.addFile):
 			if len(m.stack) == 0 {
 				return m, event.AddStack(file.NewFilePicker(true), "Loading filepicker...")
+			}
+
+		case key.Matches(msg, m.keys.audiPlayer):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(m.audioPlayer, "Loading audio player...")
 			}
 
 		}

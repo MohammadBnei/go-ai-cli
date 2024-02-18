@@ -115,7 +115,7 @@ func getEditModel(id string) (tea.Model, error) {
 
 		default:
 			editModel = huh.NewForm(huh.NewGroup(
-				huh.NewText().Title(id).Key(id).Value(&value).Lines(10)),
+				huh.NewText().CharLimit(0).Title(id).Key(id).Value(&value).Lines(10)),
 			)
 		}
 		return form.NewEditModel("Editing config ["+id+"]", editModel, func(form *huh.Form) tea.Cmd {

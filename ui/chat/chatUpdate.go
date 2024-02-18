@@ -42,7 +42,7 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	}
-	if err := m.promptConfig.CloseContextById(m.currentChatIndices.user); err != nil {
+	if err := m.promptConfig.CloseContextById(m.currentChatMessages.user.Id.Int64()); err != nil {
 		m.err = err
 	}
 	return m, nil
@@ -69,34 +69,71 @@ func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
-	currentIndexes := lo.Filter([]int64{m.currentChatIndices.user, m.currentChatIndices.assistant}, func(i int64, _ int) bool { return i >= 0 })
-	minIndex := lo.Min(currentIndexes)
-	previous := minIndex - 1
-	if len(currentIndexes) == 0 {
-		previous = m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1].Id.Int64()
+
+	var previous *service.ChatMessage
+	if m.currentChatMessages.user == nil {
+		previous = &m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1]
 	}
-	c := m.promptConfig.ChatMessages.FindById(previous)
-	if c == nil {
-		return m, event.Error(errors.New("no previous message"))
+
+	if previous == nil {
+
+		_, idx, _ := lo.FindIndexOf(m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool {
+			return c.Id == m.currentChatMessages.user.Id
+		})
+		switch idx {
+		case -1:
+			return m, event.Error(errors.New("current message not found"))
+		case 0:
+			previous = &m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1]
+		default:
+			previous = &m.promptConfig.ChatMessages.Messages[idx-1]
+		}
 	}
-	m.changeCurrentChatHelper(c)
+	m.changeCurrentChatHelper(previous)
 	m.viewport.GotoTop()
-	return m, event.UpdateChatContent("", "")
+	return m, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition(""))
 }
 
 func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
-	maxIndex := lo.Max([]int64{m.currentChatIndices.assistant, m.currentChatIndices.user})
-	next := maxIndex + 1
-	c := m.promptConfig.ChatMessages.FindById(next)
-	if c == nil {
-		return m, event.Error(errors.New("no next message"))
+
+	var previous *service.ChatMessage
+	currentUserMsg := m.currentChatMessages.user
+
+	if currentUserMsg == nil {
+		previous = &m.promptConfig.ChatMessages.Messages[0]
 	}
-	m.changeCurrentChatHelper(c)
+
+	if previous == nil {
+		_, idx, _ := lo.FindIndexOf(m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool {
+			return c.Id == currentUserMsg.Id
+		})
+
+		switch idx {
+		case -1:
+			return m, event.Error(errors.New("current message not found"))
+		case len(m.promptConfig.ChatMessages.Messages) - 1:
+			previous = &m.promptConfig.ChatMessages.Messages[0]
+		case len(m.promptConfig.ChatMessages.Messages) - 2:
+			if m.promptConfig.ChatMessages.Messages[idx+1].Id.Int64() == currentUserMsg.AssociatedMessageId {
+				previous = &m.promptConfig.ChatMessages.Messages[0]
+			}
+		default:
+			if currentUserMsg.Role == service.RoleUser &&
+				m.promptConfig.ChatMessages.Messages[idx+1].Id.Int64() == currentUserMsg.AssociatedMessageId &&
+				idx+2 < len(m.promptConfig.ChatMessages.Messages) {
+				previous = &m.promptConfig.ChatMessages.Messages[idx+2]
+			} else {
+				previous = &m.promptConfig.ChatMessages.Messages[idx+1]
+			}
+		}
+	}
+
+	m.changeCurrentChatHelper(previous)
 	m.viewport.GotoTop()
-	return m, event.UpdateChatContent("", "")
+	return m, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition(""))
 }
 
 func callFunction(m *chatModel) (*chatModel, tea.Cmd) {
@@ -139,12 +176,15 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 		return m, event.Error(err)
 	}
 
-	m.currentChatIndices.user = userMsg.Id.Int64()
-	m.currentChatIndices.assistant = assistantMessage.Id.Int64()
+	m.currentChatMessages.user = userMsg
+	m.currentChatMessages.assistant = assistantMessage
 
-	m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id.Int64(), assistantMessage.Id.Int64())
+	err = m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id.Int64(), assistantMessage.Id.Int64())
+	if err != nil {
+		return m, event.Error(err)
+	}
 
-	go sendPrompt(m.promptConfig, *m.currentChatIndices)
+	go sendPrompt(m.promptConfig, *m.currentChatMessages)
 
 	m.textarea.Reset()
 	m.aiResponse = ""
@@ -159,20 +199,20 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 	if previous.AssociatedMessageId >= 0 {
 		switch previous.Role {
 		case service.RoleUser:
-			m.currentChatIndices.user = previous.Id.Int64()
-			m.currentChatIndices.assistant = previous.AssociatedMessageId
+			m.currentChatMessages.user = previous
+			m.currentChatMessages.assistant = m.promptConfig.ChatMessages.FindById(previous.AssociatedMessageId)
 		case service.RoleAssistant:
-			m.currentChatIndices.assistant = previous.Id.Int64()
-			m.currentChatIndices.user = previous.AssociatedMessageId
+			m.currentChatMessages.assistant = previous
+			m.currentChatMessages.user = m.promptConfig.ChatMessages.FindById(previous.AssociatedMessageId)
 		}
 	} else {
-		m.currentChatIndices.assistant = -1
-		m.currentChatIndices.user = previous.Id.Int64()
+		m.currentChatMessages.assistant = nil
+		m.currentChatMessages.user = previous
 	}
 
-	if m.currentChatIndices.assistant >= 0 {
-		m.aiResponse = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant).Content
-		m.userPrompt = m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user).Content
+	if m.currentChatMessages.assistant != nil {
+		m.aiResponse = m.currentChatMessages.assistant.Content
+		m.userPrompt = m.currentChatMessages.user.Content
 	} else {
 		m.aiResponse = previous.Content
 		m.userPrompt = "System / File | " + previous.Date.String()
@@ -180,28 +220,28 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 
 }
 
-func sendPrompt(pc *service.PromptConfig, currentChatIds currentChatIndexes) error {
+func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) error {
 	generate, err := api.GetGenerateFunction()
 	if err != nil {
 		return err
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	pc.AddContextWithId(ctx, cancel, currentChatIds.user)
-	defer pc.DeleteContextById(currentChatIds.user)
+	pc.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
+	defer pc.DeleteContextById(currentChatMsgs.user.Id.Int64())
 
 	options := []llms.CallOption{
 		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 			if err := ctx.Err(); err != nil {
-				pc.DeleteContextById(currentChatIds.user)
+				pc.DeleteContextById(currentChatMsgs.user.Id.Int64())
 				if err == io.EOF {
 					return nil
 				}
 				return err
 			}
-			previous := pc.ChatMessages.FindById(currentChatIds.assistant)
+			previous := currentChatMsgs.assistant
 			if previous == nil {
-				pc.DeleteContextById(currentChatIds.user)
+				pc.DeleteContextById(currentChatMsgs.user.Id.Int64())
 				return errors.New("previous message not found")
 			}
 			previous.Content += string(chunk)
@@ -225,7 +265,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatIds currentChatIndexes) err
 	}
 
 	if pc.UpdateChan != nil {
-		pc.UpdateChan <- *pc.ChatMessages.FindById(currentChatIds.assistant)
+		pc.UpdateChan <- *pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 	}
 
 	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(),

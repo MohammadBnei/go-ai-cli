@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 
 	"github.com/MohammadBnei/go-ai-cli/command"
 	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/audio"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/helper"
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
@@ -64,19 +63,19 @@ func Chat(pc *service.PromptConfig) {
 	}
 }
 
-type currentChatIndexes struct {
-	user, assistant int64
+type currentChatMessages struct {
+	user, assistant *service.ChatMessage
 }
 type chatModel struct {
-	viewport           viewport.Model
-	textarea           textarea.Model
-	promptConfig       *service.PromptConfig
-	err                error
-	spinner            spinner.Model
-	userPrompt         string
-	aiResponse         string
-	currentChatIndices *currentChatIndexes
-	size               tea.WindowSizeMsg
+	viewport            viewport.Model
+	textarea            textarea.Model
+	promptConfig        *service.PromptConfig
+	err                 error
+	spinner             spinner.Model
+	userPrompt          string
+	aiResponse          string
+	currentChatMessages *currentChatMessages
+	size                tea.WindowSizeMsg
 
 	history *helper.HistoryManager
 
@@ -91,6 +90,8 @@ type chatModel struct {
 	transitionModel *transition.Model
 
 	loading bool
+
+	audioPlayer *audio.AudioPlayerModel
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
@@ -128,9 +129,9 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		spinner:      spinner.New(),
 		aiResponse:   "",
 		userPrompt:   "",
-		currentChatIndices: &currentChatIndexes{
-			user:      -1,
-			assistant: -1,
+		currentChatMessages: &currentChatMessages{
+			user:      nil,
+			assistant: nil,
 		},
 
 		keys: newListKeyMap(),
@@ -143,10 +144,8 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		help: help.New(),
 
 		transitionModel: transition.NewTransitionModel(""),
-	}
 
-	if viper.GetBool("auto-load") {
-		modelStruct.LoadLastChat()
+		audioPlayer: audio.NewPlayerModel(pc),
 	}
 
 	return modelStruct
@@ -172,16 +171,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case cursor.BlinkMsg:
 		return m, nil
 	case tea.WindowSizeMsg:
-
-		w, h := AppStyle.GetFrameSize()
 		m.size.Height = msg.Height
 		m.size.Width = msg.Width
-		style.TitleStyle.MaxWidth(m.size.Width - w)
-
-		m.viewport.Width = m.size.Width - w
-		m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
-
-		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
+		m.Resize()
 
 	case tea.KeyMsg:
 		if m.err != nil {
@@ -198,18 +190,10 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlW:
 			if len(m.stack) == 0 {
 				switch {
-				case m.currentChatIndices.user != -1:
-					if c := m.promptConfig.ChatMessages.FindById(m.currentChatIndices.user); c != nil {
-						m.userPrompt = c.Content
-					} else {
-						m.currentChatIndices.user = -1
-					}
-				case m.currentChatIndices.assistant != -1:
-					if c := m.promptConfig.ChatMessages.FindById(m.currentChatIndices.assistant); c != nil {
-						m.aiResponse = c.Content
-					} else {
-						m.currentChatIndices.assistant = -1
-					}
+				case m.currentChatMessages.user != nil && m.currentChatMessages.user.Role == service.RoleUser:
+					m.userPrompt = m.currentChatMessages.user.Content
+				case m.currentChatMessages.assistant != nil:
+					m.aiResponse = m.currentChatMessages.assistant.Content
 				}
 			}
 			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
@@ -222,11 +206,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlJ:
 			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
 				m.textarea.SetValue(m.history.Next())
-			}
-
-		case tea.KeyCtrlF:
-			if len(m.stack) == 0 {
-				return m, event.AddStack(file.NewFilePicker(true), "Loading Filepicker...")
 			}
 
 		case tea.KeyCtrlE:
@@ -286,9 +265,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.viewport.SetContent(aiRes)
-			m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
-
+			m.Resize()
 		}
+		
 
 	case event.RemoveStackEvent:
 		if msg.Stack != nil {
@@ -315,11 +294,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionModel.Title = msg.Title
 
 	case service.ChatMessage:
-		if msg.Id.Int64() == m.currentChatIndices.user {
+		if msg.Id == m.currentChatMessages.user.Id {
 			m.userPrompt = msg.Content
 		}
 
-		if msg.Id.Int64() == m.currentChatIndices.assistant {
+		if msg.Id == m.currentChatMessages.assistant.Id {
 			m.aiResponse = msg.Content
 		}
 
@@ -356,8 +335,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
-	if m.currentChatIndices.assistant == -1 &&
-		m.currentChatIndices.user == -1 &&
+	if m.currentChatMessages.assistant == nil &&
+		m.currentChatMessages.user == nil &&
 		m.userPrompt == "" &&
 		m.aiResponse == "" {
 		m.Intro()
@@ -402,14 +381,14 @@ func (m chatModel) LoadingTitle() {
 
 func (m chatModel) GetTitleView() string {
 	userPrompt := m.userPrompt
-	if m.currentChatIndices.user >= 0 {
-		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id.Int64() == m.currentChatIndices.user })
+	if m.currentChatMessages.user != nil {
+		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatMessages.user.Id })
 		userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
 	}
 	if userPrompt == "" {
 		userPrompt = "Chat"
 	}
-	return style.TitleStyle.Render(userPrompt)
+	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }
 
 func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
@@ -452,13 +431,16 @@ func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error 
 	}
 }
 
-func (m *chatModel) LoadLastChat() {
-	lastChatPath := filepath.Dir(viper.GetViper().ConfigFileUsed()) + "/last-chat.yml"
-	if stat, err := os.Stat(lastChatPath); err == nil && !stat.IsDir() {
-		m.err = m.promptConfig.ChatMessages.LoadFromFile(lastChatPath)
-	}
-}
-
 func (m *chatModel) Intro() {
 	m.viewport.SetContent(getInfoContent(*m))
+}
+
+func (m *chatModel) Resize() {
+	w, h := AppStyle.GetFrameSize()
+	style.TitleStyle.MaxWidth(m.size.Width - w)
+
+	m.viewport.Width = m.size.Width - w
+	m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
+
+	m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
 }

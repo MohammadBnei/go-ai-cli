@@ -47,6 +47,7 @@ func NewSpeechModel(promptConfig *service.PromptConfig, content string) tea.Mode
 	ta.Focus()
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
+	ta.CharLimit = 0
 
 	m := model{
 		recording:       false,

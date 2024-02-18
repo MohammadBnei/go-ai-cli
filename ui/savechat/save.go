@@ -10,7 +10,6 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -21,11 +20,10 @@ type model struct {
 	promptConfig *service.PromptConfig
 	form         *huh.Form
 	title        string
-	keys         *keyMap
 }
 
 func NewSaveChatModel(promptConfig *service.PromptConfig) tea.Model {
-	return model{promptConfig: promptConfig, form: constructForm(), title: "Quitting", keys: newKeyMap()}
+	return model{promptConfig: promptConfig, form: constructForm(), title: "Saving chat"}
 }
 
 func (m model) Init() tea.Cmd {
@@ -41,10 +39,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.form.WithHeight(msg.Height - lipgloss.Height(m.GetTitleView()))
 
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, m.keys.quit):
-			return m, tea.Quit
-		}
 	}
 	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
@@ -56,13 +50,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.form.GetBool("confirm") {
 			return m, event.RemoveStack(m)
 		}
-		if m.form.GetBool("save") {
-			err := saveChat(*m.promptConfig, m.form.GetString("name"))
-			if err != nil {
-				fmt.Println(err)
-			}
-		}
-		return m, tea.Quit
+		return m, event.Error(saveChat(*m.promptConfig, m.form.GetString("name")))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -99,7 +87,7 @@ func saveChat(pc service.PromptConfig, filename string) error {
 	if filename == "" {
 		filename = "last-chat"
 	}
-	chatMessages := pc.ChatMessages
+	chatMessages := *pc.ChatMessages
 	chatMessages.Id = filename
 	if chatMessages.Description == "" {
 		chatMessages.Description = "Saved at : " + time.Now().Format("2006-01-02 15:04:05")
