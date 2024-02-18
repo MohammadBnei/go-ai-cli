@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/audio"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
@@ -234,14 +235,14 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.userPrompt != "" {
 			aiRes := m.aiResponse
-			if viper.GetBool("md") && m.userPrompt != "Infos" {
+			if viper.GetBool(config.UI_MARKDOWN_MODE) && m.userPrompt != "Infos" {
 				str, err := m.mdRenderer.Render(aiRes)
 				if err != nil {
 					return m, event.Error(err)
 				}
 				aiRes = str
 			}
-			if !viper.GetBool("md") {
+			if !viper.GetBool(config.UI_MARKDOWN_MODE) {
 				aiRes = wordwrap.String(aiRes, m.viewport.Width)
 			}
 

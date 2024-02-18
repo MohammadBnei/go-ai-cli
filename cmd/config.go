@@ -18,7 +18,7 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Set the configuration in a file",
 	Run: func(cmd *cobra.Command, args []string) {
-		filePath := viper.GetString("configfile")
+		filePath := viper.ConfigFileUsed()
 		folders := strings.Split(filePath, "/")
 		created := false
 		if _, err := os.Stat(filePath); folders[0] != filePath && errors.Is(err, os.ErrNotExist) {

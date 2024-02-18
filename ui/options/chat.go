@@ -26,7 +26,7 @@ const (
 func NewChatOptionsModel(pc *service.PromptConfig) tea.Model {
 	items := getCOItemsAsUiList(pc)
 
-	return list.NewFancyListModel("Options", items, &list.DelegateFunctions{
+	return list.NewFancyListModel("Options > Chat", items, &list.DelegateFunctions{
 		ChooseFn: func(id string) tea.Cmd {
 			switch id {
 			case SAVE:

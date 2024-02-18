@@ -73,11 +73,20 @@ func init() {
 		return []string{api.API_HUGGINGFACE, api.API_OLLAMA, api.API_OPENAI}, cobra.ShellCompDirectiveDefault
 	})
 
+	RootCmd.PersistentFlags().String(config.AI_OLLAMA_HOST, "http://127.0.0.1:11434", "the ollama host to be added to config")
+
+	RootCmd.PersistentFlags().Bool(config.UI_MARKDOWN_MODE, false, "enable markdown mode")
+	RootCmd.PersistentFlags().Bool(config.UI_CODE_MODE, false, "enable code mode")
+
 	RootCmd.PersistentFlags().Float64(config.AI_TEMPERATURE, 0.7, "the temperature of the ai model's response")
 	RootCmd.PersistentFlags().Int(config.AI_TOP_K, 50, "The top-k parameter limits the model’s predictions to the top k most probable tokens at each step of generation")
 	RootCmd.PersistentFlags().Float64(config.AI_TOP_P, 0.5, "Top-p controls the cumulative probability of the generated tokens")
 
-	RootCmd.PersistentFlags().StringP(config.AI_MODEL_NAME, "m", openai.GPT4, "the model to use")
+	defaultModel := openai.GPT4
+	if v, _ := RootCmd.Flags().GetString(config.AI_API_TYPE); v == api.API_OLLAMA {
+		defaultModel = "llama2"
+	}
+	RootCmd.PersistentFlags().StringP(config.AI_MODEL_NAME, "m", defaultModel, "the model to use")
 	RootCmd.RegisterFlagCompletionFunc(config.AI_MODEL_NAME, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		apiType, err := cmd.Flags().GetString(config.AI_API_TYPE)
 		if err != nil || apiType == "" {

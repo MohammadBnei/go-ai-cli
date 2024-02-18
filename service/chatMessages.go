@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/tool"
 	"github.com/bwmarrin/snowflake"
 	"github.com/jinzhu/copier"
@@ -152,8 +153,8 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 		Type:                TypeUser,
 		AssociatedMessageId: -1,
 		Meta: Meta{
-			ApiType: viper.GetString("API_TYPE"),
-			Model:   viper.GetString("model"),
+			ApiType: viper.GetString(config.AI_API_TYPE),
+			Model:   viper.GetString(config.AI_MODEL_NAME),
 		},
 	}
 

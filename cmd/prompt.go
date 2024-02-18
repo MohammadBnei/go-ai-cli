@@ -4,6 +4,7 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/chat"
 	"github.com/spf13/cobra"
@@ -15,14 +16,12 @@ var promptCmd = &cobra.Command{
 	Use:   "prompt",
 	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
-		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
-
 		promptConfig := &service.PromptConfig{
 			ChatMessages: service.NewChatMessages("default"),
 		}
 
-		defaulSystemPrompt := viper.GetStringMapString("default-systems")
-		savedSystemPrompt := viper.GetStringMapString("systems")
+		defaulSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
+		savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
 		for k := range defaulSystemPrompt {
 			promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
 		}
@@ -41,9 +40,7 @@ var promptCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(promptCmd)
 
-	promptCmd.PersistentFlags().Int("depth", 2, "the depth of the tree view, when in file mode")
-	promptCmd.PersistentFlags().Bool("md", false, "markdown mode enabled")
-	promptCmd.PersistentFlags().BoolP("auto-load", "s", false, "Automatically save the prompt to a file")
+	// promptCmd.PersistentFlags().BoolP("auto-load", "s", false, "Automatically save the prompt to a file")
 
-	viper.BindPFlag("autoSave", promptCmd.Flags().Lookup("auto-load"))
+	// viper.BindPFlag("autoSave", promptCmd.Flags().Lookup("auto-load"))
 }

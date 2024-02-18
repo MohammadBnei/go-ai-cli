@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/form"
@@ -18,10 +19,10 @@ import (
 )
 
 func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	if savedDefaultSystemPrompt == nil {
 		savedDefaultSystemPrompt = make(map[string]string)
-		viper.Set("default-systems", savedDefaultSystemPrompt)
+		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
 	items := getItemsAsUiList(promptConfig)
@@ -32,8 +33,8 @@ func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
 }
 
 func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
-	savedSystemPrompt := viper.GetStringMapString("systems")
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
 	res := lo.MapToSlice[string, string, uiList.Item](savedSystemPrompt, func(k string, v string) uiList.Item {
 		_, isDefault := savedDefaultSystemPrompt[k]
@@ -57,9 +58,9 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
 func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions {
 	return &uiList.DelegateFunctions{
 		ChooseFn: func(s string) tea.Cmd {
-			savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+			savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
-			v, ok := viper.GetStringMapString("systems")[s]
+			v, ok := viper.GetStringMapString(config.PR_SYSTEM)[s]
 			if !ok {
 				return event.Error(errors.New(s + " not found in systems"))
 			}
@@ -83,9 +84,9 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			}
 		},
 		EditFn: func(s string) tea.Cmd {
-			savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+			savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
-			v, ok := viper.GetStringMapString("systems")[s]
+			v, ok := viper.GetStringMapString(config.PR_SYSTEM)[s]
 			if !ok {
 				return func() tea.Msg {
 					return errors.New(s + " not found in systems")
@@ -197,17 +198,17 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 }
 
 func SetDefaultSystem(id string) error {
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	savedDefaultSystemPrompt[id] = ""
-	viper.Set("default-systems", savedDefaultSystemPrompt)
+	viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 
 	return viper.WriteConfig()
 }
 
 func UnsetDefaultSystem(id string) error {
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	delete(savedDefaultSystemPrompt, id)
-	viper.Set("default-systems", savedDefaultSystemPrompt)
+	viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	return viper.WriteConfig()
 }
 
@@ -215,20 +216,20 @@ func AddToSystemList(content string, key string) {
 	if key == "" {
 		key = time.Now().Format("2006-01-02 15:04:05")
 	}
-	systems := viper.GetStringMapString("systems")
+	systems := viper.GetStringMapString(config.PR_SYSTEM)
 	systems[key] = content
 	viper.Set("systems", systems)
 	viper.WriteConfig()
 }
 func RemoveFromSystemList(time string) {
-	systems := viper.GetStringMapString("systems")
+	systems := viper.GetStringMapString(config.PR_SYSTEM)
 	delete(systems, time)
 	viper.Set("systems", systems)
 	viper.WriteConfig()
 }
 
 func UpdateFromSystemList(time string, content string) {
-	systems := viper.GetStringMapString("systems")
+	systems := viper.GetStringMapString(config.PR_SYSTEM)
 	systems[time] = content
 	viper.Set("systems", systems)
 	viper.WriteConfig()

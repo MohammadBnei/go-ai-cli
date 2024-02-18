@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/form"
@@ -18,10 +19,10 @@ import (
 
 func NewConfigModel(promptConfig *service.PromptConfig) tea.Model {
 
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	if savedDefaultSystemPrompt == nil {
 		savedDefaultSystemPrompt = make(map[string]string)
-		viper.Set("default-systems", savedDefaultSystemPrompt)
+		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
 	items := getItemsAsUiList(promptConfig)
@@ -79,23 +80,23 @@ func getEditModel(id string) (tea.Model, error) {
 		var editModel *huh.Form
 		var afterCmd tea.Cmd
 		switch id {
-		case "model":
+		case config.AI_MODEL_NAME:
 			modelSelectForm, err := newModelSelectForm(value)
 			if err != nil {
 				return nil, err
 			}
 			editModel = modelSelectForm
 
-		case "api_type":
+		case config.AI_API_TYPE:
 			editModel = newApiTypeSelectForm(value)
 			afterCmd = func() tea.Msg {
-				modelSelectForm, err := newModelSelectForm(viper.GetString("model"))
+				modelSelectForm, err := newModelSelectForm(viper.GetString(config.AI_MODEL_NAME))
 				if err != nil {
 					return err
 				}
 				return event.AddStackEvent{Stack: form.NewEditModel("Editing config model after updating the api type", modelSelectForm, func(form *huh.Form) tea.Cmd {
-					result := form.GetString("model")
-					return UpdateConfigValue("model", result, result)
+					result := form.GetString(config.AI_MODEL_NAME)
+					return UpdateConfigValue(config.AI_MODEL_NAME, result, result)
 				})}
 			}
 
@@ -129,7 +130,7 @@ func getEditModel(id string) (tea.Model, error) {
 		), func(form *huh.Form) tea.Cmd {
 			result := form.GetBool(id)
 			updateEvent := UpdateConfigValue(id, result, helper.CheckedStringHelper(result))
-			if id == "md" {
+			if id == config.UI_MARKDOWN_MODE {
 				return tea.Sequence(updateEvent, event.UpdateChatContent("", ""))
 			}
 			return updateEvent

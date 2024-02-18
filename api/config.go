@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
@@ -26,16 +27,16 @@ const (
 )
 
 func GetGenerateFunction() (func(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error), error) {
-	model := viper.GetString("model")
-	switch viper.GetString("API_TYPE") {
+	model := viper.GetString(config.AI_MODEL_NAME)
+	switch viper.GetString(config.AI_API_TYPE) {
 	case API_OPENAI:
-		llm, err := openai.New(openai.WithToken(viper.GetString("OPENAI_KEY")), openai.WithModel(model))
+		llm, err := openai.New(openai.WithToken(viper.GetString(config.AI_OPENAI_KEY)), openai.WithModel(model))
 		return llm.GenerateContent, err
 	case API_HUGGINGFACE:
-		llm, err := huggingface.New(huggingface.WithToken(viper.GetString("HUGGINGFACE_KEY")), huggingface.WithModel(model))
+		llm, err := huggingface.New(huggingface.WithToken(viper.GetString(config.AI_HUGGINGFACE_KEY)), huggingface.WithModel(model))
 		return llm.GenerateContent, err
 	case API_OLLAMA:
-		llama, err := ollama.New(ollama.WithModel(model), ollama.WithServerURL(viper.GetString("OLLAMA_HOST")))
+		llama, err := ollama.New(ollama.WithModel(model), ollama.WithServerURL(viper.GetString(config.AI_OLLAMA_HOST)))
 		return llama.GenerateContent, err
 	default:
 		return nil, errors.New("invalid api type")
@@ -47,7 +48,7 @@ func GetApiTypeList() []string {
 }
 
 func GetApiModelList() ([]string, error) {
-	switch viper.GetString("API_TYPE") {
+	switch viper.GetString(config.AI_API_TYPE) {
 	case API_OPENAI:
 		return GetOpenAiModelList()
 	case API_HUGGINGFACE:
@@ -61,7 +62,7 @@ func GetApiModelList() ([]string, error) {
 }
 
 func GetOllamaModelList() ([]string, error) {
-	req, err := http.NewRequest("GET", "http://127.0.0.1:11434/api/tags", nil)
+	req, err := http.NewRequest("GET", viper.GetString(config.AI_OLLAMA_HOST)+"/api/tags", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +92,7 @@ func GetOllamaModelList() ([]string, error) {
 }
 
 func GetOpenAiModelList() ([]string, error) {
-	c := openaiHelper.NewClient(viper.GetString("OPENAI_KEY"))
+	c := openaiHelper.NewClient(viper.GetString(config.AI_OPENAI_KEY))
 	models, err := c.ListModels(context.Background())
 	if err != nil {
 		return nil, err

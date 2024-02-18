@@ -4,12 +4,13 @@ import (
 	"context"
 	"io"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 )
 
 func SpeechToText(ctx context.Context, filename string, lang string) (string, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
 
 	if lang == "" {
 		lang = "en"
@@ -29,7 +30,7 @@ func SpeechToText(ctx context.Context, filename string, lang string) (string, er
 }
 
 func TextToSpeech(ctx context.Context, content string) (io.ReadCloser, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
 
 	response, err := c.CreateSpeech(ctx, openai.CreateSpeechRequest{
 		Model:          openai.TTSModel1,

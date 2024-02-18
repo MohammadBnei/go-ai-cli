@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
@@ -24,8 +25,8 @@ func getInfoContent(m chatModel) string {
 	smallTitleStyle := style.TitleStyle.Copy().Margin(0).Padding(0, 2)
 	return banner.Inline("go ai cli") + "\n" +
 		lipgloss.NewStyle().AlignVertical(lipgloss.Center).Height(m.viewport.Height).Render(
-			"Api : "+smallTitleStyle.Render(viper.GetString("API_TYPE"))+"\n"+
-				"Model : "+smallTitleStyle.Render(viper.GetString("model"))+"\n"+
+			"Api : "+smallTitleStyle.Render(viper.GetString(config.AI_API_TYPE))+"\n"+
+				"Model : "+smallTitleStyle.Render(viper.GetString(config.AI_MODEL_NAME))+"\n"+
 				"Messages : "+smallTitleStyle.Render(fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages)))+"\n"+
 				"Tokens : "+smallTitleStyle.Render(fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens))+"\n",
 		)
@@ -207,14 +208,14 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 		}),
 	}
 
-	if v := viper.GetFloat64("temperature"); v >= 0 {
+	if v := viper.GetFloat64(config.AI_TEMPERATURE); v >= 0 {
 		options = append(options, llms.WithTemperature(v))
 	}
-	if v := viper.GetInt("topK"); v >= 0 {
+	if v := viper.GetInt(config.AI_TOP_K); v >= 0 {
 		options = append(options, llms.WithTopK(v))
 
 	}
-	if v := viper.GetFloat64("topP"); v >= 0 {
+	if v := viper.GetFloat64(config.AI_TOP_P); v >= 0 {
 		options = append(options, llms.WithTopP(v))
 	}
 
