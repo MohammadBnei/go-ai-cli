@@ -275,11 +275,11 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionModel.Title = msg.Title
 
 	case service.ChatMessage:
-		if msg.Id == m.currentChatMessages.user.Id {
+		if m.currentChatMessages.user != nil && msg.Id == m.currentChatMessages.user.Id {
 			m.userPrompt = msg.Content
 		}
 
-		if msg.Id == m.currentChatMessages.assistant.Id {
+		if m.currentChatMessages.assistant != nil && msg.Id == m.currentChatMessages.assistant.Id {
 			m.aiResponse = msg.Content
 		}
 

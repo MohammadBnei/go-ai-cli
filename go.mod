@@ -1,8 +1,8 @@
 module github.com/MohammadBnei/go-ai-cli
 
-go 1.21
+go 1.22
 
-toolchain go1.21.6
+toolchain go1.22.0
 
 require (
 	github.com/MichaelMure/go-term-markdown v0.1.4
@@ -64,7 +64,7 @@ require (
 	github.com/gomarkdown/markdown v0.0.0-20231222211730-1d6d20845b47 // indirect
 	github.com/google/uuid v1.5.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
-	github.com/gordonklaus/portaudio v0.0.0-20230709114228-aafa478834f5 // indirect
+	github.com/gordonklaus/portaudio v0.0.0-20221027163845-7c3b689db3cc // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/hajimehoshi/go-mp3 v0.3.0 // indirect
 	github.com/hajimehoshi/oto v0.7.1 // indirect

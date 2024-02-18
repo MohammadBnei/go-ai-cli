@@ -1,5 +1,4 @@
 //go:build portaudio
-// +build portaudio
 
 package audio
 

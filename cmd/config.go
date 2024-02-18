@@ -51,8 +51,6 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	configCmd.Flags().Bool("md", false, "markdown mode enabled")
-
 	viper.BindPFlags(configCmd.Flags())
 
 	// Cobra supports local flags which will only run when this command
