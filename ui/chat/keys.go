@@ -119,7 +119,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			return m, func() tea.Msg { return m.size }
 
 		case key.Matches(msg, m.keys.copy):
-			if len(m.stack) == 0 {
+			if len(m.stack) == 0 && m.currentChatMessages.assistant != nil {
 				err := clipboard.WriteAll(m.currentChatMessages.assistant.Content)
 				if err != nil {
 					return m, event.Error(err)
