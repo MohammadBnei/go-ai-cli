@@ -28,6 +28,7 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
+	"github.com/tmc/langchaingo/agents"
 	"golang.org/x/term"
 )
 
@@ -89,6 +90,9 @@ type chatModel struct {
 	loading bool
 
 	audioPlayer *audio.AudioPlayerModel
+
+	agentExecutor *agents.Executor
+	agentName     string
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
@@ -298,6 +302,10 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	case event.AgentSelectionEvent:
+		m.agentExecutor = msg.Executor
+		m.agentName = msg.Name
+
 	case error:
 		m.err = msg
 		m.errorList = append(m.errorList, msg)
@@ -368,6 +376,9 @@ func (m chatModel) GetTitleView() string {
 	}
 	if userPrompt == "" {
 		userPrompt = "Chat"
+	}
+	if m.agentExecutor != nil {
+		userPrompt = fmt.Sprintf("%s | %s", m.agentName, userPrompt)
 	}
 	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }

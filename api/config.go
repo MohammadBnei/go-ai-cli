@@ -26,21 +26,29 @@ const (
 	API_OLLAMA      = "OLLAMA"
 )
 
-func GetGenerateFunction() (func(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error), error) {
+func GetLlmModel() (llm llms.Model, err error) {
 	model := viper.GetString(config.AI_MODEL_NAME)
 	switch viper.GetString(config.AI_API_TYPE) {
 	case API_OPENAI:
-		llm, err := openai.New(openai.WithToken(viper.GetString(config.AI_OPENAI_KEY)), openai.WithModel(model))
-		return llm.GenerateContent, err
+		llm, err = openai.New(openai.WithToken(viper.GetString(config.AI_OPENAI_KEY)), openai.WithModel(model))
 	case API_HUGGINGFACE:
-		llm, err := huggingface.New(huggingface.WithToken(viper.GetString(config.AI_HUGGINGFACE_KEY)), huggingface.WithModel(model))
-		return llm.GenerateContent, err
+		llm, err = huggingface.New(huggingface.WithToken(viper.GetString(config.AI_HUGGINGFACE_KEY)), huggingface.WithModel(model))
 	case API_OLLAMA:
-		llama, err := ollama.New(ollama.WithModel(model), ollama.WithServerURL(viper.GetString(config.AI_OLLAMA_HOST)))
-		return llama.GenerateContent, err
+		llm, err = ollama.New(ollama.WithModel(model), ollama.WithServerURL(viper.GetString(config.AI_OLLAMA_HOST)))
 	default:
 		return nil, errors.New("invalid api type")
 	}
+
+	return
+}
+
+func GetGenerateFunction() (func(ctx context.Context, messages []llms.MessageContent, options ...llms.CallOption) (*llms.ContentResponse, error), error) {
+	llm, err := GetLlmModel()
+	if err != nil {
+		return nil, err
+	}
+
+	return llm.GenerateContent, nil
 }
 
 func GetApiTypeList() []string {

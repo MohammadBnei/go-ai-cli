@@ -2,6 +2,7 @@ package event
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/tmc/langchaingo/agents"
 )
 
 type AddStackEvent struct {
@@ -110,5 +111,19 @@ type FileSelectionEvent struct {
 func FileSelection(files []string, multiMode bool) tea.Cmd {
 	return func() tea.Msg {
 		return FileSelectionEvent{Files: files, MultiMode: multiMode}
+	}
+}
+
+type AgentSelectionEvent struct {
+	Executor *agents.Executor
+	Name     string
+}
+
+func AgentSelection(executor *agents.Executor, name string) tea.Cmd {
+	return func() tea.Msg {
+		return AgentSelectionEvent{
+			Executor: executor,
+			Name:     name,
+		}
 	}
 }

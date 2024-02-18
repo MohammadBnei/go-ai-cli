@@ -27,7 +27,7 @@ type ChatMessage struct {
 }
 
 type Meta struct {
-	ApiType, Model string
+	ApiType, Model, Agent string
 }
 
 func (c *ChatMessage) AsTypeFile() *ChatMessage {

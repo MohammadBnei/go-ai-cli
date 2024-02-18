@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
+	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/llms"
 	"moul.io/banner"
 )
@@ -139,7 +140,13 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 		return m, event.Error(err)
 	}
 
-	go sendPrompt(m.promptConfig, *m.currentChatMessages)
+	switch {
+	case m.agentExecutor != nil:
+		go sendAgentPrompt(*m, *m.currentChatMessages)
+		m.agentExecutor = nil
+	default:
+		go sendPrompt(m.promptConfig, *m.currentChatMessages)
+	}
 
 	m.textarea.Reset()
 	m.aiResponse = ""
@@ -151,7 +158,7 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 }
 
 func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
-	if previous.AssociatedMessageId >= 0 {
+	if previous.AssociatedMessageId != 0 {
 		switch previous.Role {
 		case service.RoleUser:
 			m.currentChatMessages.user = previous
@@ -230,6 +237,58 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 	if err != nil {
 		chatProgram.Send(err)
 		return err
+	}
+
+	return nil
+}
+
+func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	m.promptConfig.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
+	defer m.promptConfig.DeleteContextById(currentChatMsgs.user.Id.Int64())
+
+	if m.promptConfig.UpdateChan != nil {
+		m.promptConfig.UpdateChan <- *m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
+	}
+
+	userMessages, _ := m.promptConfig.ChatMessages.FilterMessages(service.RoleUser)
+	last, err := lo.Last(userMessages)
+	if err != nil {
+		return err
+	}
+
+	output, err := chains.Run(ctx, m.agentExecutor, last.Content, chains.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+		if err := ctx.Err(); err != nil {
+			m.promptConfig.DeleteContextById(currentChatMsgs.user.Id.Int64())
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		previous := currentChatMsgs.assistant
+		if previous == nil {
+			m.promptConfig.DeleteContextById(currentChatMsgs.user.Id.Int64())
+			return errors.New("previous message not found")
+		}
+		previous.Content += string(chunk)
+		m.promptConfig.ChatMessages.UpdateMessage(*previous)
+		if m.promptConfig.UpdateChan != nil {
+			m.promptConfig.UpdateChan <- *previous
+		}
+		return nil
+	}))
+
+	if err != nil {
+		chatProgram.Send(err)
+		return err
+	}
+
+	currentChatMsgs.assistant.Content = output
+	currentChatMsgs.assistant.Meta.Agent = m.agentName
+	currentChatMsgs.user.Meta.Agent = m.agentName
+	m.promptConfig.ChatMessages.UpdateMessage(*currentChatMsgs.assistant)
+	if m.promptConfig.UpdateChan != nil {
+		m.promptConfig.UpdateChan <- *currentChatMsgs.assistant
 	}
 
 	return nil

@@ -106,7 +106,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
 
-			case m.promptConfig.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
+			case m.currentChatMessages.user != nil && m.promptConfig.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
 				return closeContext(m)
 
 			}
