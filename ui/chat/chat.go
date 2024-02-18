@@ -209,7 +209,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if len(m.stack) == 0 {
+			if len(m.stack) == 0 && m.textarea.Value() != "" {
 				m.history.Add(m.textarea.Value())
 
 				return promptSend(&m)

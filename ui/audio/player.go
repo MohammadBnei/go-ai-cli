@@ -171,15 +171,15 @@ func (m *AudioPlayerModel) InitSpeaker(chatMsgId int64) any {
 	if err != nil {
 		return err
 	}
+	m.streamer = streamer
 
 	if err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/30)); err != nil {
 		return err
 	}
 
 	m.format = &format
-	m.streamer = streamer
 
-	m.ctrl = &beep.Ctrl{Streamer: beep.Loop(-1, streamer), Paused: false}
+	m.ctrl = &beep.Ctrl{Streamer: streamer, Paused: false}
 	m.speed = beep.ResampleRatio(4, 1, m.ctrl)
 
 	speaker.Play(m.speed)
