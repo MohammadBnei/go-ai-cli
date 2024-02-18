@@ -163,7 +163,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 					return m.audioPlayer.InitSpeaker(m.currentChatMessages.assistant.Id.Int64())
 				}, func() tea.Msg {
 					m.promptConfig.DeleteContextById(m.currentChatMessages.assistant.Id.Int64())
-					return nil
+					return event.Transition("")
 				})
 			}
 

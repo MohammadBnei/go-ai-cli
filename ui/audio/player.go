@@ -7,9 +7,13 @@ import (
 	"time"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
@@ -18,7 +22,6 @@ import (
 type AudioPlayerModel struct {
 	promptConfig *service.PromptConfig
 	chatMsgId    int64
-	playing      bool
 
 	keys *keyMap
 
@@ -28,6 +31,10 @@ type AudioPlayerModel struct {
 	format   *beep.Format
 	ctrl     *beep.Ctrl
 	speed    *beep.Resampler
+
+	help help.Model
+
+	viewport viewport.Model
 }
 
 func NewPlayerModel(pc *service.PromptConfig) *AudioPlayerModel {
@@ -35,15 +42,23 @@ func NewPlayerModel(pc *service.PromptConfig) *AudioPlayerModel {
 	return &AudioPlayerModel{
 		title:        "Audio controller",
 		chatMsgId:    -1,
-		playing:      false,
 		promptConfig: pc,
 		keys:         newKeyMap(),
+		help:         help.New(),
+		viewport:     viewport.New(0, 0),
 	}
 }
 
 func (m AudioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - lipgloss.Height(m.help.View(m.keys)) - lipgloss.Height(m.GetTitleView())
+
+	case Tick:
+		cmds = append(cmds, tea.Tick(time.Second, func(time.Time) tea.Msg { return Tick{} }))
 
 	case tea.KeyMsg:
 		if m.chatMsgId == -1 {
@@ -56,35 +71,73 @@ func (m AudioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			speaker.Unlock()
 
 		case key.Matches(msg, m.keys.speedUp):
-			speaker.Lock()
-			m.speed.SetRatio(m.speed.Ratio() + 0.2)
-			speaker.Unlock()
+			newRatio := m.speed.Ratio() + 0.2
+			if newRatio <= 2 {
+				speaker.Lock()
+				m.speed.SetRatio(newRatio)
+				speaker.Unlock()
+			}
 
 		case key.Matches(msg, m.keys.speedDown):
+			newRatio := m.speed.Ratio() - 0.2
+			if newRatio > 0.2 {
+				speaker.Lock()
+				m.speed.SetRatio(newRatio)
+				speaker.Unlock()
+			}
+
+		case key.Matches(msg, m.keys.forward):
+			position := m.format.SampleRate.D(m.streamer.Position())
+			position += 5 * time.Second
 			speaker.Lock()
-			m.speed.SetRatio(m.speed.Ratio() - 0.2)
+			err := m.streamer.Seek(m.format.SampleRate.N(position))
+			if err != nil {
+				cmds = append(cmds, event.Error(err))
+			}
 			speaker.Unlock()
+
+		case key.Matches(msg, m.keys.back):
+			position := m.format.SampleRate.D(m.streamer.Position())
+			position -= 5 * time.Second
+			if position >= 0 {
+				speaker.Lock()
+				err := m.streamer.Seek(m.format.SampleRate.N(position))
+				if err != nil {
+					cmds = append(cmds, event.Error(err))
+				}
+				speaker.Unlock()
+			}
 
 		}
 	}
-	return m, nil
+
+	if m.chatMsgId != -1 {
+		speaker.Lock()
+		position := m.format.SampleRate.D(m.streamer.Position())
+		length := m.format.SampleRate.D(m.streamer.Len())
+		speed := m.speed.Ratio()
+		speaker.Unlock()
+
+		m.viewport.SetContent(fmt.Sprintf("%v / %v\n%.1fx", position.Round(time.Second), length.Round(time.Second), speed))
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m AudioPlayerModel) Init() tea.Cmd {
-	return nil
+	return tea.Tick(time.Second, func(time.Time) tea.Msg { return Tick{} })
 }
 
 func (m AudioPlayerModel) View() string {
 	title := m.GetTitleView()
 	if m.chatMsgId == -1 {
-		return fmt.Sprintf("%\nsNo message selected", title)
+		return fmt.Sprintf("%s\nNo message selected", title)
 	}
-	speaker.Lock()
-	position := m.format.SampleRate.D(m.streamer.Position())
-	length := m.format.SampleRate.D(m.streamer.Len())
-	speed := m.speed.Ratio()
-	speaker.Unlock()
-	return fmt.Sprintf("%s\n%v / %v\n%.3fx", title, position.Round(time.Second), length.Round(time.Second), speed)
+
+	return fmt.Sprintf("%s\n%s\n%s", title, m.viewport.View(), m.help.View(m.keys))
 }
 
 func (m AudioPlayerModel) GetTitleView() string {
@@ -99,7 +152,7 @@ func (m *AudioPlayerModel) Clear() {
 	m.speed = nil
 }
 
-func (m *AudioPlayerModel) InitSpeaker(chatMsgId int64) error {
+func (m *AudioPlayerModel) InitSpeaker(chatMsgId int64) any {
 	m.chatMsgId = chatMsgId
 	msg := m.promptConfig.ChatMessages.FindById(chatMsgId)
 	if msg == nil {
@@ -119,7 +172,7 @@ func (m *AudioPlayerModel) InitSpeaker(chatMsgId int64) error {
 		return err
 	}
 
-	if err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/60)); err != nil {
+	if err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/30)); err != nil {
 		return err
 	}
 
@@ -129,5 +182,11 @@ func (m *AudioPlayerModel) InitSpeaker(chatMsgId int64) error {
 	m.ctrl = &beep.Ctrl{Streamer: beep.Loop(-1, streamer), Paused: false}
 	m.speed = beep.ResampleRatio(4, 1, m.ctrl)
 
-	return nil
+	speaker.Play(m.speed)
+
+	return StartPlayingEvent{}
 }
+
+type StartPlayingEvent struct{}
+
+type Tick struct{}
