@@ -166,9 +166,14 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 		case service.RoleAssistant:
 			m.currentChatMessages.assistant = previous
 			m.currentChatMessages.user = m.promptConfig.ChatMessages.FindById(previous.AssociatedMessageId)
+		case service.RoleSystem:
+			m.userPrompt = "System / File | " + previous.Date.String()
+			m.currentChatMessages.user = previous
+			m.aiResponse = previous.Content
+			m.currentChatMessages.assistant = nil
+			return
 		}
 	} else {
-		m.currentChatMessages.assistant = nil
 		m.currentChatMessages.user = previous
 	}
 
@@ -201,7 +206,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 				}
 				return err
 			}
-			previous := currentChatMsgs.assistant
+			previous := pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 			if previous == nil {
 				pc.DeleteContextById(currentChatMsgs.user.Id.Int64())
 				return errors.New("previous message not found")
@@ -265,7 +270,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 			}
 			return err
 		}
-		previous := currentChatMsgs.assistant
+		previous := m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 		if previous == nil {
 			m.promptConfig.DeleteContextById(currentChatMsgs.user.Id.Int64())
 			return errors.New("previous message not found")

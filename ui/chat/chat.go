@@ -267,6 +267,12 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// TODO: find better solutions, direct comparison provokes panic
 		m.stack = m.stack[:len(m.stack)-1]
 		if len(m.stack) == 0 {
+			switch {
+			case m.currentChatMessages.user != nil:
+				m.currentChatMessages.user = m.promptConfig.ChatMessages.FindById(m.currentChatMessages.user.Id.Int64())
+			case m.currentChatMessages.assistant != nil:
+				m.currentChatMessages.assistant = m.promptConfig.ChatMessages.FindById(m.currentChatMessages.assistant.Id.Int64())
+			}
 			return m, tea.Sequence(event.Transition("..."), m.Init(), event.Transition(""), m.resize)
 		}
 		return m, nil

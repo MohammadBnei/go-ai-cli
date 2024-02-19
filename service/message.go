@@ -10,18 +10,17 @@ import (
 	"github.com/bwmarrin/snowflake"
 )
 
-type ChatMessage struct {
-	Id      snowflake.ID `json:"-"`
-	Role    ROLES        `json:"role"`
-	Content string       `json:"content"`
-	Tokens  int          `json:"tokens"`
+type ChatMessage struct { Id      snowflake.ID
+	Role    ROLES
+	Content string
+	Tokens  int
 	Type    TYPE
 
 	AssociatedMessageId int64
 
 	Date time.Time
 
-	Audio io.ReadCloser `json:"-"`
+	Audio io.ReadCloser `json:"-,omitempty"`
 
 	Meta Meta
 }

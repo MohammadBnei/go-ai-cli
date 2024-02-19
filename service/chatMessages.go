@@ -38,7 +38,7 @@ type ChatMessages struct {
 	Messages    []ChatMessage
 	TotalTokens int
 
-	node *snowflake.Node `json:"-"`
+	node *snowflake.Node
 }
 
 func NewChatMessages(id string) *ChatMessages {

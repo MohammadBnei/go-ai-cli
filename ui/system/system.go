@@ -2,6 +2,7 @@ package system
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/golang-module/carbon"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 )
@@ -50,6 +52,10 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
 			ItemTitle:       strings.ReplaceAll(v, "\n\n", "\n"),
 			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(found), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+k),
 		}
+	})
+
+	sort.Slice(res, func(i, j int) bool {
+		return carbon.ParseByFormat(res[i].ItemId, "2024-02-15 23:03:16").Gt(carbon.ParseByFormat(res[j].ItemId, "2024-02-15 23:03:16"))
 	})
 
 	return res
