@@ -4,6 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/chat"
@@ -26,13 +29,21 @@ var promptCmd = &cobra.Command{
 			promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
 		}
 
+		if viper.GetBool(config.C_AUTOLOAD) {
+			fmt.Println("Loading last chat...")
+			configFolder := filepath.Dir(viper.ConfigFileUsed())
+			err := promptConfig.ChatMessages.LoadFromFile(configFolder + "/last-chat.yml")
+			if err != nil {
+				fmt.Printf("An error occured trying to get the last chat : %s\nPress enter to continue", err)
+				fmt.Scanln()
+			}
+		}
+
 		updateChan := make(chan service.ChatMessage)
 		defer close(updateChan)
 		promptConfig.UpdateChan = updateChan
 
 		chat.Chat(promptConfig)
-
-		recover()
 
 	},
 }
@@ -40,7 +51,7 @@ var promptCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(promptCmd)
 
-	// promptCmd.PersistentFlags().BoolP("auto-load", "s", false, "Automatically save the prompt to a file")
+	promptCmd.PersistentFlags().Bool(config.C_AUTOLOAD, false, "Automatically load the prompt from $CONFIG/last-chat.yml")
 
-	// viper.BindPFlag("autoSave", promptCmd.Flags().Lookup("auto-load"))
+	viper.BindPFlag("autoSave", promptCmd.Flags().Lookup(config.C_AUTOLOAD))
 }

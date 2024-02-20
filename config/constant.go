@@ -15,4 +15,6 @@ const (
 
 	PR_SYSTEM_DEFAULT = "default-systems"
 	PR_SYSTEM         = "systems"
+
+	C_AUTOLOAD = "auto-load"
 )
