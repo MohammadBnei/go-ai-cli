@@ -68,6 +68,12 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 		return errors.New("filename cannot be empty")
 	}
 
+	copyOfC := *c
+	copyOfC.Messages = lo.Map(copyOfC.Messages, func(item ChatMessage, _ int) ChatMessage {
+		item.Audio = nil
+		return item
+	})
+
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return err

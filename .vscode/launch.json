@@ -20,7 +20,8 @@
       "mode": "debug",
       "program": "main.go",
       "args": ["prompt"],
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "buildFlags": ["-tags", "portaudio"],
     }
   ]
 }

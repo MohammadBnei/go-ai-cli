@@ -2,7 +2,9 @@ package chat
 
 import (
 	"context"
+	"errors"
 
+	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/info"
@@ -153,16 +155,31 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.textToSpeech):
 			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
+				msgId := m.currentChatMessages.assistant.Id.Int64()
 				ctx, cancel := context.WithCancel(context.Background())
-				m.promptConfig.AddContextWithId(ctx, cancel, m.currentChatMessages.assistant.Id.Int64())
+				m.promptConfig.AddContextWithId(ctx, cancel, msgId)
 				return m, tea.Sequence(func() tea.Msg {
-					err := m.promptConfig.ChatMessages.FindById(m.currentChatMessages.assistant.Id.Int64()).FetchAudio(ctx)
+					err := m.promptConfig.ChatMessages.FindById(msgId).FetchAudio(ctx)
 					if err != nil {
 						return err
 					}
-					return m.audioPlayer.InitSpeaker(m.currentChatMessages.assistant.Id.Int64())
+					msg := m.promptConfig.ChatMessages.FindById(msgId)
+					if msg == nil {
+						return event.Error(errors.New("message not found"))
+					}
+					if msg.Audio == nil {
+						ctx, cancelFn := service.LoadContext(context.Background())
+						m.promptConfig.AddContextWithId(ctx, cancelFn, msgId)
+						defer m.promptConfig.DeleteContext(ctx)
+						err := msg.FetchAudio(ctx)
+						if err != nil {
+							return err
+						}
+					}
+					m.audioPlayer.Clear()
+					return m.audioPlayer.InitSpeaker((*msg).Audio)
 				}, func() tea.Msg {
-					m.promptConfig.DeleteContextById(m.currentChatMessages.assistant.Id.Int64())
+					m.promptConfig.DeleteContextById(msgId)
 					return event.Transition("")
 				})
 			}
@@ -174,7 +191,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.audiPlayer):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(m.audioPlayer, "Loading audio player...")
+				return m, tea.Sequence(event.AddStack(m.audioPlayer, "Loading audio player..."), m.audioPlayer.DoTick())
 			}
 
 		}

@@ -1,8 +1,9 @@
-package api
+package agent
 
 import (
 	"context"
 
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/tmc/langchaingo/agents"
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/llms"
@@ -12,7 +13,7 @@ import (
 	"github.com/tmc/langchaingo/tools/scraper"
 )
 
-func NewWebSearchAgent(llm llms.Model) (*agents.Executor, error) {
+func NewAutoWebSearchAgent(llm llms.Model) (*agents.Executor, error) {
 	ddg, err := duckduckgo.New(10, "en")
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func (s *SearchInputDesigner) Description() string {
 }
 
 func (s *SearchInputDesigner) Call(ctx context.Context, input string) (string, error) {
-	llm, err := GetLlmModel()
+	llm, err := api.GetLlmModel()
 	if err != nil {
 		return "", err
 	}

@@ -73,15 +73,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Did the user select a file?
 	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
-		if _, ok := lo.Find(m.selectedFiles, func(item string) bool {
-			return item == path
-		}); ok {
-			m.selectedFiles = lo.Filter(m.selectedFiles, func(item string, _ int) bool {
-				return item != path
-			})
-			return m, nil
+		if m.multiMode {
+			if _, ok := lo.Find(m.selectedFiles, func(item string) bool {
+				return item == path
+			}); ok {
+				m.selectedFiles = lo.Filter(m.selectedFiles, func(item string, _ int) bool {
+					return item != path
+				})
+				return m, nil
+			}
+			m.selectedFiles = append(m.selectedFiles, path)
+		} else {
+			m.selectedFiles = []string{path}
 		}
-		m.selectedFiles = append(m.selectedFiles, path)
 	}
 
 	return m, tea.Batch(cmds...)

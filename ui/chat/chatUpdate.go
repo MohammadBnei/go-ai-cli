@@ -177,7 +177,7 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 		m.currentChatMessages.user = previous
 	}
 
-	if m.currentChatMessages.assistant != nil {
+	if m.currentChatMessages.assistant != nil && m.currentChatMessages.user != nil {
 		m.aiResponse = m.currentChatMessages.assistant.Content
 		m.userPrompt = m.currentChatMessages.user.Content
 	} else {

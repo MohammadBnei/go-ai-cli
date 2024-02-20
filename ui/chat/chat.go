@@ -312,6 +312,16 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.agentExecutor = msg.Executor
 		m.agentName = msg.Name
 
+	case audio.StartPlayingEvent:
+		m.audioPlayer = msg.PlayerModel
+		if apModel, ok := lo.Find(m.stack, func(item tea.Model) bool {
+			_, ok := item.(audio.AudioPlayerModel)
+			return ok
+		}); ok {
+			apModel = msg.PlayerModel
+			_ = apModel
+		}
+
 	case error:
 		m.err = msg
 		m.errorList = append(m.errorList, msg)

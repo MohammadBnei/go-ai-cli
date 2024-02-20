@@ -16,7 +16,6 @@ import (
 
 type model struct {
 	filepicker   filepicker.Model
-	keys         *keyMap
 	help         help.Model
 	title        string
 	width        int
@@ -34,7 +33,6 @@ func NewLoadChatModel(pc *service.PromptConfig) model {
 	return model{
 		filepicker:   fp,
 		promptConfig: pc,
-		keys:         newKeyMap(),
 		help:         help.New(),
 		title:        "Chat Loader",
 	}
@@ -57,7 +55,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.filepicker.Height = msg.Height - lipgloss.Height(m.help.View(m.keys)) - lipgloss.Height(m.GetTitleView())
+		m.filepicker.Height = msg.Height - lipgloss.Height(m.GetTitleView())
 		m.width = msg.Width
 	case tea.KeyMsg:
 	}
@@ -76,7 +74,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View returns a string representation of the UI.
 func (m model) View() string {
-	return fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filepicker.View(), m.help.View(m.keys))
+	return fmt.Sprintf("%s\n%s", m.GetTitleView(), m.filepicker.View())
 }
 
 func (m model) GetTitleView() string {

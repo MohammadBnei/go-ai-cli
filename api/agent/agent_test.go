@@ -1,10 +1,11 @@
-package api_test
+package agent_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/api/agent"
 	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/chains"
@@ -23,8 +24,7 @@ func TestWebSearchAgent(t *testing.T) {
 	}
 	t.Log("Created llm")
 
-
-	executor, err := api.NewWebSearchAgent(llm)
+	executor, err := agent.NewAutoWebSearchAgent(llm)
 	if err != nil {
 		t.Fatal(err)
 	}

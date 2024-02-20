@@ -27,7 +27,7 @@ func NewSaveChatModel(promptConfig *service.PromptConfig) tea.Model {
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return m.form.Init()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -50,7 +50,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.form.GetBool("confirm") {
 			return m, event.RemoveStack(m)
 		}
-		return m, event.Error(saveChat(*m.promptConfig, m.form.GetString("name")))
+		return m, tea.Sequence(event.Error(saveChat(*m.promptConfig, m.form.GetString("name"))), event.RemoveStack(m))
 	}
 
 	return m, tea.Batch(cmds...)

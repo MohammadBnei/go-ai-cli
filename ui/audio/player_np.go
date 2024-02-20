@@ -3,6 +3,8 @@
 package audio
 
 import (
+	"io"
+
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/transition"
 	tea "github.com/charmbracelet/bubbletea"
@@ -35,7 +37,7 @@ func (m *AudioPlayerModel) Clear() {
 
 }
 
-func (m *AudioPlayerModel) InitSpeaker(chatMsgId int64) any {
+func (m *AudioPlayerModel) InitSpeaker(audio io.ReadCloser) any {
 	return nil
 }
 
