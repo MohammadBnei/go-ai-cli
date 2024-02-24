@@ -121,9 +121,8 @@ func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 	m.userPrompt = m.textarea.Value()
-	m.promptConfig.UserPrompt = m.userPrompt
 
-	userMsg, err := m.promptConfig.ChatMessages.AddMessage(m.promptConfig.UserPrompt, service.RoleUser)
+	userMsg, err := m.promptConfig.ChatMessages.AddMessage(m.userPrompt, service.RoleUser)
 	if err != nil {
 		return m, event.Error(err)
 	}
@@ -141,9 +140,9 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case m.agentExecutor != nil:
+	case m.chain != nil:
 		go sendAgentPrompt(*m, *m.currentChatMessages)
-		m.agentExecutor = nil
+		m.chain = nil
 	default:
 		go sendPrompt(m.promptConfig, *m.currentChatMessages)
 	}
@@ -262,7 +261,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 		return err
 	}
 
-	output, err := chains.Run(ctx, m.agentExecutor, last.Content, chains.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
+	output, err := chains.Run(ctx, m.chain, last.Content, chains.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 		if err := ctx.Err(); err != nil {
 			m.promptConfig.DeleteContextById(currentChatMsgs.user.Id.Int64())
 			if err == io.EOF {
@@ -289,8 +288,8 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	}
 
 	currentChatMsgs.assistant.Content = output
-	currentChatMsgs.assistant.Meta.Agent = m.agentName
-	currentChatMsgs.user.Meta.Agent = m.agentName
+	currentChatMsgs.assistant.Meta.Agent = m.chainName
+	currentChatMsgs.user.Meta.Agent = m.chainName
 	m.promptConfig.ChatMessages.UpdateMessage(*currentChatMsgs.assistant)
 	if m.promptConfig.UpdateChan != nil {
 		m.promptConfig.UpdateChan <- *currentChatMsgs.assistant

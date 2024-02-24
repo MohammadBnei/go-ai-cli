@@ -75,12 +75,14 @@ func init() {
 
 	RootCmd.PersistentFlags().String(config.AI_OLLAMA_HOST, "http://127.0.0.1:11434", "the ollama host to be added to config")
 
+	RootCmd.PersistentFlags().String(config.AI_OPENAI_IMAGE_MODEL, "dall-e-3", "the openai image model to be added to config")
+
 	RootCmd.PersistentFlags().Bool(config.UI_MARKDOWN_MODE, false, "enable markdown mode")
 	RootCmd.PersistentFlags().Bool(config.UI_CODE_MODE, false, "enable code mode")
 
-	RootCmd.PersistentFlags().Float64(config.AI_TEMPERATURE, 0.7, "the temperature of the ai model's response")
-	RootCmd.PersistentFlags().Int(config.AI_TOP_K, 50, "The top-k parameter limits the model’s predictions to the top k most probable tokens at each step of generation")
-	RootCmd.PersistentFlags().Float64(config.AI_TOP_P, 0.5, "Top-p controls the cumulative probability of the generated tokens")
+	RootCmd.PersistentFlags().Float64(config.AI_TEMPERATURE, -1, "the temperature of the ai model's response")
+	RootCmd.PersistentFlags().Int(config.AI_TOP_K, -1, "The top-k parameter limits the model’s predictions to the top k most probable tokens at each step of generation")
+	RootCmd.PersistentFlags().Float64(config.AI_TOP_P, -1, "Top-p controls the cumulative probability of the generated tokens")
 
 	defaultModel := openai.GPT4
 	if v, _ := RootCmd.Flags().GetString(config.AI_API_TYPE); v == api.API_OLLAMA {

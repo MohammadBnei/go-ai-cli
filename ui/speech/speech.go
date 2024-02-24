@@ -40,10 +40,10 @@ type model struct {
 	langSelect      *huh.Form
 }
 
-func NewSpeechModel(promptConfig *service.PromptConfig, content string) tea.Model {
+func NewSpeechModel(promptConfig *service.PromptConfig) tea.Model {
 	ta := textarea.New()
 	ta.Placeholder = "Recort a message"
-	ta.SetValue(content)
+	ta.SetValue(promptConfig.UserPrompt)
 	ta.Focus()
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
@@ -110,6 +110,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Sequence(event.SetChatTextview(m.textarea.Value()), event.RemoveStack(m))
 		}
 		m.timer = timer.New(m.maxDuration)
+		m.aiCancelCtx = nil
+		m.recordCancelCtx = nil
+		m.directReturn = false
 
 	case setText:
 		m.textarea.SetValue(msg.content)
@@ -133,6 +136,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case stopRecordingEvent:
 		if m.recordCancelCtx != nil {
 			m.recordCancelCtx()
+			m.recordCancelCtx = nil
 		}
 		return m, m.timer.Stop()
 
@@ -147,14 +151,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case timer.TimeoutMsg:
+		m.recordCancelCtx = nil
 		return m, StopRecording
 
 	case event.CancelEvent:
 		if m.recordCancelCtx != nil {
 			m.recordCancelCtx()
+			m.recordCancelCtx = nil
 		}
 		if m.aiCancelCtx != nil {
 			m.aiCancelCtx()
+			m.aiCancelCtx = nil
 		}
 
 		return m, nil

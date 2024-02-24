@@ -74,7 +74,7 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 		return item
 	})
 
-	data, err := yaml.Marshal(c)
+	data, err := yaml.Marshal(copyOfC)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,13 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 	return nil
 }
 
-func (c *ChatMessages) LoadFromFile(filename string) error {
+func (c *ChatMessages) LoadFromFile(filename string) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = r.(error)
+		}
+	}()
+
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		return err

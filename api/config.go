@@ -113,3 +113,7 @@ func GetOpenAiModelList() ([]string, error) {
 
 	return modelsList, nil
 }
+
+func GetOpenAiImageModelList() ([]string, error) {
+	return []string{"dall-e-3", "dall-e-2"}, nil
+}

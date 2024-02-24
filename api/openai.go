@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
 	"strings"
 
@@ -30,6 +31,35 @@ func SpeechToText(ctx context.Context, filename string, lang string) (string, er
 	}
 
 	return response.Text, nil
+}
+
+func GenerateImage(ctx context.Context, prompt string, size string) ([]byte, error) {
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
+	model := viper.GetString(config.AI_OPENAI_IMAGE_MODEL)
+	if model == "" {
+		model = "dall-e-3"
+	}
+
+	resp, err := c.CreateImage(ctx, openai.ImageRequest{
+		Prompt: prompt,
+		User:   "user",
+		Model:  model,
+
+		Size:           size,
+		ResponseFormat: openai.CreateImageResponseFormatB64JSON,
+		N:              1,
+	})
+	if err != nil {
+		return nil, err
+
+	}
+
+	b, err := base64.StdEncoding.DecodeString(resp.Data[0].B64JSON)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 func TextToSpeech(ctx context.Context, content string) (io.ReadCloser, error) {

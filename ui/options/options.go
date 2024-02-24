@@ -6,6 +6,7 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/agent"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/image"
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	"github.com/MohammadBnei/go-ai-cli/ui/message"
 	"github.com/MohammadBnei/go-ai-cli/ui/quit"
@@ -19,6 +20,7 @@ const (
 	MESSAGES       = "messages"
 	SYSTEM_PROMPTS = "system_prompts"
 	CHAT           = "chat"
+	IMAGE          = "image"
 	ERRORS         = "errors"
 	REFRESH        = "refresh"
 	EXIT           = "exit"
@@ -44,6 +46,8 @@ func NewOptionsModel(pc *service.PromptConfig) tea.Model {
 				return event.AddStack(system.NewSystemModel(pc), "Loading System Prompts...")
 			case CHAT:
 				return event.AddStack(NewChatOptionsModel(pc), "Loading Chat...")
+			case IMAGE:
+				return event.AddStack(image.NewImageModel(pc), "Loading Image...")
 			case EXIT:
 				return event.AddStack(quit.NewQuitModel(pc), "Quitting...")
 			}
@@ -55,13 +59,14 @@ func NewOptionsModel(pc *service.PromptConfig) tea.Model {
 
 func getItemsAsUiList(pc *service.PromptConfig) []list.Item {
 	return []list.Item{
-		{ItemId: AGENTS, ItemTitle: "Agents"},
 		{ItemId: CONFIG, ItemTitle: "Config"},
 		{ItemId: MESSAGES, ItemTitle: "Messages"},
 		{ItemId: SYSTEM_PROMPTS, ItemTitle: "System Prompts"},
 		{ItemId: CHAT, ItemTitle: "Chat"},
-		{ItemId: ERRORS, ItemTitle: "Errors"},
-		{ItemId: REFRESH, ItemTitle: "Refresh"},
+		{ItemId: IMAGE, ItemTitle: "Image"},
+		{ItemId: AGENTS, ItemTitle: "Agents"},
+		// {ItemId: ERRORS, ItemTitle: "Errors"},
+		// {ItemId: REFRESH, ItemTitle: "Refresh"},
 		{ItemId: EXIT, ItemTitle: "Exit"},
 	}
 }

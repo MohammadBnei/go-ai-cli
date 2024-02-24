@@ -35,7 +35,7 @@ func keyMapUpdate(msg tea.Msg, m model) (model, tea.Cmd) {
 			}
 
 		case key.Matches(msg, m.keys.end):
-			if m.recording {
+			if m.recording || m.aiCancelCtx != nil {
 				m.directReturn = true
 				return m, StopRecording
 			} else {

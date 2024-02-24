@@ -15,7 +15,7 @@ import (
 	"github.com/samber/lo"
 )
 
-type model struct {
+type FilepickerModel struct {
 	filepicker    filepicker.Model
 	multiMode     bool
 	selectedFiles []string
@@ -26,14 +26,17 @@ type model struct {
 }
 
 // New creates a new instance of the UI.
-func NewFilePicker(multipleMode bool) model {
+func NewFilePicker(multipleMode bool, allowedTypes []string) FilepickerModel {
 	startDir, _ := os.Getwd()
 	fp := filepicker.New()
 	fp.CurrentDirectory = startDir
 	fp.ShowHidden = true
 	fp.AutoHeight = true
+	if len(allowedTypes) > 0 {
+		fp.AllowedTypes = allowedTypes
+	}
 
-	return model{
+	return FilepickerModel{
 		filepicker:    fp,
 		multiMode:     multipleMode,
 		selectedFiles: []string{},
@@ -44,12 +47,12 @@ func NewFilePicker(multipleMode bool) model {
 }
 
 // Init intializes the UI.
-func (m model) Init() tea.Cmd {
+func (m FilepickerModel) Init() tea.Cmd {
 	return m.filepicker.Init()
 }
 
 // Update handles all UI interactions.
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m FilepickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -92,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View returns a string representation of the UI.
-func (m model) View() string {
+func (m FilepickerModel) View() string {
 	if len(m.selectedFiles) > 0 {
 		return lipgloss.JoinHorizontal(lipgloss.Top,
 			fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filepicker.View(), m.help.View(m.keys)),
@@ -103,7 +106,7 @@ func (m model) View() string {
 	return fmt.Sprintf("%s\n%s\n%s", m.GetTitleView(), m.filepicker.View(), m.help.View(m.keys))
 }
 
-func (m model) GetTitleView() string {
+func (m FilepickerModel) GetTitleView() string {
 	numberOfItems := ""
 	if len(m.selectedFiles) > 0 {
 		numberOfItems = fmt.Sprintf(" (%d)", len(m.selectedFiles))

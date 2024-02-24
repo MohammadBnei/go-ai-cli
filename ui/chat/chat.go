@@ -28,7 +28,7 @@ import (
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
-	"github.com/tmc/langchaingo/agents"
+	"github.com/tmc/langchaingo/chains"
 	"golang.org/x/term"
 )
 
@@ -91,8 +91,8 @@ type chatModel struct {
 
 	audioPlayer *audio.AudioPlayerModel
 
-	agentExecutor *agents.Executor
-	agentName     string
+	chain     chains.Chain
+	chainName string
 }
 
 func initialChatModel(pc *service.PromptConfig) chatModel {
@@ -165,10 +165,13 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
-	// Prevent the cursor of the textarea from blinking
-	// Prevents screen blinking issues
 	case cursor.BlinkMsg:
-		return m, nil
+		if len(m.stack) != 0 {
+			m.textarea.Cursor.Blink = false
+			return m, nil
+		} else {
+			m.textarea.Cursor.Blink = true
+		}
 	case tea.WindowSizeMsg:
 		m.size.Height = msg.Height
 		m.size.Width = msg.Width
@@ -309,8 +312,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case event.AgentSelectionEvent:
-		m.agentExecutor = msg.Executor
-		m.agentName = msg.Name
+		m.chain = msg.Executor
+		m.chainName = msg.Name
 
 	case audio.StartPlayingEvent:
 		m.audioPlayer = msg.PlayerModel
@@ -337,6 +340,8 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea, tiCmd = m.textarea.Update(msg)
 		m.viewport, vpCmd = m.viewport.Update(msg)
 
+		m.promptConfig.UserPrompt = m.textarea.Value()
+
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
@@ -353,7 +358,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m chatModel) View() string {
-
 	if m.err != nil {
 		return fmt.Sprintf("Error: %s", style.StatusMessageStyle(m.err.Error()))
 	}
@@ -393,8 +397,8 @@ func (m chatModel) GetTitleView() string {
 	if userPrompt == "" {
 		userPrompt = "Chat"
 	}
-	if m.agentExecutor != nil {
-		userPrompt = fmt.Sprintf("%s | %s", m.agentName, userPrompt)
+	if m.chain != nil {
+		userPrompt = fmt.Sprintf("%s | %s", m.chainName, userPrompt)
 	}
 	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }

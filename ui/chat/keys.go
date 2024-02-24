@@ -121,8 +121,8 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			return m, func() tea.Msg { return m.size }
 
 		case key.Matches(msg, m.keys.copy):
-			if len(m.stack) == 0 && m.currentChatMessages.assistant != nil {
-				err := clipboard.WriteAll(m.currentChatMessages.assistant.Content)
+			if len(m.stack) == 0 && m.aiResponse != "" {
+				err := clipboard.WriteAll(m.aiResponse)
 				if err != nil {
 					return m, event.Error(err)
 				}
@@ -150,7 +150,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.speechToText):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(speech.NewSpeechModel(m.promptConfig, m.textarea.Value()), "Loading speech...")
+				return m, event.AddStack(speech.NewSpeechModel(m.promptConfig), "Loading speech...")
 			}
 
 		case key.Matches(msg, m.keys.textToSpeech):
@@ -186,7 +186,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.addFile):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(file.NewFilePicker(true), "Loading filepicker...")
+				return m, event.AddStack(file.NewFilePicker(true, nil), "Loading filepicker...")
 			}
 
 		case key.Matches(msg, m.keys.audiPlayer):

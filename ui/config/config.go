@@ -87,6 +87,13 @@ func getEditModel(id string) (tea.Model, error) {
 			}
 			editModel = modelSelectForm
 
+		case config.AI_OPENAI_IMAGE_MODEL:
+			modelSelectForm, err := newImageModelSelectForm(value)
+			if err != nil {
+				return nil, err
+			}
+			editModel = modelSelectForm
+
 		case config.AI_API_TYPE:
 			editModel = newApiTypeSelectForm(value)
 			afterCmd = func() tea.Msg {
