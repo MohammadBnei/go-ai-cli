@@ -3,7 +3,9 @@ package chat
 import (
 	"context"
 	"errors"
+	"io"
 
+	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/file"
@@ -52,7 +54,7 @@ func newListKeyMap() *listKeyMap {
 
 		options: key.NewBinding(
 			key.WithKeys("ctrl+g", "esc"),
-			key.WithHelp("ctrl+g, ", "options"),
+			key.WithHelp("ctrl+g", "options"),
 		),
 
 		quit: key.NewBinding(
@@ -155,31 +157,33 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.textToSpeech):
 			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
-				msgId := m.currentChatMessages.assistant.Id.Int64()
+				msgID := m.currentChatMessages.assistant.Id.Int64()
 				ctx, cancel := context.WithCancel(context.Background())
-				m.promptConfig.AddContextWithId(ctx, cancel, msgId)
+				m.promptConfig.AddContextWithId(ctx, cancel, msgID)
 				return m, tea.Sequence(func() tea.Msg {
-					err := m.promptConfig.ChatMessages.FindById(msgId).FetchAudio(ctx)
-					if err != nil {
-						return err
-					}
-					msg := m.promptConfig.ChatMessages.FindById(msgId)
+					defer m.promptConfig.DeleteContext(ctx)
+					msg := m.promptConfig.ChatMessages.FindById(msgID)
 					if msg == nil {
 						return event.Error(errors.New("message not found"))
 					}
-					if msg.Audio == nil {
-						ctx, cancelFn := service.LoadContext(context.Background())
-						m.promptConfig.AddContextWithId(ctx, cancelFn, msgId)
-						defer m.promptConfig.DeleteContext(ctx)
-						err := msg.FetchAudio(ctx)
-						if err != nil {
-							return err
-						}
+					reader, err := api.TextToSpeech(ctx, msg.Content)
+					if err != nil {
+						return err
 					}
 					m.audioPlayer.Clear()
-					return m.audioPlayer.InitSpeaker((*msg).Audio)
+					data, err := io.ReadAll(reader)
+					if err != nil {
+						return err
+					}
+					fm, err := m.promptConfig.FileService.Append(service.Audio, msg.Content, "", msg.Id.Int64(), data)
+					if err != nil {
+						return err
+					}
+					msg.AudioFileId = fm.ID
+					m.promptConfig.ChatMessages.UpdateMessage(*msg)
+					return m.audioPlayer.InitSpeaker(fm.ID)
 				}, func() tea.Msg {
-					m.promptConfig.DeleteContextById(msgId)
+					m.promptConfig.DeleteContextById(msgID)
 					return event.Transition("")
 				})
 			}

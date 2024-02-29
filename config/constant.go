@@ -17,5 +17,6 @@ const (
 	PR_SYSTEM_DEFAULT = "default-systems"
 	PR_SYSTEM         = "systems"
 
-	C_AUTOLOAD = "auto-load"
+	C_AUTOLOAD        = "auto-load"
+	C_COMPLETION_MODE = "completion-mode"
 )

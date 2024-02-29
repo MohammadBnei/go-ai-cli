@@ -127,3 +127,17 @@ func AgentSelection(executor *agents.Executor, name string) tea.Cmd {
 		}
 	}
 }
+
+type DoneGeneratingEvent struct {
+	UserMsgId     int64
+	ResponseMsgId int64
+}
+
+func DoneGenerating(userMsgId, responseMsgId int64) tea.Cmd {
+	return func() tea.Msg {
+		return DoneGeneratingEvent{
+			UserMsgId:     userMsgId,
+			ResponseMsgId: responseMsgId,
+		}
+	}
+}

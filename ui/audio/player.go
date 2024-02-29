@@ -4,12 +4,11 @@ package audio
 
 import (
 	"fmt"
-	"io"
-	"os"
 	"time"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -33,98 +32,135 @@ type AudioPlayerModel struct {
 	ctrl     *beep.Ctrl
 	speed    *beep.Resampler
 
+	selectMode bool
+
+	fileList *list.Model
+
 	help help.Model
 
 	viewport viewport.Model
 
-	audio io.ReadCloser
+	fileId string
+
+	ticking bool
+
+	size tea.WindowSizeMsg
 }
 
-func NewPlayerModel(pc *service.PromptConfig) *AudioPlayerModel {
-
-	return &AudioPlayerModel{
+func NewPlayerModel(pc *service.PromptConfig) (*AudioPlayerModel, error) {
+	m := &AudioPlayerModel{
 		title:        "Audio controller",
 		promptConfig: pc,
 		keys:         newKeyMap(),
 		help:         help.New(),
 		viewport:     viewport.New(0, 0),
+		fileList:     list.NewFancyListModel("Audio files", []list.Item{}, getDelegateFn(pc)),
 	}
+
+	m.RefreshFileList()
+
+	return m, nil
 }
 
 func (m AudioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
+	m.ticking = m.streamer != nil && m.streamer.Position() != m.streamer.Len() && !m.ctrl.Paused && m.fileId != ""
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - lipgloss.Height(m.help.View(m.keys)) - lipgloss.Height(m.GetTitleView())
+		m.fileList.List.SetHeight(msg.Height)
+		m.fileList.List.SetWidth(msg.Width)
 
 	case Tick:
-		if m.streamer != nil {
+		if m.ticking {
 			cmds = append(cmds, m.DoTick())
 		}
 
-	case tea.KeyMsg:
-		if m.streamer == nil {
-			return m, nil
+	case SelectAudioFileEvent:
+		cmds = append(cmds, m.RefreshFileList())
+		if !m.ticking {
+			cmds = append(cmds, m.DoTick())
+			m.ticking = true
 		}
-		switch {
-		case key.Matches(msg, m.keys.play):
-			speaker.Lock()
-			if m.streamer.Position() == m.streamer.Len() {
-				speaker.Unlock()
-				speaker.Clear()
-				cmd := m.InitSpeaker(m.audio)
-				return m, cmd
-			} else {
-				m.ctrl.Paused = !m.ctrl.Paused
-			}
-			speaker.Unlock()
+		return m, m.InitSpeaker(msg.Id)
 
-		case key.Matches(msg, m.keys.speedUp):
-			newRatio := m.speed.Ratio() + 0.2
-			if newRatio <= 2 {
+	case tea.KeyMsg:
+		if key.Matches(msg, m.keys.toggleSelect) {
+			cmds = append(cmds, m.RefreshFileList())
+			m.selectMode = !m.selectMode
+		}
+		if m.streamer != nil && m.fileId != "" {
+			switch {
+			case key.Matches(msg, m.keys.play):
 				speaker.Lock()
-				m.speed.SetRatio(newRatio)
+				if m.streamer.Position() == m.streamer.Len() {
+					speaker.Unlock()
+					speaker.Clear()
+					cmd := m.InitSpeaker(m.fileId)
+					return m, cmd
+				} else {
+					m.ctrl.Paused = !m.ctrl.Paused
+					if !m.ticking {
+						cmds = append(cmds, m.DoTick())
+						m.ticking = true
+					}
+				}
 				speaker.Unlock()
-			}
 
-		case key.Matches(msg, m.keys.speedDown):
-			newRatio := m.speed.Ratio() - 0.2
-			if newRatio > 0.2 {
+			case key.Matches(msg, m.keys.speedUp):
+				newRatio := m.speed.Ratio() + 0.2
+				if newRatio <= 2 {
+					speaker.Lock()
+					m.speed.SetRatio(newRatio)
+					speaker.Unlock()
+				}
+
+			case key.Matches(msg, m.keys.speedDown):
+				newRatio := m.speed.Ratio() - 0.2
+				if newRatio > 0.2 {
+					speaker.Lock()
+					m.speed.SetRatio(newRatio)
+					speaker.Unlock()
+				}
+
+			case key.Matches(msg, m.keys.forward):
+				position := m.format.SampleRate.D(m.streamer.Position())
+				position += 5 * time.Second
 				speaker.Lock()
-				m.speed.SetRatio(newRatio)
-				speaker.Unlock()
-			}
-
-		case key.Matches(msg, m.keys.forward):
-			position := m.format.SampleRate.D(m.streamer.Position())
-			position += 5 * time.Second
-			speaker.Lock()
-			err := m.streamer.Seek(m.format.SampleRate.N(position))
-			if err != nil {
-				cmds = append(cmds, event.Error(err))
-			}
-			speaker.Unlock()
-
-		case key.Matches(msg, m.keys.back):
-			position := m.format.SampleRate.D(m.streamer.Position())
-			position -= 5 * time.Second
-			speaker.Lock()
-			if position >= 0 {
 				err := m.streamer.Seek(m.format.SampleRate.N(position))
 				if err != nil {
 					cmds = append(cmds, event.Error(err))
 				}
-			} else {
-				err := m.streamer.Seek(0)
-				if err != nil {
-					cmds = append(cmds, event.Error(err))
-				}
-			}
-			speaker.Unlock()
+				speaker.Unlock()
 
+			case key.Matches(msg, m.keys.back):
+				position := m.format.SampleRate.D(m.streamer.Position())
+				position -= 5 * time.Second
+				speaker.Lock()
+				if position >= 0 {
+					err := m.streamer.Seek(m.format.SampleRate.N(position))
+					if err != nil {
+						cmds = append(cmds, event.Error(err))
+					}
+				} else {
+					err := m.streamer.Seek(0)
+					if err != nil {
+						cmds = append(cmds, event.Error(err))
+					}
+				}
+				speaker.Unlock()
+
+			}
 		}
+	}
+
+	fileList, cmd := m.fileList.Update(msg)
+	if fl, ok := fileList.(list.Model); ok {
+		m.fileList = &fl
+		cmds = append(cmds, cmd)
 	}
 
 	if m.streamer != nil {
@@ -137,9 +173,7 @@ func (m AudioPlayerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(fmt.Sprintf("%v / %v\n%.1fx", position.Round(time.Second), length.Round(time.Second), speed))
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
-		cmds = append(cmds, cmd, func() tea.Msg {
-			return StartPlayingEvent{&m}
-		})
+		cmds = append(cmds, cmd)
 
 	}
 
@@ -158,8 +192,8 @@ func (m AudioPlayerModel) DoTick() tea.Cmd {
 
 func (m AudioPlayerModel) View() string {
 	title := m.GetTitleView()
-	if m.streamer == nil {
-		return fmt.Sprintf("%s\nNo audio selected", title)
+	if m.selectMode || m.fileId == "" {
+		return m.fileList.View()
 	}
 
 	return fmt.Sprintf("%s\n%s\n%s", title, m.viewport.View(), m.help.View(m.keys))
@@ -177,25 +211,14 @@ func (m *AudioPlayerModel) Clear() {
 	m.speed = nil
 }
 
-func (m *AudioPlayerModel) InitSpeaker(audio io.ReadCloser) tea.Cmd {
-	data, err := io.ReadAll(audio)
+func (m *AudioPlayerModel) InitSpeaker(id string) tea.Cmd {
+	file, _, err := m.promptConfig.FileService.Get(id)
 	if err != nil {
 		return event.Error(err)
 	}
+	defer file.Close()
 
-	// TODO : switch to virtual fs
-	err = os.WriteFile("audio.mp3", data, 0666)
-	if err != nil {
-		return event.Error(err)
-	}
-	defer os.Remove("audio.mp3")
-
-	audioFile, err := os.Open("audio.mp3")
-	if err != nil {
-		return event.Error(err)
-	}
-	m.audio, _ = os.Open("audio.mp3")
-	streamer, format, err := mp3.Decode(audioFile)
+	streamer, format, err := mp3.Decode(file)
 	if err != nil {
 		return event.Error(err)
 	}
@@ -204,6 +227,8 @@ func (m *AudioPlayerModel) InitSpeaker(audio io.ReadCloser) tea.Cmd {
 	if err = speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/30)); err != nil {
 		return event.Error(err)
 	}
+
+	m.fileId = id
 
 	m.format = &format
 
@@ -217,6 +242,15 @@ func (m *AudioPlayerModel) InitSpeaker(audio io.ReadCloser) tea.Cmd {
 			PlayerModel: m,
 		}
 	}
+}
+
+func (m *AudioPlayerModel) RefreshFileList() tea.Cmd {
+	files, err := m.promptConfig.FileService.List(service.Audio)
+	if err != nil {
+		return event.Error(err)
+	}
+	items := getFilesAsItem(files, m.promptConfig)
+	return m.fileList.List.SetItems(items)
 }
 
 type StartPlayingEvent struct {

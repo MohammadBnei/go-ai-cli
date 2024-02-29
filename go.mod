@@ -5,9 +5,9 @@ go 1.22
 toolchain go1.22.0
 
 require (
-	github.com/MichaelMure/go-term-markdown v0.1.4
 	github.com/TannerKvarfordt/hfapigo v1.3.1
 	github.com/atotto/clipboard v0.1.4
+	github.com/blang/vfs v1.0.0
 	github.com/briandowns/spinner v1.23.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500
@@ -16,9 +16,12 @@ require (
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/huh v0.3.0
 	github.com/charmbracelet/lipgloss v0.9.1
+	github.com/chromedp/chromedp v0.9.5
+	github.com/dustin/go-humanize v1.0.1
 	github.com/faiface/beep v1.1.0
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/garlicgarrison/go-recorder v0.0.0-20230512231103-599cb77d9c61
+	github.com/gocolly/colly/v2 v2.1.0
 	github.com/golang-module/carbon v1.7.3
 	github.com/jinzhu/copier v0.4.0
 	github.com/manifoldco/promptui v0.9.0
@@ -40,7 +43,6 @@ require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
-	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/PuerkitoBio/goquery v1.9.0 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
@@ -51,22 +53,23 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/catppuccin/go v0.2.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
+	github.com/chromedp/cdproto v0.0.0-20240214232516-ad4608604e9e // indirect
+	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/gobuffalo/envy v1.10.2 // indirect
 	github.com/gobuffalo/packd v1.0.2 // indirect
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gobwas/ws v1.3.2 // indirect
 	github.com/gocolly/colly v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20231222211730-1d6d20845b47 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/gordonklaus/portaudio v0.0.0-20230709114228-aafa478834f5 // indirect
@@ -75,14 +78,15 @@ require (
 	github.com/hajimehoshi/oto v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/imdario/mergo v0.3.16 // indirect
+	github.com/imdario/mergo v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kennygrant/sanitize v1.2.4 // indirect
-	github.com/kyokomi/emoji/v2 v2.2.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -133,5 +137,6 @@ require (
 	google.golang.org/protobuf v1.32.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace github.com/imdario/mergo => github.com/imdario/mergo v0.3.16

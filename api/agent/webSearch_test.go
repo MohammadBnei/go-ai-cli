@@ -23,13 +23,13 @@ func TestWebSearch(t *testing.T) {
 	}
 	t.Log("Created llm")
 
-	executor, err := agent.NewWebSearchAgent(llm, []string{"https://platform.openai.com/docs/guides/prompt-engineering/strategy-write-clear-instructions"})
+	executor, err := agent.NewWebSearchAgent(llm, []string{"https://www.francesoir.fr/portraits/les-numeros-d-illusionnistes-du-commissaire-censeur-thierry-breton"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Log("Created executor")
 
-	result, err := executor(context.Background(), "design a system prompt for a golang coder that explains code and writes beautiful code")
+	result, err := executor(context.Background(), "Resume the provided articles")
 	if err != nil {
 		t.Fatal(err)
 	}

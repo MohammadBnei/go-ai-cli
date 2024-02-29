@@ -21,6 +21,7 @@ type PromptConfig struct {
 	UserPrompt     string
 	UpdateChan     chan ChatMessage
 	Contexts       []ContextHold
+	*FileService
 }
 
 func (pc *PromptConfig) CloseLastContext() error {

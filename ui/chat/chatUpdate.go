@@ -49,6 +49,11 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 }
 
 func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
+	defer func() {
+		if r := recover(); r != nil {
+			ChatProgram.Send(event.Error(fmt.Errorf("%v", r)))
+		}
+	}()
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
@@ -78,6 +83,11 @@ func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 }
 
 func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
+	defer func() {
+		if r := recover(); r != nil {
+			ChatProgram.Send(event.Error(fmt.Errorf("%v", r)))
+		}
+	}()
 	if len(m.promptConfig.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
@@ -187,7 +197,7 @@ func (m *chatModel) changeCurrentChatHelper(previous *service.ChatMessage) {
 }
 
 func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) error {
-	generate, err := api.GetGenerateFunction()
+	llm, err := api.GetLlmModel()
 	if err != nil {
 		return err
 	}
@@ -234,14 +244,20 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 		pc.UpdateChan <- *pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 	}
 
-	_, err = generate(ctx, pc.ChatMessages.ToLangchainMessage(),
-		options...,
-	)
+	if viper.GetBool(config.C_COMPLETION_MODE) {
+		_, err = llms.GenerateFromSinglePrompt(ctx, llm, pc.UserPrompt, options...)
+	} else {
+		_, err = llm.GenerateContent(ctx, pc.ChatMessages.ToLangchainMessage(),
+			options...,
+		)
+	}
 
 	if err != nil {
-		chatProgram.Send(err)
+		ChatProgram.Send(err)
 		return err
 	}
+
+	ChatProgram.Send(event.DoneGenerating(currentChatMsgs.user.Id.Int64(), currentChatMsgs.assistant.Id.Int64()))
 
 	return nil
 }
@@ -283,7 +299,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	}))
 
 	if err != nil {
-		chatProgram.Send(err)
+		ChatProgram.Send(err)
 		return err
 	}
 

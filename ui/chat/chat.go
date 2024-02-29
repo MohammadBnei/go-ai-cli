@@ -5,7 +5,6 @@ package chat
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"reflect"
 
@@ -48,18 +47,7 @@ func DefaultStyle() *Styles {
 	return s
 }
 
-var chatProgram *tea.Program
-
-func Chat(pc *service.PromptConfig) {
-	p := tea.NewProgram(initialChatModel(pc),
-		tea.WithAltScreen())
-
-	chatProgram = p
-
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
-	}
-}
+var ChatProgram *tea.Program
 
 type currentChatMessages struct {
 	user, assistant *service.ChatMessage
@@ -95,7 +83,7 @@ type chatModel struct {
 	chainName string
 }
 
-func initialChatModel(pc *service.PromptConfig) chatModel {
+func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
 	var err error
 
 	ta := textarea.New()
@@ -120,7 +108,15 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
-	mdRenderer, _ := glamour.NewTermRenderer(glamour.WithAutoStyle())
+	mdRenderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
+	if err != nil {
+		return nil, err
+	}
+
+	audioPlayer, err := audio.NewPlayerModel(pc)
+	if err != nil {
+		return nil, err
+	}
 
 	modelStruct := chatModel{
 		textarea:     ta,
@@ -146,10 +142,10 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 		transitionModel: transition.NewTransitionModel(""),
 
-		audioPlayer: audio.NewPlayerModel(pc),
+		audioPlayer: audioPlayer,
 	}
 
-	return modelStruct
+	return &modelStruct, nil
 }
 
 func (m chatModel) Init() tea.Cmd {
@@ -157,6 +153,11 @@ func (m chatModel) Init() tea.Cmd {
 }
 
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer func() {
+		if r := recover(); r != nil {
+			m.err = fmt.Errorf("%v", r)
+		}
+	}()
 	m.LoadingTitle()
 	var (
 		tiCmd tea.Cmd

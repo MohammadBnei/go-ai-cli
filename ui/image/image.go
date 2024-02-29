@@ -45,7 +45,7 @@ type model struct {
 	data *[]byte
 
 	spinner    spinner.Model
-	filepicker file.FilepickerModel
+	filepicker file.PickFileModel
 }
 
 func NewImageModel(pc *service.PromptConfig) tea.Model {
@@ -189,7 +189,7 @@ func constructPromptForm(content string) *huh.Form {
 	tRue := true
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewText().CharLimit(0).Title("Content").Key("content").Lines(3).Value(&content),
+			huh.NewText().Editor("nvim").CharLimit(0).Title("Prompt").Key("content").Lines(3).Value(&content),
 			huh.NewSelect[string]().Title("Size").Key("size").Options(huh.NewOptions[string](
 				openai.CreateImageSize1792x1024,
 				openai.CreateImageSize1024x1792,
@@ -207,7 +207,7 @@ func constructFilepickerForm() *huh.Form {
 	tRue := true
 	form := huh.NewForm(
 		huh.NewGroup(
-			huh.NewText().CharLimit(0).Title("Path").Key("path").Lines(1).Validate(func(s string) error {
+			huh.NewText().Editor("nvim").CharLimit(0).Title("Path").Key("path").Lines(1).Validate(func(s string) error {
 				if f, err := os.Create(s); err != nil {
 					return err
 				} else {

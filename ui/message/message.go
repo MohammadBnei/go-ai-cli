@@ -1,6 +1,7 @@
 package message
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
@@ -33,7 +34,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
 		AddFn: func(s string) tea.Cmd {
 			editModel := form.NewEditModel("Creating message", huh.NewForm(huh.NewGroup(
-				huh.NewText().CharLimit(0).Title("Content").Key("content").Lines(10),
+				huh.NewText().Editor("nvim").Editor("nvim").CharLimit(0).Title("Content").Key("content").Lines(10),
 				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString("content")
@@ -56,7 +57,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			}
 
 			editModel := form.NewEditModel("Editing message ["+s+"]", huh.NewForm(huh.NewGroup(
-				huh.NewText().CharLimit(0).Title("Content").Key(s).Value(&message.Content).Lines(10),
+				huh.NewText().Editor("nvim").CharLimit(0).Title("Content").Key(s).Value(&message.Content).Lines(10),
 				huh.NewSelect[service.ROLES]().Key("role").Title("Role").Options(huh.NewOptions[service.ROLES]([]service.ROLES{service.RoleAssistant, service.RoleUser, service.RoleSystem}...)...),
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString(s)
@@ -124,6 +125,8 @@ func toItem(message service.ChatMessage) list.Item {
 		choosenStyle = userColor
 	}
 
+	choosenStyle.MarginRight(2)
+
 	splitted := strings.Split(strings.TrimSpace(message.Content), "\n")
 	title := splitted[0]
 	if len(splitted) > 1 {
@@ -132,7 +135,7 @@ func toItem(message service.ChatMessage) list.Item {
 
 	return list.Item{
 		ItemId:          message.Id.Base64(),
-		ItemTitle:       choosenStyle.Render("◾️") + title,
+		ItemTitle:       choosenStyle.Render(fmt.Sprintf("[%d]", message.Order)) + title,
 		ItemDescription: string(message.Role),
 	}
 }

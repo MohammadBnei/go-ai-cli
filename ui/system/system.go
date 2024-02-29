@@ -27,14 +27,14 @@ func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
 		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
-	items := getItemsAsUiList(promptConfig)
+	items := getItemsAsUIList(promptConfig)
 
 	delegateFn := getDelegateFn(promptConfig)
 
 	return uiList.NewFancyListModel("system", items, delegateFn)
 }
 
-func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
+func getItemsAsUIList(promptConfig *service.PromptConfig) []uiList.Item {
 	savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
 	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
@@ -52,10 +52,11 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
 			ItemTitle:       strings.ReplaceAll(v, "\n\n", "\n"),
 			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(found), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+k),
 		}
+
 	})
 
 	sort.Slice(res, func(i, j int) bool {
-		return carbon.ParseByFormat(res[i].ItemId, "2024-02-15 23:03:16").Gt(carbon.ParseByFormat(res[j].ItemId, "2024-02-15 23:03:16"))
+		return carbon.Parse(res[i].ItemId).Gt(carbon.Parse(res[j].ItemId))
 	})
 
 	return res
@@ -103,7 +104,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			tRue := true
 
 			editModel := form.NewEditModel("Editing system ["+s+"]", huh.NewForm(huh.NewGroup(
-				huh.NewText().CharLimit(0).Title("Content").Key(s).Value(&v).Lines(10),
+				huh.NewText().Editor("nvim").CharLimit(0).Title("Content").Key(s).Value(&v).Lines(10),
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Value(&isDefault).Options(huh.NewOptions[bool](true, false)...),
 				huh.NewSelect[bool]().Key("add").Title("Add it ?").Options(huh.NewOptions[bool](true, false)...).Value(&tRue),
 			)), func(form *huh.Form) tea.Cmd {
@@ -149,7 +150,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			tRue := true
 
 			addModel := form.NewEditModel("New system", huh.NewForm(huh.NewGroup(
-				huh.NewText().CharLimit(0).Title("Content").Key("content").Lines(10).Validate(func(s string) error {
+				huh.NewText().Editor("nvim").CharLimit(0).Title("Content").Key("content").Lines(10).Validate(func(s string) error {
 					if s == "" {
 						return errors.New("content cannot be empty")
 					}

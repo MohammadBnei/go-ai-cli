@@ -76,7 +76,7 @@ func NewFancyListModel(title string, items []Item, delegateFn *DelegateFunctions
 	}
 
 	delegate := newItemDelegate(delegateKeys, delegateFn)
-	itemList := lo.Map[Item, list.Item](items, func(i Item, _ int) list.Item { return i })
+	itemList := lo.Map(items, func(i Item, _ int) list.Item { return i })
 	groceryList := list.New(itemList, delegate, 0, 0)
 	groceryList.Title = title
 
@@ -119,10 +119,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.List.Styles.Title = m.List.Styles.Title.MaxWidth(msg.Width)
 
 	case Item:
-		items := lo.Map[list.Item, Item](m.List.Items(), func(item list.Item, index int) Item {
+		items := lo.Map(m.List.Items(), func(item list.Item, index int) Item {
 			return item.(Item)
 		})
-		_, index, ok := lo.FindIndexOf[Item](items, func(item Item) bool {
+		_, index, ok := lo.FindIndexOf(items, func(item Item) bool {
 			return item.Id() == msg.Id()
 		})
 		if ok {

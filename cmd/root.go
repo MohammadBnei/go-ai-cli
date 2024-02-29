@@ -79,6 +79,7 @@ func init() {
 
 	RootCmd.PersistentFlags().Bool(config.UI_MARKDOWN_MODE, false, "enable markdown mode")
 	RootCmd.PersistentFlags().Bool(config.UI_CODE_MODE, false, "enable code mode")
+	RootCmd.PersistentFlags().Bool(config.C_COMPLETION_MODE, false, "enable completion mode for models")
 
 	RootCmd.PersistentFlags().Float64(config.AI_TEMPERATURE, -1, "the temperature of the ai model's response")
 	RootCmd.PersistentFlags().Int(config.AI_TOP_K, -1, "The top-k parameter limits the model’s predictions to the top k most probable tokens at each step of generation")

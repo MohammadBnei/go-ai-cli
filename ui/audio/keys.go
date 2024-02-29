@@ -8,6 +8,8 @@ type keyMap struct {
 	speedDown key.Binding
 	back      key.Binding
 	forward   key.Binding
+
+	toggleSelect key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
@@ -39,6 +41,11 @@ func newKeyMap() *keyMap {
 		forward: key.NewBinding(
 			key.WithKeys("ctrl+f"),
 			key.WithHelp("ctrl+f", "+5sec"),
+		),
+
+		toggleSelect: key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "select mode"),
 		),
 	}
 }

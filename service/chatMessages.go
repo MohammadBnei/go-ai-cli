@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"sort"
 	"time"
@@ -70,7 +71,7 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 
 	copyOfC := *c
 	copyOfC.Messages = lo.Map(copyOfC.Messages, func(item ChatMessage, _ int) ChatMessage {
-		item.Audio = nil
+		item.AudioFileId = ""
 		return item
 	})
 
@@ -111,11 +112,13 @@ func (c *ChatMessages) LoadFromFile(filename string) (err error) {
 	c.Id = marshalledC.Id
 	c.Description = marshalledC.Description
 
+	c.SetMessagesOrder()
+
 	return nil
 }
 
 func (c *ChatMessages) FindById(id int64) *ChatMessage {
-	_, index, ok := lo.FindIndexOf[ChatMessage](c.Messages, func(item ChatMessage) bool {
+	_, index, ok := lo.FindIndexOf(c.Messages, func(item ChatMessage) bool {
 		return item.Id == snowflake.ParseInt64(int64(id))
 	})
 	if !ok {
@@ -128,7 +131,7 @@ func (c *ChatMessages) FindById(id int64) *ChatMessage {
 var ErrNotFound = errors.New("not found")
 
 func (c *ChatMessages) FindMessageByContent(content string) (*ChatMessage, error) {
-	exists, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
+	exists, ok := lo.Find(c.Messages, func(item ChatMessage) bool {
 		return item.Content == content
 	})
 
@@ -151,7 +154,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 		return nil, err
 	}
 
-	if exists, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
+	if exists, ok := lo.Find(c.Messages, func(item ChatMessage) bool {
 		return item.Content == content && item.Role == role && item.Role != RoleUser
 	}); ok && content != "" {
 		return &exists, ErrAlreadyExist
@@ -180,16 +183,20 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 		return c.Messages[i].Date.Before(c.Messages[j].Date)
 	})
 
+	c.SetMessagesOrder()
+
 	return &msg, nil
 }
 
+// AddMessageFromFile reads the content of a file using os.ReadFile, then adds a new message with the file content and filename to the ChatMessages using the AddMessage method.
+// If there's an error reading the file, it returns the error.
 func (c *ChatMessages) AddMessageFromFile(filename string) (*ChatMessage, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.AddMessage(string(content), RoleUser)
+	return c.AddMessage(fmt.Sprintf("(Filename : %s)\n\n%s", filename, content), RoleUser)
 }
 
 func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int64) error {
@@ -252,6 +259,8 @@ func (c *ChatMessages) DeleteMessage(id int64) error {
 		return item.Id != snowflake.ParseInt64(id)
 	})
 
+	c.SetMessagesOrder()
+
 	return nil
 }
 
@@ -277,7 +286,7 @@ func (c *ChatMessages) ClearMessages() {
 func (c *ChatMessages) LastMessage(role *ROLES) *ChatMessage {
 	messages := c.Messages
 	if role != nil {
-		messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
+		messages = lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
 			return item.Role == *role
 		})
 	}
@@ -289,7 +298,7 @@ func (c *ChatMessages) LastMessage(role *ROLES) *ChatMessage {
 }
 
 func (c *ChatMessages) FilterMessages(role ROLES) (messages []ChatMessage, tokens int) {
-	messages = lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
+	messages = lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
 		return item.Role == role
 	})
 
@@ -306,8 +315,8 @@ func (c *ChatMessages) FilterMessages(role ROLES) (messages []ChatMessage, token
 }
 
 func (c *ChatMessages) FilterByOpenAIRoles() []ChatMessage {
-	return lo.Filter[ChatMessage](c.Messages, func(item ChatMessage, _ int) bool {
-		return lo.Contains[ROLES]([]ROLES{
+	return lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
+		return lo.Contains([]ROLES{
 			openai.ChatMessageRoleUser,
 			openai.ChatMessageRoleAssistant,
 			openai.ChatMessageRoleSystem,
@@ -331,4 +340,13 @@ func CountTokens(content string) (int, error) {
 	}
 
 	return len(tkm.Encode(content, nil, nil)), nil
+}
+
+func (c *ChatMessages) SetMessagesOrder() *ChatMessages {
+	c.Messages = lo.Map(c.Messages, func(item ChatMessage, order int) ChatMessage {
+		item.Order = uint(order + 1)
+		return item
+	})
+
+	return c
 }
