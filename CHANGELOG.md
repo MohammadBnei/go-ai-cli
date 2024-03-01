@@ -1,5 +1,12 @@
 
 
+## [0.17.1](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.0...0.17.1) (2024-03-01)
+
+
+### Bug Fixes
+
+* **speech_np.go:** change return value of SpeechToText function from nil to empty string to match the error type ([27985fc](https://github.com/MohammadBnei/go-ai-cli/commit/27985fc5c4c25a50b62e2bbd4044bb70750d9289))
+
 # [0.17.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.16.1...0.17.0) (2024-03-01)
 
 
