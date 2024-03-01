@@ -3,12 +3,13 @@ package audio
 import (
 	"sort"
 
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	bList "github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/golang-module/carbon"
 	"github.com/samber/lo"
+
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/list"
 )
 
 func getFilesAsItem(files []service.FileMetadata, pc *service.PromptConfig) []bList.Item {
