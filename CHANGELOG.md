@@ -1,5 +1,12 @@
 
 
+## [0.17.3](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.2...0.17.3) (2024-03-01)
+
+
+### Bug Fixes
+
+* **helper.go:** handle case where message is not found for a file to prevent nil pointer error ([7efbcfe](https://github.com/MohammadBnei/go-ai-cli/commit/7efbcfe2658b855c5441d2f16fdcef9cd47bd468))
+
 ## [0.17.2](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.1...0.17.2) (2024-03-01)
 
 ## [0.17.1](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.0...0.17.1) (2024-03-01)
