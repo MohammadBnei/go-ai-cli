@@ -15,7 +15,7 @@ type SpeechConfig struct {
 }
 
 func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
-	return nil, errors.New("portaudio not found")
+	return "", errors.New("portaudio not found")
 }
 
 func RecordAudioToFile(ctx context.Context, maxTime time.Duration, filename string) error {
