@@ -22,11 +22,12 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
-	"github.com/MohammadBnei/go-ai-cli/cmd/speech"
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/fsnotify/fsnotify"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/cobra"
@@ -63,18 +64,34 @@ func init() {
 
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yaml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
-	RootCmd.PersistentFlags().StringP("OPENAI_KEY", "o", "", "the open ai key to be added to config")
-	RootCmd.PersistentFlags().String("HUGGINGFACE_KEY", "", "the hugging face key to be added to config")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "configfile", home+"/.config/go-ai-cli/config.yml", "config file (default is $HOME/.config/go-ai-cli/config.yaml)")
+	RootCmd.PersistentFlags().StringP(config.AI_OPENAI_KEY, "o", "", "the open ai key to be added to config")
+	RootCmd.PersistentFlags().String(config.AI_HUGGINGFACE_KEY, "", "the hugging face key to be added to config")
 
-	RootCmd.PersistentFlags().StringP("API_TYPE", "t", api.API_OLLAMA, "the api type to be added to config")
-	RootCmd.RegisterFlagCompletionFunc("API_TYPE", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	RootCmd.PersistentFlags().StringP(config.AI_API_TYPE, "t", api.API_OLLAMA, "the api type to be added to config")
+	RootCmd.RegisterFlagCompletionFunc(config.AI_API_TYPE, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{api.API_HUGGINGFACE, api.API_OLLAMA, api.API_OPENAI}, cobra.ShellCompDirectiveDefault
 	})
 
-	RootCmd.PersistentFlags().StringP("model", "m", openai.GPT4, "the model to use")
-	RootCmd.RegisterFlagCompletionFunc("model", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		apiType, err := cmd.Flags().GetString("API_TYPE")
+	RootCmd.PersistentFlags().String(config.AI_OLLAMA_HOST, "http://127.0.0.1:11434", "the ollama host to be added to config")
+
+	RootCmd.PersistentFlags().String(config.AI_OPENAI_IMAGE_MODEL, "dall-e-3", "the openai image model to be added to config")
+
+	RootCmd.PersistentFlags().Bool(config.UI_MARKDOWN_MODE, false, "enable markdown mode")
+	RootCmd.PersistentFlags().Bool(config.UI_CODE_MODE, false, "enable code mode")
+	RootCmd.PersistentFlags().Bool(config.C_COMPLETION_MODE, false, "enable completion mode for models")
+
+	RootCmd.PersistentFlags().Float64(config.AI_TEMPERATURE, -1, "the temperature of the ai model's response")
+	RootCmd.PersistentFlags().Int(config.AI_TOP_K, -1, "The top-k parameter limits the model’s predictions to the top k most probable tokens at each step of generation")
+	RootCmd.PersistentFlags().Float64(config.AI_TOP_P, -1, "Top-p controls the cumulative probability of the generated tokens")
+
+	defaultModel := openai.GPT4
+	if v, _ := RootCmd.Flags().GetString(config.AI_API_TYPE); v == api.API_OLLAMA {
+		defaultModel = "llama2"
+	}
+	RootCmd.PersistentFlags().StringP(config.AI_MODEL_NAME, "m", defaultModel, "the model to use")
+	RootCmd.RegisterFlagCompletionFunc(config.AI_MODEL_NAME, func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		apiType, err := cmd.Flags().GetString(config.AI_API_TYPE)
 		if err != nil || apiType == "" {
 			apiType = api.API_OLLAMA
 		}
@@ -94,8 +111,6 @@ func init() {
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	})
-
-	RootCmd.AddCommand(speech.SpeechCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -108,13 +123,17 @@ func initConfig() {
 
 	viper.BindPFlags(RootCmd.PersistentFlags())
 
-	viper.SetDefault("OLLAMA_HOST", "http://127.0.0.1:11434")
-	viper.SetDefault("auto-save", true)
-
 	viper.AutomaticEnv() // read in environment variables that match
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if err = viper.WriteConfig(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+
+		}
 		fmt.Fprintln(os.Stderr, err)
 	}
 

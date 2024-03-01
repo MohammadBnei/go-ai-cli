@@ -4,20 +4,19 @@ package chat
 // component library.
 
 import (
-	"errors"
 	"fmt"
-	"log"
 	"os"
 	"reflect"
-	"strings"
 
-	"github.com/MohammadBnei/go-ai-cli/command"
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/audio"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/helper"
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	"github.com/MohammadBnei/go-ai-cli/ui/style"
+	"github.com/MohammadBnei/go-ai-cli/ui/transition"
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -25,15 +24,15 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ktr0731/go-fuzzyfinder"
+	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
+	"github.com/tmc/langchaingo/chains"
 	"golang.org/x/term"
-	"moul.io/banner"
 )
 
 var (
-	AppStyle = lipgloss.NewStyle().Margin(1, 2, 0)
+	AppStyle = lipgloss.NewStyle().Margin(0, 2, 0)
 )
 
 type Styles struct {
@@ -48,33 +47,21 @@ func DefaultStyle() *Styles {
 	return s
 }
 
-func Chat(pc *service.PromptConfig) {
-	p := tea.NewProgram(initialChatModel(pc),
-		tea.WithAltScreen())
+var ChatProgram *tea.Program
 
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-type (
-	errMsg error
-)
-
-type currentChatIndexes struct {
-	user      int
-	assistant int
+type currentChatMessages struct {
+	user, assistant *service.ChatMessage
 }
 type chatModel struct {
-	viewport           viewport.Model
-	textarea           textarea.Model
-	promptConfig       *service.PromptConfig
-	err                error
-	spinner            spinner.Model
-	userPrompt         string
-	aiResponse         string
-	currentChatIndices *currentChatIndexes
-	size               tea.WindowSizeMsg
+	viewport            viewport.Model
+	textarea            textarea.Model
+	promptConfig        *service.PromptConfig
+	err                 error
+	spinner             spinner.Model
+	userPrompt          string
+	aiResponse          string
+	currentChatMessages *currentChatMessages
+	size                tea.WindowSizeMsg
 
 	history *helper.HistoryManager
 
@@ -84,13 +71,21 @@ type chatModel struct {
 	mdRenderer *glamour.TermRenderer
 	keys       *listKeyMap
 	help       help.Model
+
+	transition      bool
+	transitionModel *transition.Model
+
+	loading bool
+
+	audioPlayer *audio.AudioPlayerModel
+
+	chain     chains.Chain
+	chainName string
 }
 
-func initialChatModel(pc *service.PromptConfig) chatModel {
+func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
 	var err error
-	if viper.GetBool("auto-save") {
-		err = pc.ChatMessages.LoadFromFile(viper.GetString("configpath") + "/last-chat.yml")
-	}
+
 	ta := textarea.New()
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
@@ -108,20 +103,20 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 
 	ta.ShowLineNumbers = false
 
-	smallTitleStyle := style.TitleStyle.Margin(0).Padding(0, 2)
-
 	vp := viewport.New(w, 0)
-	vp.SetContent(banner.Inline("go ai cli") + "\n" +
-		banner.Inline("bnei") + "\n\n" +
-		"Api : " + smallTitleStyle.Render(viper.GetString("API_TYPE")) + "\n" +
-		"Model : " + smallTitleStyle.Render(viper.GetString("model")) + "\n" +
-		"Messages : " + smallTitleStyle.Render(fmt.Sprintf("%d", len(pc.ChatMessages.Messages))) + "\n" +
-		"Tokens : " + smallTitleStyle.Render(fmt.Sprintf("%d", pc.ChatMessages.TotalTokens)) + "\n",
-	)
+	vp.MouseWheelDelta = 1
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 
-	mdRenderer, _ := glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(80))
+	mdRenderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
+	if err != nil {
+		return nil, err
+	}
+
+	audioPlayer, err := audio.NewPlayerModel(pc)
+	if err != nil {
+		return nil, err
+	}
 
 	modelStruct := chatModel{
 		textarea:     ta,
@@ -131,9 +126,9 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		spinner:      spinner.New(),
 		aiResponse:   "",
 		userPrompt:   "",
-		currentChatIndices: &currentChatIndexes{
-			user:      -1,
-			assistant: -1,
+		currentChatMessages: &currentChatMessages{
+			user:      nil,
+			assistant: nil,
 		},
 
 		keys: newListKeyMap(),
@@ -144,33 +139,44 @@ func initialChatModel(pc *service.PromptConfig) chatModel {
 		mdRenderer: mdRenderer,
 
 		help: help.New(),
+
+		transitionModel: transition.NewTransitionModel(""),
+
+		audioPlayer: audioPlayer,
 	}
 
-	return modelStruct
+	return &modelStruct, nil
 }
 
 func (m chatModel) Init() tea.Cmd {
-	return nil
+	return tea.SetWindowTitle("Go AI cli")
 }
 
-var commandSelectionFn = CommandSelectionFactory()
-
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	defer func() {
+		if r := recover(); r != nil {
+			m.err = fmt.Errorf("%v", r)
+		}
+	}()
+	m.LoadingTitle()
 	var (
 		tiCmd tea.Cmd
 		vpCmd tea.Cmd
 	)
 
 	cmds := []tea.Cmd{}
-
 	switch msg := msg.(type) {
+	case cursor.BlinkMsg:
+		if len(m.stack) != 0 {
+			m.textarea.Cursor.Blink = false
+			return m, nil
+		} else {
+			m.textarea.Cursor.Blink = true
+		}
 	case tea.WindowSizeMsg:
-		m.size = msg
-
-		m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(msg.Width))
-
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys))
+		m.size.Height = msg.Height
+		m.size.Width = msg.Width
+		m.Resize()
 
 	case tea.KeyMsg:
 		if m.err != nil {
@@ -184,34 +190,26 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.Type {
-
-		case tea.KeyCtrlR:
-			return reset(m)
-
-		case tea.KeyCtrlU:
-			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
-				m.textarea.SetValue(m.history.Previous())
-			}
-
-		case tea.KeyCtrlJ:
-			if len(m.stack) == 0 && (m.textarea.Value() == "" || m.textarea.Value() == m.history.Current()) {
-				m.textarea.SetValue(m.history.Next())
-			}
-
-		case tea.KeyCtrlF:
+		case tea.KeyCtrlW:
 			if len(m.stack) == 0 {
-				return m, event.AddStack(file.NewFilePicker())
+				switch {
+				case m.currentChatMessages.user != nil && m.currentChatMessages.user.Role == service.RoleUser:
+					m.userPrompt = m.currentChatMessages.user.Content
+				case m.currentChatMessages.assistant != nil:
+					m.aiResponse = m.currentChatMessages.assistant.Content
+				}
 			}
+			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
 
 		case tea.KeyCtrlE:
 			if len(m.stack) == 0 {
-				return m, event.AddStack(list.NewFancyListModel("Errors", lo.Map(m.errorList, func(e error, _ int) list.Item {
+				return m, event.AddStack(list.NewFancyListModel("Errors", lo.Map(m.errorList, func(e error, index int) list.Item {
 					return list.Item{
-						ItemId:          e.Error(),
+						ItemId:          fmt.Sprintf("%d", index),
 						ItemTitle:       e.Error(),
-						ItemDescription: e.Error(),
+						ItemDescription: "",
 					}
-				}), nil))
+				}), nil), "Loading Errors...")
 			}
 
 		case tea.KeyEnter:
@@ -220,18 +218,45 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if len(m.stack) == 0 {
+			if len(m.stack) == 0 && m.textarea.Value() != "" {
 				m.history.Add(m.textarea.Value())
-				if e, c := callFunction(&m); e != nil {
-					return e, c
-				}
 
 				return promptSend(&m)
 			}
 		}
 
-	case event.UpdateContentEvent:
-		cmds = append(cmds, event.UpdateAiResponse(m.aiResponse), event.UpdateUserPrompt(m.userPrompt))
+	case event.ClearScreenEvent:
+		m.viewport.SetContent("")
+		return m, nil
+
+	case event.SetChatTextviewEvent:
+		m.textarea.SetValue(msg.Content)
+
+	case event.UpdateChatContentEvent:
+		if msg.UserPrompt != "" {
+			m.userPrompt = msg.UserPrompt
+		}
+
+		if msg.Content != "" {
+			m.aiResponse = msg.Content
+			cmds = append(cmds, event.UpdateAiResponse(m.aiResponse))
+		}
+		if m.userPrompt != "" {
+			aiRes := m.aiResponse
+			if viper.GetBool(config.UI_MARKDOWN_MODE) && m.userPrompt != "Infos" {
+				str, err := m.mdRenderer.Render(aiRes)
+				if err != nil {
+					return m, event.Error(err)
+				}
+				aiRes = str
+			}
+			if !viper.GetBool(config.UI_MARKDOWN_MODE) {
+				aiRes = wordwrap.String(aiRes, m.viewport.Width)
+			}
+
+			m.viewport.SetContent(aiRes)
+			m.Resize()
+		}
 
 	case event.RemoveStackEvent:
 		if msg.Stack != nil {
@@ -245,22 +270,61 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// TODO: find better solutions, direct comparison provokes panic
 		m.stack = m.stack[:len(m.stack)-1]
-		return m, m.resize
-
+		if len(m.stack) == 0 {
+			switch {
+			case m.currentChatMessages.user != nil:
+				m.currentChatMessages.user = m.promptConfig.ChatMessages.FindById(m.currentChatMessages.user.Id.Int64())
+			case m.currentChatMessages.assistant != nil:
+				m.currentChatMessages.assistant = m.promptConfig.ChatMessages.FindById(m.currentChatMessages.assistant.Id.Int64())
+			}
+			return m, tea.Sequence(event.Transition("..."), m.Init(), event.Transition(""), m.resize)
+		}
+		return m, nil
 	case event.AddStackEvent:
 		m.stack = append(m.stack, msg.Stack)
-		return m, tea.Sequence(m.stack[len(m.stack)-1].Init(), m.resize, event.UpdateContent)
+		return m, tea.Sequence(event.Transition(msg.Title), m.stack[len(m.stack)-1].Init(), event.Transition(""), m.resize, event.UpdateChatContent(m.userPrompt, m.aiResponse))
+
+	case event.TransitionEvent:
+		m.transition = msg.Title != ""
+		m.transitionModel.Title = msg.Title
 
 	case service.ChatMessage:
-		if msg.Id == m.currentChatIndices.user {
+		if m.currentChatMessages.user != nil && msg.Id == m.currentChatMessages.user.Id {
 			m.userPrompt = msg.Content
 		}
 
-		if msg.Id == m.currentChatIndices.assistant {
+		if m.currentChatMessages.assistant != nil && msg.Id == m.currentChatMessages.assistant.Id {
 			m.aiResponse = msg.Content
 		}
 
-		cmds = append(cmds, waitForUpdate(m.promptConfig.UpdateChan), event.UpdateContent)
+		cmds = append(cmds, tea.Sequence(event.UpdateChatContent(m.userPrompt, m.aiResponse), waitForUpdate(m.promptConfig.UpdateChan)))
+
+	case event.StartSpinnerEvent:
+		return m, nil
+
+	case event.FileSelectionEvent:
+		if len(m.stack) == 0 {
+			for _, item := range msg.Files {
+				_, err := m.promptConfig.ChatMessages.AddMessageFromFile(item)
+				if err != nil {
+					return m, event.Error(err)
+				}
+			}
+		}
+
+	case event.AgentSelectionEvent:
+		m.chain = msg.Executor
+		m.chainName = msg.Name
+
+	case audio.StartPlayingEvent:
+		m.audioPlayer = msg.PlayerModel
+		if apModel, ok := lo.Find(m.stack, func(item tea.Model) bool {
+			_, ok := item.(audio.AudioPlayerModel)
+			return ok
+		}); ok {
+			apModel = msg.PlayerModel
+			_ = apModel
+		}
 
 	case error:
 		m.err = msg
@@ -277,25 +341,19 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea, tiCmd = m.textarea.Update(msg)
 		m.viewport, vpCmd = m.viewport.Update(msg)
 
+		m.promptConfig.UserPrompt = m.textarea.Value()
+
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
-	if m.userPrompt != "" {
-		aiRes := m.aiResponse
-		if viper.GetBool("md") && m.userPrompt != "Infos" {
-			str, err := m.mdRenderer.Render(aiRes)
-			if err != nil {
-				return m, event.Error(err)
-			}
-			aiRes = str
-		}
-		userPrompt := m.userPrompt
-		if m.currentChatIndices.user >= 0 {
-			_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatIndices.user })
-			userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
-		}
-		m.viewport.SetContent(fmt.Sprintf("%s\n%s", style.TitleStyle.Render(userPrompt), aiRes))
+	if m.currentChatMessages.assistant == nil &&
+		m.currentChatMessages.user == nil &&
+		m.userPrompt == "" &&
+		m.aiResponse == "" {
+		m.Intro()
 	}
+
+	m.LoadingTitle()
 
 	return m, tea.Batch(cmds...)
 }
@@ -305,16 +363,45 @@ func (m chatModel) View() string {
 		return fmt.Sprintf("Error: %s", style.StatusMessageStyle(m.err.Error()))
 	}
 
+	if m.transition {
+		return AppStyle.Render(m.transitionModel.View())
+	}
+
 	if len(m.stack) > 0 {
 		return AppStyle.Render(m.stack[len(m.stack)-1].View())
 	}
 
 	helpView := m.help.View(m.keys)
-	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s",
+	return AppStyle.Render(fmt.Sprintf("%s\n%s\n%s\n%s",
+		m.GetTitleView(),
 		m.viewport.View(),
 		m.textarea.View(),
 		helpView,
 	))
+}
+
+func (m chatModel) LoadingTitle() {
+	m.loading = len(m.promptConfig.Contexts) != 0
+	if m.loading {
+		style.TitleStyle = style.TitleStyle.Background(style.LoadingBackgroundColor)
+	} else {
+		style.TitleStyle = style.TitleStyle.Background(style.NormalBackgroundColor)
+	}
+}
+
+func (m chatModel) GetTitleView() string {
+	userPrompt := m.userPrompt
+	if m.currentChatMessages.user != nil {
+		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatMessages.user.Id })
+		userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
+	}
+	if userPrompt == "" {
+		userPrompt = "Chat"
+	}
+	if m.chain != nil {
+		userPrompt = fmt.Sprintf("%s | %s", m.chainName, userPrompt)
+	}
+	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }
 
 func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
@@ -323,36 +410,16 @@ func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
 	}
 }
 
-func CommandSelectionFactory() func(cmd string, pc *service.PromptConfig) error {
-	commandMap := make(map[string]func(*service.PromptConfig) error)
+func (m *chatModel) Intro() {
+	m.viewport.SetContent(getInfoContent(*m))
+}
 
-	command.AddAllCommand(commandMap)
-	keys := lo.Keys[string](commandMap)
+func (m *chatModel) Resize() {
+	w, h := AppStyle.GetFrameSize()
+	style.TitleStyle.MaxWidth(m.size.Width - w)
 
-	return func(cmd string, pc *service.PromptConfig) error {
+	m.viewport.Width = m.size.Width - w
+	m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
 
-		var err error
-
-		switch {
-		case cmd == "":
-			commandMap["help"](pc)
-		case cmd == "\\":
-			selection, err2 := fuzzyfinder.Find(keys, func(i int) string {
-				return keys[i]
-			})
-			if err2 != nil {
-				return err2
-			}
-
-			err = commandMap[keys[selection]](pc)
-		case strings.HasPrefix(cmd, "\\"):
-			command, ok := commandMap[cmd[1:]]
-			if !ok {
-				return errors.New("command not found")
-			}
-			err = command(pc)
-		}
-
-		return err
-	}
+	m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
 }

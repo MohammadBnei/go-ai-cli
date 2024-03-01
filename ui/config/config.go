@@ -3,7 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/form"
@@ -16,10 +19,10 @@ import (
 
 func NewConfigModel(promptConfig *service.PromptConfig) tea.Model {
 
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	if savedDefaultSystemPrompt == nil {
 		savedDefaultSystemPrompt = make(map[string]string)
-		viper.Set("default-systems", savedDefaultSystemPrompt)
+		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
 	items := getItemsAsUiList(promptConfig)
@@ -40,7 +43,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				if err != nil {
 					return event.Error(err)
 				}
-				return event.AddStack(editModel)
+				return event.AddStack(editModel, "Loading Editing "+id+"...")
 			case bool:
 				viper.Set(id, !value)
 				err := viper.WriteConfig()
@@ -65,7 +68,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				return event.Error(err)
 			}
 
-			return event.AddStack(editModel)
+			return event.AddStack(editModel, "Loading Editing "+id+"...")
 		},
 	}
 }
@@ -77,23 +80,30 @@ func getEditModel(id string) (tea.Model, error) {
 		var editModel *huh.Form
 		var afterCmd tea.Cmd
 		switch id {
-		case "model":
+		case config.AI_MODEL_NAME:
 			modelSelectForm, err := newModelSelectForm(value)
 			if err != nil {
 				return nil, err
 			}
 			editModel = modelSelectForm
 
-		case "api_type":
+		case config.AI_OPENAI_IMAGE_MODEL:
+			modelSelectForm, err := newImageModelSelectForm(value)
+			if err != nil {
+				return nil, err
+			}
+			editModel = modelSelectForm
+
+		case config.AI_API_TYPE:
 			editModel = newApiTypeSelectForm(value)
 			afterCmd = func() tea.Msg {
-				modelSelectForm, err := newModelSelectForm(viper.GetString("model"))
+				modelSelectForm, err := newModelSelectForm(viper.GetString(config.AI_MODEL_NAME))
 				if err != nil {
 					return err
 				}
 				return event.AddStackEvent{Stack: form.NewEditModel("Editing config model after updating the api type", modelSelectForm, func(form *huh.Form) tea.Cmd {
-					result := form.GetString("model")
-					return UpdateConfigValue("model", result, result)
+					result := form.GetString(config.AI_MODEL_NAME)
+					return UpdateConfigValue(config.AI_MODEL_NAME, result, result)
 				})}
 			}
 
@@ -113,7 +123,7 @@ func getEditModel(id string) (tea.Model, error) {
 
 		default:
 			editModel = huh.NewForm(huh.NewGroup(
-				huh.NewText().Title(id).Key(id).Value(&value).Lines(10)),
+				huh.NewText().Editor("nvim").CharLimit(0).Title(id).Key(id).Value(&value).Lines(10)),
 			)
 		}
 		return form.NewEditModel("Editing config ["+id+"]", editModel, func(form *huh.Form) tea.Cmd {
@@ -127,10 +137,44 @@ func getEditModel(id string) (tea.Model, error) {
 		), func(form *huh.Form) tea.Cmd {
 			result := form.GetBool(id)
 			updateEvent := UpdateConfigValue(id, result, helper.CheckedStringHelper(result))
-			if id == "md" {
-				return tea.Sequence(updateEvent, event.UpdateContent)
+			if id == config.UI_MARKDOWN_MODE {
+				return tea.Sequence(updateEvent, event.UpdateChatContent("", ""))
 			}
 			return updateEvent
+		},
+		), nil
+
+	case int:
+		strVal := fmt.Sprintf("%d", value)
+		return form.NewEditModel("Editing config ["+id+"]", huh.NewForm(huh.NewGroup(
+			huh.NewInput().Key(id).Title(id).
+				Validate(func(s string) error { _, err := strconv.Atoi(s); return err }).
+				Value(&strVal).CharLimit(3),
+		),
+		), func(form *huh.Form) tea.Cmd {
+			strValue := form.GetString(id)
+			result, err := strconv.Atoi(strValue)
+			if err != nil {
+				return event.Error(err)
+			}
+			return UpdateConfigValue(id, result, strValue)
+		},
+		), nil
+
+	case float64:
+		strVal := fmt.Sprintf("%.2f", value)
+		return form.NewEditModel("Editing config ["+id+"]", huh.NewForm(huh.NewGroup(
+			huh.NewInput().Key(id).Title(id).
+				Validate(func(s string) error { _, err := strconv.ParseFloat(s, 64); return err }).
+				Value(&strVal).CharLimit(3),
+		),
+		), func(form *huh.Form) tea.Cmd {
+			strValue := form.GetString(id)
+			result, err := strconv.ParseFloat(strValue, 64)
+			if err != nil {
+				return event.Error(err)
+			}
+			return UpdateConfigValue(id, result, strValue)
 		},
 		), nil
 
@@ -140,10 +184,6 @@ func getEditModel(id string) (tea.Model, error) {
 }
 func UpdateConfigValue(id string, value any, strValue string) tea.Cmd {
 	viper.Set(id, value)
-	err := viper.WriteConfig()
-	if err != nil {
-		return event.Error(err)
-	}
 
 	return func() tea.Msg {
 		return list.Item{
@@ -161,6 +201,12 @@ func getBoolItem(key string, value bool) list.Item {
 func getStringItem(key, value string) list.Item {
 	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: value}
 }
+func getIntItem(key string, value int) list.Item {
+	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: fmt.Sprintf("%d", value)}
+}
+func getFloatItem(key string, value float64) list.Item {
+	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: fmt.Sprintf("%.2f", value)}
+}
 
 func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
 	items := []list.Item{}
@@ -173,9 +219,17 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
 			}
 		case bool:
 			items = append(items, getBoolItem(k, t))
+		case int:
+			items = append(items, getIntItem(k, t))
+		case float64:
+			items = append(items, getFloatItem(k, t))
 
 		}
 	}
+
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].ItemId < items[j].ItemId
+	})
 
 	return items
 }

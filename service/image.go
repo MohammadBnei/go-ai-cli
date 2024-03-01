@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/briandowns/spinner"
 	"github.com/c2h5oh/datasize"
 	"github.com/sashabaranov/go-openai"
@@ -18,7 +19,7 @@ import (
 )
 
 func AskImage(prompt string, size string) ([]byte, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
 	s.Start()
@@ -47,7 +48,7 @@ func AskImage(prompt string, size string) ([]byte, error) {
 }
 
 func EditImage(filePath, prompt, size string) ([]byte, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
 
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, os.ModePerm)
 	if err != nil {

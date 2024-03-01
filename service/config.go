@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/bwmarrin/snowflake"
 	"github.com/samber/lo"
 )
 
 type ContextHold struct {
-	UserChatId int
+	UserChatId snowflake.ID
 	Ctx        context.Context
 	CancelFn   func()
 }
@@ -20,6 +21,7 @@ type PromptConfig struct {
 	UserPrompt     string
 	UpdateChan     chan ChatMessage
 	Contexts       []ContextHold
+	*FileService
 }
 
 func (pc *PromptConfig) CloseLastContext() error {
@@ -34,8 +36,8 @@ func (pc *PromptConfig) AddContext(ctx context.Context, cancelFn func()) {
 	pc.Contexts = append(pc.Contexts, ContextHold{Ctx: ctx, CancelFn: cancelFn})
 }
 
-func (pc *PromptConfig) AddContextWithId(ctx context.Context, cancelFn func(), id int) {
-	pc.Contexts = append(pc.Contexts, ContextHold{Ctx: ctx, CancelFn: cancelFn, UserChatId: id})
+func (pc *PromptConfig) AddContextWithId(ctx context.Context, cancelFn func(), id int64) {
+	pc.Contexts = append(pc.Contexts, ContextHold{Ctx: ctx, CancelFn: cancelFn, UserChatId: snowflake.ParseInt64(id)})
 }
 
 func (pc *PromptConfig) DeleteContext(ctx context.Context) {
@@ -44,30 +46,33 @@ func (pc *PromptConfig) DeleteContext(ctx context.Context) {
 	})
 }
 
-func (pc *PromptConfig) FindContextWithId(id int) *ContextHold {
+func (pc *PromptConfig) FindContextWithId(id int64) *ContextHold {
 	ctx, _ := lo.Find(pc.Contexts, func(item ContextHold) bool {
-		return item.UserChatId != id
+		return item.UserChatId != snowflake.ParseInt64(id)
 	})
 	return &ctx
 }
 
-func (pc *PromptConfig) DeleteContextById(id int) {
+func (pc *PromptConfig) DeleteContextById(id int64) {
 	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
-		return item.UserChatId != id
+		return item.UserChatId != snowflake.ParseInt64(id)
 	})
 }
 
-func (pc *PromptConfig) CloseContextById(id int) error {
-	ctx, ok := lo.Find(pc.Contexts, func(item ContextHold) bool { return item.UserChatId == id })
+func (pc *PromptConfig) CloseContextById(id int64) error {
+	ctx, _, ok := lo.FindLastIndexOf(pc.Contexts, func(item ContextHold) bool { return item.UserChatId == snowflake.ParseInt64(id) })
 	if !ok {
-		return errors.New(fmt.Sprintf("no context found with id %d, %s", id, pc.Contexts))
+		return fmt.Errorf("no context found with id %d, %s", id, pc.Contexts)
 	}
 	ctx.CancelFn()
 
 	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
-		return item.UserChatId != id
+		return item.UserChatId != snowflake.ParseInt64(id)
 	})
 
 	return nil
 }
 
+func (c ContextHold) String() string {
+	return fmt.Sprintf("[%d %s]", c.UserChatId, c.Ctx)
+}

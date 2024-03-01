@@ -4,12 +4,13 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/TannerKvarfordt/hfapigo"
 	"github.com/spf13/viper"
 )
 
 func Mask(prompt string) (string, error) {
-	apiKey := viper.GetString("HUGGINGFACE_KEY") // Your Hugging Face API key
+	apiKey := viper.GetString(config.AI_HUGGINGFACE_KEY) // Your Hugging Face API key
 	if apiKey == "" {
 		return "", errors.New("hugging Face API key not found")
 	}

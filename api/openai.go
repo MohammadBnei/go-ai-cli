@@ -1,128 +1,20 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"io"
+	"strings"
 
-	"github.com/jinzhu/copier"
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
+	"golang.org/x/sync/errgroup"
 )
 
-// func SendWithToolCall(ctx context.Context, messages []ChatMessage, functions []function.FunctionDefinition) (string, error) {
-// 	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
-
-// 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
-// 	s.Start()
-// 	defer s.Stop()
-
-// 	model := viper.GetString("model")
-
-// 	if model == "" {
-// 		model = openai.GPT4TurboPreview
-// 	}
-
-// 	chatMessages := []openai.ChatCompletionMessage{}
-// 	err := copier.Copy(&chatMessages, messages)
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	resp, err := c.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
-// 		Model:    model,
-// 		Messages: chatMessages,
-// 		Tools:    tools,
-// 	})
-
-// 	if err != nil {
-// 		return "", err
-// 	}
-// 	toolCalled := ""
-
-// 	for _, k := range resp.Choices {
-// 		if k.FinishReason == openai.FinishReasonToolCalls {
-// 			toolCalled = k.Message.FunctionCall.Name
-// 			args := k.Message.FunctionCall.Arguments
-
-// 			data := &ui.SaveFunctionData{}
-// 			err := json.Unmarshal([]byte(args), data)
-// 			if err != nil {
-// 				return "", err
-// 			}
-// 			err = ui.SaveFileFunctionDef.Function(data)
-// 			if err != nil {
-// 				return "", err
-// 			}
-// 		}
-// 	}
-
-// 	return toolCalled, nil
-// }
-
-func SendPromptToOpenAi(ctx context.Context, request *GPTChanRequest) (<-chan *GPTChanResponse, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
-
-	if request.Model == "" {
-		request.Model = viper.GetString("model")
-	}
-
-	chatMessages := []openai.ChatCompletionMessage{}
-	err := copier.Copy(&chatMessages, request.Messages)
-	if err != nil {
-		return nil, err
-	}
-
-	req := openai.ChatCompletionRequest{
-		Model:    request.Model,
-		Messages: chatMessages,
-		Stream:   true,
-	}
-
-	resp, err := c.CreateChatCompletionStream(
-		ctx,
-		req,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	stream := make(chan *GPTChanResponse, 5)
-
-	go func(resp *openai.ChatCompletionStream) {
-		defer resp.Close()
-		defer close(stream)
-	ResponseLoop:
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				data, err := resp.Recv()
-				if err != nil {
-					stream <- &GPTChanResponse{
-						Content: nil,
-						Err:     err,
-					}
-					break ResponseLoop
-				}
-				stream <- &GPTChanResponse{
-					Content: []byte(data.Choices[0].Delta.Content),
-					Err:     nil,
-				}
-			}
-		}
-
-		stream <- &GPTChanResponse{
-			Err: io.EOF,
-		}
-	}(resp)
-
-	return stream, nil
-}
-
-func SendAudio(ctx context.Context, filename string, lang string) (string, error) {
-	c := openai.NewClient(viper.GetString("OPENAI_KEY"))
+func SpeechToText(ctx context.Context, filename string, lang string) (string, error) {
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
 
 	if lang == "" {
 		lang = "en"
@@ -141,4 +33,103 @@ func SendAudio(ctx context.Context, filename string, lang string) (string, error
 	return response.Text, nil
 }
 
+func GenerateImage(ctx context.Context, prompt string, size string) ([]byte, error) {
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
+	model := viper.GetString(config.AI_OPENAI_IMAGE_MODEL)
+	if model == "" {
+		model = "dall-e-3"
+	}
 
+	resp, err := c.CreateImage(ctx, openai.ImageRequest{
+		Prompt: prompt,
+		User:   "user",
+		Model:  model,
+
+		Size:           size,
+		ResponseFormat: openai.CreateImageResponseFormatB64JSON,
+		N:              1,
+	})
+	if err != nil {
+		return nil, err
+
+	}
+
+	b, err := base64.StdEncoding.DecodeString(resp.Data[0].B64JSON)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func TextToSpeech(ctx context.Context, content string) (io.ReadCloser, error) {
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
+
+	parts := []string{""}
+	if len(content) >= 4096 {
+		splitted := strings.SplitAfter(content, "\n")
+		for _, s := range splitted {
+			if len(parts[len(parts)-1])+len(s) >= 4096 {
+				parts = append(parts, "")
+			}
+			parts[len(parts)-1] = parts[len(parts)-1] + s
+		}
+	} else {
+		s, err := c.CreateSpeech(ctx, openai.CreateSpeechRequest{
+			Model:          openai.TTSModel1,
+			ResponseFormat: openai.SpeechResponseFormatMp3,
+			Input:          content,
+			Voice:          openai.VoiceNova,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return s, nil
+	}
+
+	var g errgroup.Group
+
+	responses := make(map[int]io.ReadCloser)
+
+	for index, p := range parts {
+		currentIndex := index
+		currentTextPart := p
+		g.Go(func() error {
+
+			s, err := c.CreateSpeech(ctx, openai.CreateSpeechRequest{
+				Model:          openai.TTSModel1,
+				ResponseFormat: openai.SpeechResponseFormatMp3,
+				Input:          currentTextPart,
+				Voice:          openai.VoiceNova,
+			})
+			if err != nil {
+				return err
+			}
+			responses[currentIndex] = s
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	response := io.NopCloser(io.MultiReader(bytes.NewReader([]byte(""))))
+
+	for i := range len(parts) {
+		originalData, err := io.ReadAll(response)
+		if err != nil {
+			return nil, err
+		}
+		newData, err := io.ReadAll(responses[i])
+		if err != nil {
+			return nil, err
+		}
+
+		updatedData := append(originalData, newData...)
+		response = io.NopCloser(io.MultiReader(bytes.NewReader(updatedData)))
+	}
+
+	return response, nil
+}

@@ -4,9 +4,14 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"github.com/MohammadBnei/go-ai-cli/command"
+	"fmt"
+	"log"
+	"path/filepath"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/chat"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -16,27 +21,49 @@ var promptCmd = &cobra.Command{
 	Use:   "prompt",
 	Short: "Start the prompt loop",
 	Run: func(cmd *cobra.Command, args []string) {
-		viper.BindPFlag("md", cmd.Flags().Lookup("md"))
-
-		commandMap := make(map[string]func(*service.PromptConfig) error)
-
-		command.AddAllCommand(commandMap)
+		fileService, err := service.NewFileService()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 
 		promptConfig := &service.PromptConfig{
 			ChatMessages: service.NewChatMessages("default"),
+			FileService:  fileService,
 		}
 
-		defaulSystemPrompt := viper.GetStringMapString("default-systems")
-		savedSystemPrompt := viper.GetStringMapString("systems")
+		defaulSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
+		savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
 		for k := range defaulSystemPrompt {
 			promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
+		}
+
+		if viper.GetBool(config.C_AUTOLOAD) {
+			fmt.Println("Loading last chat...")
+			configFolder := filepath.Dir(viper.ConfigFileUsed())
+			err := promptConfig.ChatMessages.LoadFromFile(configFolder + "/last-chat.yml")
+			if err != nil {
+				fmt.Printf("An error occured trying to get the last chat : %s\nPress enter to continue", err)
+				fmt.Scanln()
+			}
 		}
 
 		updateChan := make(chan service.ChatMessage)
 		defer close(updateChan)
 		promptConfig.UpdateChan = updateChan
 
-		chat.Chat(promptConfig)
+		chatModel, err := chat.NewChatModel(promptConfig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		p := tea.NewProgram(chatModel,
+			tea.WithAltScreen())
+
+		chat.ChatProgram = p
+
+		if _, err := p.Run(); err != nil {
+			log.Fatal(err)
+		}
 
 	},
 }
@@ -44,9 +71,7 @@ var promptCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(promptCmd)
 
-	promptCmd.PersistentFlags().Int("depth", 2, "the depth of the tree view, when in file mode")
-	promptCmd.PersistentFlags().Bool("md", false, "markdown mode enabled")
-	promptCmd.PersistentFlags().BoolP("auto-save", "s", false, "Automatically save the prompt to a file")
+	promptCmd.PersistentFlags().Bool(config.C_AUTOLOAD, false, "Automatically load the prompt from $CONFIG/last-chat.yml")
 
-	viper.BindPFlag("autoSave", promptCmd.Flags().Lookup("auto-save"))
+	viper.BindPFlag("autoSave", promptCmd.Flags().Lookup(config.C_AUTOLOAD))
 }

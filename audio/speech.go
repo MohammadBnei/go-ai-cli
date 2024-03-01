@@ -1,5 +1,4 @@
 //go:build portaudio
-// +build portaudio
 
 package audio
 
@@ -7,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"os"
@@ -26,7 +24,7 @@ type SpeechConfig struct {
 
 func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
 	tmpFileName := fmt.Sprintf("speech-%d", time.Now().UnixNano())
-	err := RecordAudioToFile(config.MaxMinutes, config.Detect, tmpFileName)
+	err := RecordAudioToFile(ctx, config.MaxMinutes, tmpFileName)
 	if err != nil {
 		return "", err
 	}
@@ -36,33 +34,14 @@ func SpeechToText(ctx context.Context, config *SpeechConfig) (string, error) {
 	s.Start()
 	defer s.Stop()
 
-	return api.SendAudio(ctx, tmpFileName+".wav", config.Lang)
+	return api.SpeechToText(ctx, tmpFileName+".wav", config.Lang)
 }
 
-func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) error {
-	quit := make(chan bool, 2)
-	go func(quit chan bool) {
-		fmt.Println("Press enter to stop recording")
-		fmt.Scanln()
-		select {
-		case _, ok := <-quit:
-			if !ok {
-				return
-			}
-		default:
-			quit <- true
-
-		}
-	}(quit)
-	go func(quit chan bool) {
-		time.Sleep(maxTime)
-		quit <- true
-		close(quit)
-	}(quit)
+func RecordAudioToFile(ctx context.Context, maxTime time.Duration, filename string) error {
 
 	stream, err := stream.NewStream(stream.DefaultStreamConfig())
 	if err != nil {
-		log.Fatalf("stream error -- %s", err)
+		return err
 	}
 	defer stream.Terminate()
 
@@ -72,27 +51,28 @@ func RecordAudioToFile(maxTime time.Duration, detect bool, filename string) erro
 	rec, err := recorder.NewRecorder(cfg, stream)
 
 	if err != nil {
-		log.Fatalf("recorder error -- %s", err)
+		return err
 	}
 
-	fmt.Print("Recording...")
 	var recording *bytes.Buffer
-	if detect {
-		recording, err = rec.RecordVAD(recorder.WAV)
-	} else {
-		stream.Start()
-		defer stream.Close()
-		recording, err = rec.Record(recorder.WAV, quit)
-	}
+	stream.Start()
+	defer stream.Close()
+	doneChan := make(chan bool)
+	go func() {
+		select {
+		case <-ctx.Done():
+			doneChan <- true
+		}
+	}()
+	recording, err = rec.Record(recorder.WAV, doneChan)
 	if err != nil {
 		return err
 	}
-	fmt.Println(" done.")
 
 	if filename == "" {
-		filename = "speech"
+		filename = "speech.wav"
 	}
-	file, err := os.Create(filename + ".wav")
+	file, err := os.Create(filename)
 	if err != nil {
 		return err
 	}

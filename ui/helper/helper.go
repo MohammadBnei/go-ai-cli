@@ -1,6 +1,9 @@
 package helper
 
-import "github.com/manifoldco/promptui"
+import (
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/manifoldco/promptui"
+)
 
 func CheckedStringHelper(yes bool) string {
 	if yes {
@@ -22,3 +25,5 @@ func YesNoPrompt(label string) bool {
 
 	return true
 }
+
+var ChatProgram *tea.Program

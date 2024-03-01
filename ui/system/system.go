@@ -2,8 +2,11 @@ package system
 
 import (
 	"errors"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/form"
@@ -12,27 +15,28 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/golang-module/carbon"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 )
 
 func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	if savedDefaultSystemPrompt == nil {
 		savedDefaultSystemPrompt = make(map[string]string)
-		viper.Set("default-systems", savedDefaultSystemPrompt)
+		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
-	items := getItemsAsUiList(promptConfig)
+	items := getItemsAsUIList(promptConfig)
 
 	delegateFn := getDelegateFn(promptConfig)
 
 	return uiList.NewFancyListModel("system", items, delegateFn)
 }
 
-func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
-	savedSystemPrompt := viper.GetStringMapString("systems")
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+func getItemsAsUIList(promptConfig *service.PromptConfig) []uiList.Item {
+	savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
 	res := lo.MapToSlice[string, string, uiList.Item](savedSystemPrompt, func(k string, v string) uiList.Item {
 		_, isDefault := savedDefaultSystemPrompt[k]
@@ -42,11 +46,17 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
 				found = false
 			}
 		}
+
 		return uiList.Item{
 			ItemId:          k,
-			ItemTitle:       v,
+			ItemTitle:       strings.ReplaceAll(v, "\n\n", "\n"),
 			ItemDescription: lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(found), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+k),
 		}
+
+	})
+
+	sort.Slice(res, func(i, j int) bool {
+		return carbon.Parse(res[i].ItemId).Gt(carbon.Parse(res[j].ItemId))
 	})
 
 	return res
@@ -55,9 +65,9 @@ func getItemsAsUiList(promptConfig *service.PromptConfig) []uiList.Item {
 func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions {
 	return &uiList.DelegateFunctions{
 		ChooseFn: func(s string) tea.Cmd {
-			savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+			savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
-			v, ok := viper.GetStringMapString("systems")[s]
+			v, ok := viper.GetStringMapString(config.PR_SYSTEM)[s]
 			if !ok {
 				return event.Error(errors.New(s + " not found in systems"))
 			}
@@ -66,7 +76,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			exists, err := promptConfig.ChatMessages.AddMessage(v, service.RoleSystem)
 			if err != nil {
 				if errors.Is(err, service.ErrAlreadyExist) {
-					promptConfig.ChatMessages.DeleteMessage(exists.Id)
+					promptConfig.ChatMessages.DeleteMessage(exists.Id.Int64())
 					newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(false), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+s)
 					return func() tea.Msg {
 						return newItem
@@ -81,9 +91,9 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			}
 		},
 		EditFn: func(s string) tea.Cmd {
-			savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+			savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
-			v, ok := viper.GetStringMapString("systems")[s]
+			v, ok := viper.GetStringMapString(config.PR_SYSTEM)[s]
 			if !ok {
 				return func() tea.Msg {
 					return errors.New(s + " not found in systems")
@@ -94,7 +104,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			tRue := true
 
 			editModel := form.NewEditModel("Editing system ["+s+"]", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key(s).Value(&v).Lines(10),
+				huh.NewText().Editor("nvim").CharLimit(0).Title("Content").Key(s).Value(&v).Lines(10),
 				huh.NewSelect[bool]().Key("default").Title("Added by default").Value(&isDefault).Options(huh.NewOptions[bool](true, false)...),
 				huh.NewSelect[bool]().Key("add").Title("Add it ?").Options(huh.NewOptions[bool](true, false)...).Value(&tRue),
 			)), func(form *huh.Form) tea.Cmd {
@@ -134,13 +144,13 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				}
 			})
 
-			return event.AddStack(editModel)
+			return event.AddStack(editModel, "Editing "+s+"...")
 		},
 		AddFn: func(_ string) tea.Cmd {
 			tRue := true
 
 			addModel := form.NewEditModel("New system", huh.NewForm(huh.NewGroup(
-				huh.NewText().Title("Content").Key("content").Lines(10).Validate(func(s string) error {
+				huh.NewText().Editor("nvim").CharLimit(0).Title("Content").Key("content").Lines(10).Validate(func(s string) error {
 					if s == "" {
 						return errors.New("content cannot be empty")
 					}
@@ -185,7 +195,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				}
 			})
 
-			return event.AddStack(addModel)
+			return event.AddStack(addModel, "Adding new system...")
 		},
 		RemoveFn: func(s string) tea.Cmd {
 			RemoveFromSystemList(s)
@@ -195,17 +205,17 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 }
 
 func SetDefaultSystem(id string) error {
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	savedDefaultSystemPrompt[id] = ""
-	viper.Set("default-systems", savedDefaultSystemPrompt)
+	viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 
 	return viper.WriteConfig()
 }
 
 func UnsetDefaultSystem(id string) error {
-	savedDefaultSystemPrompt := viper.GetStringMapString("default-systems")
+	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	delete(savedDefaultSystemPrompt, id)
-	viper.Set("default-systems", savedDefaultSystemPrompt)
+	viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	return viper.WriteConfig()
 }
 
@@ -213,20 +223,20 @@ func AddToSystemList(content string, key string) {
 	if key == "" {
 		key = time.Now().Format("2006-01-02 15:04:05")
 	}
-	systems := viper.GetStringMapString("systems")
+	systems := viper.GetStringMapString(config.PR_SYSTEM)
 	systems[key] = content
 	viper.Set("systems", systems)
 	viper.WriteConfig()
 }
 func RemoveFromSystemList(time string) {
-	systems := viper.GetStringMapString("systems")
+	systems := viper.GetStringMapString(config.PR_SYSTEM)
 	delete(systems, time)
 	viper.Set("systems", systems)
 	viper.WriteConfig()
 }
 
 func UpdateFromSystemList(time string, content string) {
-	systems := viper.GetStringMapString("systems")
+	systems := viper.GetStringMapString(config.PR_SYSTEM)
 	systems[time] = content
 	viper.Set("systems", systems)
 	viper.WriteConfig()

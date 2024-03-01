@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
@@ -11,10 +12,10 @@ import (
 func TestGetOllamaModelList(t *testing.T) {
 
 	// Set the API type to "OLLAMA"
-	viper.Set("API_TYPE", api.API_OLLAMA)
+	viper.Set(config.AI_API_TYPE, api.API_OLLAMA)
 
 	// Set the OLLAMA_HOST to your test server URL
-	viper.Set("OLLAMA_HOST", "127.0.0.1:11434")
+	viper.Set(config.AI_OLLAMA_HOST, "127.0.0.1:11434")
 
 	// Call the function
 	models, err := api.GetOllamaModelList()

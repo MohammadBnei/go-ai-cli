@@ -1,46 +1,43 @@
 package chat
 
 import (
-	"github.com/MohammadBnei/go-ai-cli/ui/config"
+	"context"
+	"errors"
+	"io"
+
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/info"
-	"github.com/MohammadBnei/go-ai-cli/ui/message"
-	"github.com/MohammadBnei/go-ai-cli/ui/system"
+	"github.com/MohammadBnei/go-ai-cli/ui/options"
+	"github.com/MohammadBnei/go-ai-cli/ui/quit"
+	"github.com/MohammadBnei/go-ai-cli/ui/speech"
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/viper"
 )
 
 type listKeyMap struct {
-	systemMessages       key.Binding
-	curMessages          key.Binding
-	globalConfig         key.Binding
-	pager                key.Binding
+	copy                 key.Binding
 	changeCurMessageUp   key.Binding
 	changeCurMessageDown key.Binding
 	quit                 key.Binding
+	options              key.Binding
 	cancel               key.Binding
 	toggleHelpMenu       key.Binding
 	showInfo             key.Binding
+	speechToText         key.Binding
+	textToSpeech         key.Binding
+	addFile              key.Binding
+	audiPlayer           key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
 	return &listKeyMap{
-		systemMessages: key.NewBinding(
+		copy: key.NewBinding(
 			key.WithKeys("ctrl+l"),
-			key.WithHelp("ctrl+l", "system messages"),
-		),
-		curMessages: key.NewBinding(
-			key.WithKeys("ctrl+o"),
-			key.WithHelp("ctrl+o", "current messages"),
-		),
-		globalConfig: key.NewBinding(
-			key.WithKeys("ctrl+g"),
-			key.WithHelp("ctrl+g", "global config"),
-		),
-		pager: key.NewBinding(
-			key.WithKeys("ctrl+p"),
-			key.WithHelp("ctrl+p", "pager"),
+			key.WithHelp("ctrl+l", "copy"),
 		),
 		changeCurMessageUp: key.NewBinding(
 			key.WithKeys("ctrl+j"),
@@ -55,18 +52,41 @@ func newListKeyMap() *listKeyMap {
 			key.WithHelp("ctrl+h", "toggle help"),
 		),
 
+		options: key.NewBinding(
+			key.WithKeys("ctrl+g", "esc"),
+			key.WithHelp("ctrl+g", "options"),
+		),
+
 		quit: key.NewBinding(
 			key.WithKeys("ctrl+d"),
 			key.WithHelp("ctrl+d", "quit"),
 		),
 		cancel: key.NewBinding(
-			key.WithKeys("ctrl+c", "esc"),
-			key.WithHelp("ctrl+c/esc", "cancel"),
+			key.WithKeys("ctrl+c"),
+			key.WithHelp("ctrl+c", "cancel"),
 		),
 
 		showInfo: key.NewBinding(
 			key.WithKeys("ctrl+t"),
 			key.WithHelp("ctrl+t", "show info"),
+		),
+
+		speechToText: key.NewBinding(
+			key.WithKeys("ctrl+r"),
+			key.WithHelp("ctrl+r", "speech to text"),
+		),
+		textToSpeech: key.NewBinding(
+			key.WithKeys("ctrl+b"),
+			key.WithHelp("ctrl+b", "text to speech"),
+		),
+		addFile: key.NewBinding(
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("ctrl+f", "add file(s)"),
+		),
+
+		audiPlayer: key.NewBinding(
+			key.WithKeys("ctrl+a"),
+			key.WithHelp("ctrl+a", "audio player"),
 		),
 	}
 }
@@ -82,59 +102,100 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				return m, nil
 
 			case len(m.stack) > 0:
-				return m, event.RemoveStack(m.stack[len(m.stack)-1])
+				return m, tea.Sequence(event.Cancel, event.RemoveStack(m.stack[len(m.stack)-1]))
+			case msg.String() == "esc":
+				return m, event.AddStack(options.NewOptionsModel(m.promptConfig), "Loading Options...")
 
 			case m.help.ShowAll:
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
 
-			case m.promptConfig.FindContextWithId(m.currentChatIndices.user) != nil && msg.String() == "ctrl+c":
+			case m.currentChatMessages.user != nil && m.promptConfig.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
 				return closeContext(m)
 
 			}
 
 		case key.Matches(msg, m.keys.quit):
-			if viper.GetBool("auto-save") {
-				err := saveChat(m)
-				if err != nil {
-					panic(err)
-				}
-			}
-			return quit(m)
+			return m, event.AddStack(quit.NewQuitModel(m.promptConfig), "Quitting...")
 
 		case key.Matches(msg, m.keys.toggleHelpMenu):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, func() tea.Msg { return m.size }
 
-		case key.Matches(msg, m.keys.systemMessages):
-			if len(m.stack) == 0 {
-				return m, event.AddStack(system.NewSystemModel(m.promptConfig))
-			}
-
-		case key.Matches(msg, m.keys.globalConfig):
-			if len(m.stack) == 0 {
-				return m, event.AddStack(config.NewConfigModel(m.promptConfig))
-			}
-
-		case key.Matches(msg, m.keys.curMessages):
-			if len(m.stack) == 0 {
-				return m, event.AddStack(message.NewMessageModel(m.promptConfig))
+		case key.Matches(msg, m.keys.copy):
+			if len(m.stack) == 0 && m.aiResponse != "" {
+				err := clipboard.WriteAll(m.aiResponse)
+				if err != nil {
+					return m, event.Error(err)
+				}
+				return m, nil
 			}
 
 		case key.Matches(msg, m.keys.changeCurMessageUp):
-			return changeResponseUp(m)
-
-		case key.Matches(msg, m.keys.changeCurMessageDown):
-			return changeResponseDown(m)
-
-		case key.Matches(msg, m.keys.pager):
 			if len(m.stack) == 0 {
-				return addPagerToStack(m)
+				return changeResponseUp(m)
+			}
+		case key.Matches(msg, m.keys.changeCurMessageDown):
+			if len(m.stack) == 0 {
+				return changeResponseDown(m)
+			}
+
+		case key.Matches(msg, m.keys.options):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(options.NewOptionsModel(m.promptConfig), "Loading Options...")
 			}
 
 		case key.Matches(msg, m.keys.showInfo):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(info.NewInfoModel("Info", getInfoContent(m)))
+				return m, event.AddStack(info.NewInfoModel("Info", getInfoContent(m)), "Loading info...")
+			}
+
+		case key.Matches(msg, m.keys.speechToText):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(speech.NewSpeechModel(m.promptConfig), "Loading speech...")
+			}
+
+		case key.Matches(msg, m.keys.textToSpeech):
+			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
+				msgID := m.currentChatMessages.assistant.Id.Int64()
+				ctx, cancel := context.WithCancel(context.Background())
+				m.promptConfig.AddContextWithId(ctx, cancel, msgID)
+				return m, tea.Sequence(func() tea.Msg {
+					defer m.promptConfig.DeleteContext(ctx)
+					msg := m.promptConfig.ChatMessages.FindById(msgID)
+					if msg == nil {
+						return event.Error(errors.New("message not found"))
+					}
+					reader, err := api.TextToSpeech(ctx, msg.Content)
+					if err != nil {
+						return err
+					}
+					m.audioPlayer.Clear()
+					data, err := io.ReadAll(reader)
+					if err != nil {
+						return err
+					}
+					fm, err := m.promptConfig.FileService.Append(service.Audio, msg.Content, "", msg.Id.Int64(), data)
+					if err != nil {
+						return err
+					}
+					msg.AudioFileId = fm.ID
+					m.promptConfig.ChatMessages.UpdateMessage(*msg)
+					return m.audioPlayer.InitSpeaker(fm.ID)
+				}, func() tea.Msg {
+					m.promptConfig.DeleteContextById(msgID)
+					return event.Transition("")
+				})
+			}
+
+		case key.Matches(msg, m.keys.addFile):
+			if len(m.stack) == 0 {
+				return m, event.AddStack(file.NewFilePicker(true, nil), "Loading filepicker...")
+			}
+
+		case key.Matches(msg, m.keys.audiPlayer):
+			if len(m.stack) == 0 {
+				return m, tea.Sequence(event.AddStack(m.audioPlayer, "Loading audio player..."), m.audioPlayer.DoTick())
 			}
 
 		}
@@ -149,9 +210,9 @@ func (k *listKeyMap) ShortHelp() []key.Binding {
 
 func (k *listKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.systemMessages, k.curMessages, k.globalConfig},
-		{k.changeCurMessageDown, k.changeCurMessageUp, k.pager},
+		{k.changeCurMessageDown, k.changeCurMessageUp, k.copy},
 		{k.cancel, k.quit, k.toggleHelpMenu},
-		{k.showInfo},
+		{k.showInfo, k.speechToText, k.textToSpeech},
+		{k.addFile, k.options},
 	}
 }
