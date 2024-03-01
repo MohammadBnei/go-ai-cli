@@ -1,5 +1,38 @@
 
 
+# [0.17.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.16.1...0.17.0) (2024-03-01)
+
+
+### Bug Fixes
+
+* **all:** somewhat stable ([f7bfcef](https://github.com/MohammadBnei/go-ai-cli/commit/f7bfcefde00082a8c0448cd0c31fbcd473f6607f))
+* **change-response:** fixed a panic error when changing displayed exchange ([65845ca](https://github.com/MohammadBnei/go-ai-cli/commit/65845ca6bffae655d0564597993083e51cd266db))
+* **chat.go:** fix viewport width calculation to correctly wrap markdown renderer ([c622954](https://github.com/MohammadBnei/go-ai-cli/commit/c6229544ac45dba62d3dc02213a5f52415c8ed7d))
+* **chat.go:** fix width calculation for title style to match the updated frame size ([e9297fd](https://github.com/MohammadBnei/go-ai-cli/commit/e9297fd694ccdbb6840073117655100e0f6944a0))
+* **chat:** remove unused reset function and its dependencies ([5db75bc](https://github.com/MohammadBnei/go-ai-cli/commit/5db75bcf4dd01f83485cac15eff1e43407fe4552))
+* **cmd/root.go:** handle case when config file does not exist by creating a new config file if it doesn't exist ([b3ca2ef](https://github.com/MohammadBnei/go-ai-cli/commit/b3ca2ef1f2d0dde87cb2601344e82451a3c3aabd))
+* **cmd:** change flag name from --auto-save to --auto-load to improve semantics ([9e09ca0](https://github.com/MohammadBnei/go-ai-cli/commit/9e09ca074b6609f251e3228cabdcea4c77d082ef))
+* **config.go:** change Find function to FindLastIndexOf to fix bug in CloseContextById method ([b02600a](https://github.com/MohammadBnei/go-ai-cli/commit/b02600aec569ff04eecd8f9348d7a2dc7600fd47))
+* **keys.go:** add condition to only copy assistant's content if there are no chat messages in the stack to prevent copying empty content ([1ab6ede](https://github.com/MohammadBnei/go-ai-cli/commit/1ab6ede85b29365af7c543909c6825f391307093))
+* **keys.go:** add key bindings for back and forward to navigate audio player position ([55d0b4a](https://github.com/MohammadBnei/go-ai-cli/commit/55d0b4aefb1567649021900120859192b72df825))
+* **keys.go:** remove "esc" key from cancel binding to align with actual behavior ([8712ab2](https://github.com/MohammadBnei/go-ai-cli/commit/8712ab2c8c5631a5456d244a0312956ddacb0d13))
+* **player.go:** move assignment of streamer variable before initializing speaker to prevent potential nil pointer error ([1ecf78c](https://github.com/MohammadBnei/go-ai-cli/commit/1ecf78c0e92467d7da2b30d74a80c9ebf693a10f))
+* **prompt.go:** remove unused recover() function call to improve code readability and maintainability ([588f488](https://github.com/MohammadBnei/go-ai-cli/commit/588f488994a7436281896d17e250a19453438dd1))
+* **test.yml:** update go-version to '^1.22' to match the required version ([ddc59bd](https://github.com/MohammadBnei/go-ai-cli/commit/ddc59bdf8aff4f33426831efb1b7044e1547a0f0))
+
+
+### Features
+
+* **agent:** added web search agent ([c608a65](https://github.com/MohammadBnei/go-ai-cli/commit/c608a651e5d82cdce695449e587d5bc03bf34717))
+* **all:** major update ([a86098f](https://github.com/MohammadBnei/go-ai-cli/commit/a86098ff5d635c77aac115d0af14b28dd574b378))
+* **all:** major update ([adf7eb5](https://github.com/MohammadBnei/go-ai-cli/commit/adf7eb52c336b2d23583c14c9812065af8a9dcb5))
+* **all:** stable working chat ([3cca3ca](https://github.com/MohammadBnei/go-ai-cli/commit/3cca3ca36bfc700821de28d6a9c802391fc8aaba))
+* **audio:** added vfs for audio ([2fcf701](https://github.com/MohammadBnei/go-ai-cli/commit/2fcf701e85a227a68fb3fa87f3ccb864f848458a))
+* **chat.go:** add functionality to clear chat messages when CLEAR option is selected ([57817ce](https://github.com/MohammadBnei/go-ai-cli/commit/57817cef2752611187acd70c002dbc3a0a451531))
+* **chat:** add support for auto-loading last chat when auto-load flag is set to true ([4004351](https://github.com/MohammadBnei/go-ai-cli/commit/40043519dc9aa574f222aaeef2c44044f168bd43))
+* **image:** adding image generation ([a7b8bfa](https://github.com/MohammadBnei/go-ai-cli/commit/a7b8bfa4d719d33b33852003b89d3c2b10729b7e))
+* **option-menu:** added an option menu as i ran out of key presses ([a4c9e10](https://github.com/MohammadBnei/go-ai-cli/commit/a4c9e10b35b4209a0d0f572fb8b6441eed56442d))
+
 ## [0.16.1](https://github.com/MohammadBnei/go-ai-cli/compare/0.16.0...0.16.1) (2024-02-05)
 
 # [0.16.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.15.0...0.16.0) (2024-02-05)
