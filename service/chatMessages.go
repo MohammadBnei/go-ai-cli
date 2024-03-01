@@ -7,8 +7,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/MohammadBnei/go-ai-cli/tool"
 	"github.com/bwmarrin/snowflake"
 	"github.com/jinzhu/copier"
 	"github.com/pkoukk/tiktoken-go"
@@ -18,6 +16,9 @@ import (
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/schema"
 	"gopkg.in/yaml.v3"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/tool"
 )
 
 type ROLES string
@@ -113,6 +114,12 @@ func (c *ChatMessages) LoadFromFile(filename string) (err error) {
 	c.Description = marshalledC.Description
 
 	c.SetMessagesOrder()
+
+	lastMessage := c.LastMessage(RoleAssistant)
+	if lastMessage != nil && lastMessage.Meta.ApiType != "" && lastMessage.Meta.Model != "" {
+		viper.Set(config.AI_API_TYPE, lastMessage.Meta.ApiType)
+		viper.Set(config.AI_MODEL_NAME, lastMessage.Meta.Model)
+	}
 
 	return nil
 }
@@ -283,11 +290,11 @@ func (c *ChatMessages) ClearMessages() {
 	c.TotalTokens = 0
 }
 
-func (c *ChatMessages) LastMessage(role *ROLES) *ChatMessage {
+func (c *ChatMessages) LastMessage(role ROLES) *ChatMessage {
 	messages := c.Messages
-	if role != nil {
+	if role != "" {
 		messages = lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
-			return item.Role == *role
+			return item.Role == role
 		})
 	}
 	if len(messages) == 0 {
