@@ -14,12 +14,17 @@ import (
 
 func getFilesAsItem(files []service.FileMetadata, pc *service.PromptConfig) []bList.Item {
 	items := lo.Map(files, func(file service.FileMetadata, _ int) list.Item {
-		msg := pc.ChatMessages.FindById(file.MsgID)
-		return list.Item{
+		item := list.Item{
 			ItemId:          file.ID,
-			ItemTitle:       msg.Content,
 			ItemDescription: file.Timestamp.Format("2020-12-31 15:04:05"),
 		}
+		msg := pc.ChatMessages.FindById(file.MsgID)
+		if msg == nil {
+			item.ItemTitle = "Unknown"
+		} else {
+			item.ItemTitle = msg.Content
+		}
+		return item
 	})
 
 	sort.Slice(items, func(i, j int) bool {
