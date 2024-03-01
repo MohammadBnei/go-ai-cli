@@ -1,5 +1,7 @@
 
 
+## [0.17.2](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.1...0.17.2) (2024-03-01)
+
 ## [0.17.1](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.0...0.17.1) (2024-03-01)
 
 
