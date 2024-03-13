@@ -211,7 +211,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 			previous.Content += string(chunk)
 			pc.ChatMessages.UpdateMessage(*previous)
 			if pc.UpdateChan != nil {
-				pc.UpdateChan <- *previous
+				pc.UpdateChan <- previous
 			}
 			return nil
 		}),
@@ -229,7 +229,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 	}
 
 	if pc.UpdateChan != nil {
-		pc.UpdateChan <- *pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
+		pc.UpdateChan <- pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 	}
 
 	if viper.GetBool(config.C_COMPLETION_MODE) {
@@ -256,7 +256,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	defer m.promptConfig.CloseContext(ctx)
 
 	if m.promptConfig.UpdateChan != nil {
-		m.promptConfig.UpdateChan <- *m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
+		m.promptConfig.UpdateChan <- m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 	}
 
 	userMessages, _ := m.promptConfig.ChatMessages.FilterMessages(service.RoleUser)
@@ -281,7 +281,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 		previous.Content += string(chunk)
 		m.promptConfig.ChatMessages.UpdateMessage(*previous)
 		if m.promptConfig.UpdateChan != nil {
-			m.promptConfig.UpdateChan <- *previous
+			m.promptConfig.UpdateChan <- previous
 		}
 		return nil
 	}))
@@ -296,7 +296,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	currentChatMsgs.user.Meta.Agent = m.chainName
 	m.promptConfig.ChatMessages.UpdateMessage(*currentChatMsgs.assistant)
 	if m.promptConfig.UpdateChan != nil {
-		m.promptConfig.UpdateChan <- *currentChatMsgs.assistant
+		m.promptConfig.UpdateChan <- currentChatMsgs.assistant
 	}
 
 	return nil

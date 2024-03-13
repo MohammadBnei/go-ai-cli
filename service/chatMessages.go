@@ -100,7 +100,7 @@ func (c *ChatMessages) SaveChatInModelfileFormat(filename string) error {
 			continue
 		}
 
-		builder.WriteString(fmt.Sprintf("%s\n\n", m.Content))
+		builder.WriteString(fmt.Sprintf("%s\n\n", strings.ReplaceAll(m.Content, "\"", "\\\"")))
 	}
 
 	return tool.SaveToFile([]byte(builder.String()), filename, false)
@@ -206,7 +206,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 			ApiType: viper.GetString(config.AI_API_TYPE),
 			Model:   viper.GetString(config.AI_MODEL_NAME),
 		},
-		Order: uint(len(c.Messages)),
+		Order: uint(len(c.Messages)) + 1,
 	}
 
 	msg.Tokens = tokenCount

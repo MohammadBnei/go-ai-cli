@@ -56,7 +56,7 @@ var promptCmd = &cobra.Command{
 			}
 		}
 
-		updateChan := make(chan service.ChatMessage)
+		updateChan := make(chan *service.ChatMessage)
 		defer close(updateChan)
 		promptConfig.UpdateChan = updateChan
 

@@ -276,13 +276,15 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transition = msg.Title != ""
 		m.transitionModel.Title = msg.Title
 
-	case service.ChatMessage:
+	case *service.ChatMessage:
 		if m.currentChatMessages.user != nil && msg.Id == m.currentChatMessages.user.Id {
 			m.userPrompt = msg.Content
+			m.currentChatMessages.user = msg
 		}
 
 		if m.currentChatMessages.assistant != nil && msg.Id == m.currentChatMessages.assistant.Id {
 			m.aiResponse = msg.Content
+			m.currentChatMessages.assistant = msg
 		}
 
 		cmds = append(cmds, tea.Sequence(event.UpdateChatContent(m.userPrompt, m.aiResponse), waitForUpdate(m.promptConfig.UpdateChan)))
@@ -391,7 +393,7 @@ func (m chatModel) GetTitleView() string {
 	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }
 
-func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
+func waitForUpdate(updateChan chan *service.ChatMessage) tea.Cmd {
 	return func() tea.Msg {
 		return <-updateChan
 	}

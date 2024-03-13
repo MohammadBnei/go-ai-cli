@@ -19,7 +19,7 @@ type PromptConfig struct {
 	ChatMessages   *ChatMessages
 	PreviousPrompt string
 	UserPrompt     string
-	UpdateChan     chan ChatMessage
+	UpdateChan     chan *ChatMessage
 	Contexts       []ContextHold
 	*FileService
 }
