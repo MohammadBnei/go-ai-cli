@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/reflow/wordwrap"
 	"github.com/samber/lo"
+
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 )
 
 type PickFileModel struct {
@@ -44,6 +45,7 @@ func NewFilePicker(multipleMode bool, allowedTypes []string) PickFileModel {
 		title:         "File Picker",
 	}
 }
+
 
 // Init intializes the UI.
 func (m PickFileModel) Init() tea.Cmd {

@@ -40,10 +40,18 @@ func (pc *PromptConfig) AddContextWithId(ctx context.Context, cancelFn func(), i
 	pc.Contexts = append(pc.Contexts, ContextHold{Ctx: ctx, CancelFn: cancelFn, UserChatId: snowflake.ParseInt64(id)})
 }
 
-func (pc *PromptConfig) DeleteContext(ctx context.Context) {
+func (pc *PromptConfig) CloseContext(ctx context.Context) error {
+	ctxHlod, ok := lo.Find(pc.Contexts, func(item ContextHold) bool { return item.Ctx == ctx })
+	if !ok {
+		return errors.New("context not found")
+	}
+	ctxHlod.CancelFn()
+
 	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
 		return item.Ctx != ctx
 	})
+
+	return nil
 }
 
 func (pc *PromptConfig) FindContextWithId(id int64) *ContextHold {
@@ -51,12 +59,6 @@ func (pc *PromptConfig) FindContextWithId(id int64) *ContextHold {
 		return item.UserChatId != snowflake.ParseInt64(id)
 	})
 	return &ctx
-}
-
-func (pc *PromptConfig) DeleteContextById(id int64) {
-	pc.Contexts = lo.Filter(pc.Contexts, func(item ContextHold, index int) bool {
-		return item.UserChatId != snowflake.ParseInt64(id)
-	})
 }
 
 func (pc *PromptConfig) CloseContextById(id int64) error {

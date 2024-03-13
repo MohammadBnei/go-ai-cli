@@ -4,12 +4,20 @@ import (
 	"context"
 	"testing"
 
+	"github.com/spf13/viper"
+	"github.com/tmc/langchaingo/llms/ollama"
+	"go.uber.org/goleak"
+
 	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/MohammadBnei/go-ai-cli/api/agent"
 	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/spf13/viper"
-	"github.com/tmc/langchaingo/llms/ollama"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
+
+func TestMain(m *testing.M) {
+	godcontext.GodContext = context.Background()
+	goleak.VerifyTestMain(m)
+}
 
 func TestWebSearch(t *testing.T) {
 	viper.Set(config.AI_API_TYPE, api.API_OLLAMA)

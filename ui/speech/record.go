@@ -10,9 +10,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/garlicgarrison/go-recorder/recorder"
 	"github.com/garlicgarrison/go-recorder/stream"
+
+	"github.com/MohammadBnei/go-ai-cli/api"
 )
 
 type SpeechConfig struct {
@@ -74,6 +75,7 @@ func recordAudio(ctx context.Context, filename string, maxDuration time.Duration
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	_, err = file.Write(recording.Bytes())
 	if err != nil {

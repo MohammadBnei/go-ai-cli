@@ -5,10 +5,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/ui/speech"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
+
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
+	"github.com/MohammadBnei/go-ai-cli/ui/speech"
 )
+
+func TestMain(m *testing.M) {
+	godcontext.GodContext = context.Background()
+	goleak.VerifyTestMain(m)
+
+}
 
 func TestRecordMaxDuration(t *testing.T) {
 	viper.BindEnv("OPENAI_KEY", "OPENAI_API_KEY")

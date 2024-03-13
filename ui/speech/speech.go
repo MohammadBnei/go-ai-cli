@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/progress"
@@ -18,6 +15,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
+
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 )
 
 const maxDuration = 3 * time.Minute
@@ -118,13 +120,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetValue(msg.content)
 
 	case startRecordingEvent:
-		ctx, cancelFn := context.WithCancel(context.Background())
+		ctx, cancelFn := context.WithCancel(godcontext.GodContext)
 		m.recordCancelCtx = cancelFn
 
-		aiCtx, cancelFn := context.WithCancel(context.Background())
+		aiCtx, cancelFn := context.WithCancel(godcontext.GodContext)
 		m.aiCancelCtx = cancelFn
 
 		return m, tea.Batch(func() tea.Msg {
+			defer m.aiCancelCtx()
+			defer m.recordCancelCtx()
+
 			res, err := SpeechToText(ctx, aiCtx, &SpeechConfig{Duration: m.maxDuration, Lang: m.lang})
 			if err != nil {
 				return err

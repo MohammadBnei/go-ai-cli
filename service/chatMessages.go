@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/snowflake"
@@ -81,12 +82,28 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 		return err
 	}
 
-	err = tool.SaveToFile(data, filename, false)
-	if err != nil {
-		return err
+	return tool.SaveToFile(data, filename, false)
+}
+
+func (c *ChatMessages) SaveChatInModelfileFormat(filename string) error {
+	builder := strings.Builder{}
+
+	builder.WriteString(fmt.Sprintf("FROM %s\n\n", viper.GetString(config.AI_MODEL_NAME)))
+
+	for _, m := range c.Messages {
+		switch m.Role {
+		case RoleUser:
+			builder.WriteString("MESSAGE user ")
+		case RoleAssistant:
+			builder.WriteString("MESSAGE assistant ")
+		default:
+			continue
+		}
+
+		builder.WriteString(fmt.Sprintf("%s\n\n", m.Content))
 	}
 
-	return nil
+	return tool.SaveToFile([]byte(builder.String()), filename, false)
 }
 
 func (c *ChatMessages) LoadFromFile(filename string) (err error) {
@@ -126,7 +143,18 @@ func (c *ChatMessages) LoadFromFile(filename string) (err error) {
 
 func (c *ChatMessages) FindById(id int64) *ChatMessage {
 	_, index, ok := lo.FindIndexOf(c.Messages, func(item ChatMessage) bool {
-		return item.Id == snowflake.ParseInt64(int64(id))
+		return item.Id == snowflake.ParseInt64(id)
+	})
+	if !ok {
+		return nil
+	}
+
+	return &c.Messages[index]
+}
+
+func (c *ChatMessages) FindByOrder(order uint) *ChatMessage {
+	_, index, ok := lo.FindIndexOf(c.Messages, func(item ChatMessage) bool {
+		return item.Order == order
 	})
 	if !ok {
 		return nil
@@ -167,7 +195,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 		return &exists, ErrAlreadyExist
 	}
 
-	msg := ChatMessage{
+	msg := &ChatMessage{
 		Id:                  c.node.Generate(),
 		Role:                role,
 		Content:             content,
@@ -178,11 +206,12 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 			ApiType: viper.GetString(config.AI_API_TYPE),
 			Model:   viper.GetString(config.AI_MODEL_NAME),
 		},
+		Order: uint(len(c.Messages)),
 	}
 
 	msg.Tokens = tokenCount
 
-	c.Messages = append(c.Messages, msg)
+	c.Messages = append(c.Messages, *msg)
 
 	c.TotalTokens += tokenCount
 
@@ -192,7 +221,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 
 	c.SetMessagesOrder()
 
-	return &msg, nil
+	return msg, nil
 }
 
 // AddMessageFromFile reads the content of a file using os.ReadFile, then adds a new message with the file content and filename to the ChatMessages using the AddMessage method.

@@ -8,12 +8,13 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/chat"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/chat"
 )
 
 // promptCmd represents the prompt command
@@ -31,6 +32,13 @@ var promptCmd = &cobra.Command{
 			ChatMessages: service.NewChatMessages("default"),
 			FileService:  fileService,
 		}
+
+		defer func() {
+			if err := recover(); err != nil {
+				promptConfig.ChatMessages.SaveToFile(filepath.Dir(viper.ConfigFileUsed()) + "/error-chat.yml")
+				fmt.Println(err)
+			}
+		}()
 
 		defaulSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 		savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)

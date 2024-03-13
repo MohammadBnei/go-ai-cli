@@ -4,18 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/samber/lo"
+	openaiHelper "github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/huggingface"
 	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tmc/langchaingo/llms/openai"
 
-	openaiHelper "github.com/sashabaranov/go-openai"
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
 
 type API_TYPE string
@@ -81,13 +81,8 @@ func GetOllamaModelList() ([]string, error) {
 	}
 	defer resp.Body.Close()
 
-	jsonDataFromHttp, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	var jsonData map[string]any
-	err = json.Unmarshal(jsonDataFromHttp, &jsonData)
+	err = json.NewDecoder(resp.Body).Decode(&jsonData)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +96,7 @@ func GetOllamaModelList() ([]string, error) {
 
 func GetOpenAiModelList() ([]string, error) {
 	c := openaiHelper.NewClient(viper.GetString(config.AI_OPENAI_KEY))
-	models, err := c.ListModels(context.Background())
+	models, err := c.ListModels(godcontext.GodContext)
 	if err != nil {
 		return nil, err
 	}

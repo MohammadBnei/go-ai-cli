@@ -10,18 +10,20 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/MohammadBnei/go-ai-cli/api"
-	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/file"
-	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
+
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/file"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 )
 
 const (
@@ -85,9 +87,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = GENERATING
 		m.editForm = constructFilepickerForm()
 		return m, tea.Sequence(m.editForm.Init(), m.spinner.Tick, func() tea.Msg {
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(godcontext.GodContext)
 			m.promptConfig.AddContext(ctx, cancel)
-			defer m.promptConfig.DeleteContext(ctx)
+			defer m.promptConfig.CloseContext(ctx)
 			data, err := api.GenerateImage(ctx, m.prompt, m.size)
 			if err != nil {
 				return generateError(err)()

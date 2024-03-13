@@ -5,17 +5,19 @@ import (
 	"errors"
 	"io"
 
+	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/MohammadBnei/go-ai-cli/service"
+	godcontext "github.com/MohammadBnei/go-ai-cli/service/godcontext"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/file"
 	"github.com/MohammadBnei/go-ai-cli/ui/info"
 	"github.com/MohammadBnei/go-ai-cli/ui/options"
 	"github.com/MohammadBnei/go-ai-cli/ui/quit"
 	"github.com/MohammadBnei/go-ai-cli/ui/speech"
-	"github.com/atotto/clipboard"
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type listKeyMap struct {
@@ -158,10 +160,10 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 		case key.Matches(msg, m.keys.textToSpeech):
 			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
 				msgID := m.currentChatMessages.assistant.Id.Int64()
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(godcontext.GodContext)
 				m.promptConfig.AddContextWithId(ctx, cancel, msgID)
 				return m, tea.Sequence(func() tea.Msg {
-					defer m.promptConfig.DeleteContext(ctx)
+					defer m.promptConfig.CloseContext(ctx)
 					msg := m.promptConfig.ChatMessages.FindById(msgID)
 					if msg == nil {
 						return event.Error(errors.New("message not found"))
@@ -183,7 +185,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 					m.promptConfig.ChatMessages.UpdateMessage(*msg)
 					return m.audioPlayer.InitSpeaker(fm.ID)
 				}, func() tea.Msg {
-					m.promptConfig.DeleteContextById(msgID)
+					m.promptConfig.CloseContextById(msgID)
 					return event.Transition("")
 				})
 			}

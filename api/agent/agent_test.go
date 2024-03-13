@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/MohammadBnei/go-ai-cli/api"
-	"github.com/MohammadBnei/go-ai-cli/api/agent"
-	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/chains"
 	"github.com/tmc/langchaingo/llms/openai"
+
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/api/agent"
+	"github.com/MohammadBnei/go-ai-cli/config"
 )
 
 func TestWebSearchAgent(t *testing.T) {

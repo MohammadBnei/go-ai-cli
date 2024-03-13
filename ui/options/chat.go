@@ -3,12 +3,13 @@ package options
 import (
 	"errors"
 
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
 	"github.com/MohammadBnei/go-ai-cli/ui/loadchat"
 	"github.com/MohammadBnei/go-ai-cli/ui/savechat"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type chatModel struct {
@@ -18,7 +19,8 @@ type chatModel struct {
 }
 
 const (
-	SAVE  = "save"
+	SAVE = "save"
+	SAVE_MODELFILE = "save as modelfile"
 	LOAD  = "load"
 	CLEAR = "clear"
 )

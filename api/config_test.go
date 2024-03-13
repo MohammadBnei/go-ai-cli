@@ -1,13 +1,22 @@
 package api_test
 
 import (
+	"context"
 	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/goleak"
 
 	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
+
+func TestMain(m *testing.M) {
+	godcontext.GodContext = context.Background()
+	goleak.VerifyTestMain(m)
+}
 
 func TestGetOllamaModelList(t *testing.T) {
 
@@ -15,7 +24,7 @@ func TestGetOllamaModelList(t *testing.T) {
 	viper.Set(config.AI_API_TYPE, api.API_OLLAMA)
 
 	// Set the OLLAMA_HOST to your test server URL
-	viper.Set(config.AI_OLLAMA_HOST, "127.0.0.1:11434")
+	viper.Set(config.AI_OLLAMA_HOST, "http://127.0.0.1:11434")
 
 	// Call the function
 	models, err := api.GetOllamaModelList()

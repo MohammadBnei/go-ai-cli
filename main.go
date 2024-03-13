@@ -22,21 +22,37 @@ THE SOFTWARE.
 package main
 
 import (
+	"context"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime/pprof"
 	"strconv"
 
 	"github.com/MohammadBnei/go-ai-cli/cmd"
+	godcontext "github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
 
 func main() {
+	godcontext.GodContext, godcontext.GodCancelFn = context.WithCancel(context.Background())
+	defer godcontext.GodCancelFn()
+
 	debugStr := os.Getenv("DEBUG")
 	debug, _ := strconv.ParseBool(debugStr)
 	if debug {
 		go func() {
-			http.ListenAndServe(":1234", nil)
+			http.ListenAndServe(":6060", nil)
 		}()
 	}
+
+	pgoStr := os.Getenv("PGO")
+	pgo, _ := strconv.ParseBool(pgoStr)
+	if pgo {
+		f, _ := os.Create("default.pgo")
+		defer f.Close()
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	cmd.Execute()
 }
