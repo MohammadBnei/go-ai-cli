@@ -112,7 +112,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
 
-			case m.currentChatMessages.user != nil && m.promptConfig.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
+			case m.currentChatMessages.user != nil && m.promptConfig.Contexts.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
 				return closeContext(m)
 
 			}
@@ -161,9 +161,9 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
 				msgID := m.currentChatMessages.assistant.Id.Int64()
 				ctx, cancel := context.WithCancel(godcontext.GodContext)
-				m.promptConfig.AddContextWithId(ctx, cancel, msgID)
+				m.promptConfig.Contexts.AddContextWithId(ctx, cancel, msgID)
 				return m, tea.Sequence(func() tea.Msg {
-					defer m.promptConfig.CloseContext(ctx)
+					defer m.promptConfig.Contexts.CloseContext(ctx)
 					msg := m.promptConfig.ChatMessages.FindById(msgID)
 					if msg == nil {
 						return event.Error(errors.New("message not found"))
@@ -177,7 +177,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 					if err != nil {
 						return err
 					}
-					fm, err := m.promptConfig.FileService.Append(service.Audio, msg.Content, "", msg.Id.Int64(), data)
+					fm, err := m.promptConfig.Files.Append(service.Audio, msg.Content, "", msg.Id.Int64(), data)
 					if err != nil {
 						return err
 					}
@@ -185,14 +185,14 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 					m.promptConfig.ChatMessages.UpdateMessage(*msg)
 					return m.audioPlayer.InitSpeaker(fm.ID)
 				}, func() tea.Msg {
-					m.promptConfig.CloseContextById(msgID)
+					m.promptConfig.Contexts.CloseContextById(msgID)
 					return event.Transition("")
 				})
 			}
 
 		case key.Matches(msg, m.keys.addFile):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(file.NewFilePicker(true, nil), "Loading filepicker...")
+				return m, event.AddStack(file.NewFilesPicker(nil), "Loading filepicker...")
 			}
 
 		case key.Matches(msg, m.keys.audiPlayer):

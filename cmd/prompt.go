@@ -30,7 +30,8 @@ var promptCmd = &cobra.Command{
 
 		promptConfig := &service.PromptConfig{
 			ChatMessages: service.NewChatMessages("default"),
-			FileService:  fileService,
+			Files:        fileService,
+			Contexts:     service.NewContextService(),
 		}
 
 		defer func() {

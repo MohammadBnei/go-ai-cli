@@ -212,7 +212,7 @@ func (m *AudioPlayerModel) Clear() {
 }
 
 func (m *AudioPlayerModel) InitSpeaker(id string) tea.Cmd {
-	file, _, err := m.promptConfig.FileService.Get(id)
+	file, _, err := m.promptConfig.Files.Get(id)
 	if err != nil {
 		return event.Error(err)
 	}
@@ -245,7 +245,7 @@ func (m *AudioPlayerModel) InitSpeaker(id string) tea.Cmd {
 }
 
 func (m *AudioPlayerModel) RefreshFileList() tea.Cmd {
-	files, err := m.promptConfig.FileService.List(service.Audio)
+	files, err := m.promptConfig.Files.List(service.Audio)
 	if err != nil {
 		return event.Error(err)
 	}

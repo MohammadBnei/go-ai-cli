@@ -45,7 +45,7 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	}
-	if err := m.promptConfig.CloseContextById(m.currentChatMessages.user.Id.Int64()); err != nil {
+	if err := m.promptConfig.Contexts.CloseContextById(m.currentChatMessages.user.Id.Int64()); err != nil {
 		m.err = err
 	}
 	return m, nil
@@ -191,13 +191,13 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 	}
 
 	ctx, cancel := context.WithCancel(godcontext.GodContext)
-	pc.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
-	defer pc.CloseContextById(currentChatMsgs.user.Id.Int64())
+	pc.Contexts.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
+	defer pc.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
 
 	options := []llms.CallOption{
 		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 			if err := ctx.Err(); err != nil {
-				pc.CloseContextById(currentChatMsgs.user.Id.Int64())
+				pc.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
 				if err == io.EOF {
 					return nil
 				}
@@ -205,7 +205,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 			}
 			previous := pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 			if previous == nil {
-				pc.CloseContextById(currentChatMsgs.user.Id.Int64())
+				pc.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
 				return errors.New("previous message not found")
 			}
 			previous.Content += string(chunk)
@@ -252,8 +252,8 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 
 func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	ctx, cancel := context.WithCancel(godcontext.GodContext)
-	m.promptConfig.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
-	defer m.promptConfig.CloseContext(ctx)
+	m.promptConfig.Contexts.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
+	defer m.promptConfig.Contexts.CloseContext(ctx)
 
 	if m.promptConfig.UpdateChan != nil {
 		m.promptConfig.UpdateChan <- m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
@@ -267,7 +267,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 
 	output, err := chains.Run(ctx, m.chain, last.Content, chains.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
 		if err := ctx.Err(); err != nil {
-			m.promptConfig.CloseContextById(currentChatMsgs.user.Id.Int64())
+			m.promptConfig.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
 			if err == io.EOF {
 				return nil
 			}
@@ -275,7 +275,7 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 		}
 		previous := m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 		if previous == nil {
-			m.promptConfig.CloseContextById(currentChatMsgs.user.Id.Int64())
+			m.promptConfig.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
 			return errors.New("previous message not found")
 		}
 		previous.Content += string(chunk)

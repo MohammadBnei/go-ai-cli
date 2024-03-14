@@ -58,7 +58,7 @@ func NewImageModel(pc *service.PromptConfig) tea.Model {
 	return model{
 		promptConfig: pc,
 		title:        "Image",
-		filepicker:   file.NewFilePicker(false, []string{"jpg", "jpeg"}),
+		filepicker:   file.NewFilesPicker([]string{"jpg", "jpeg"}),
 		editForm:     constructPromptForm(pc.UserPrompt),
 		state:        PROMPT,
 		spinner:      s,
@@ -88,8 +88,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editForm = constructFilepickerForm()
 		return m, tea.Sequence(m.editForm.Init(), m.spinner.Tick, func() tea.Msg {
 			ctx, cancel := context.WithCancel(godcontext.GodContext)
-			m.promptConfig.AddContext(ctx, cancel)
-			defer m.promptConfig.CloseContext(ctx)
+			m.promptConfig.Contexts.AddContext(ctx, cancel)
+			defer m.promptConfig.Contexts.CloseContext(ctx)
 			data, err := api.GenerateImage(ctx, m.prompt, m.size)
 			if err != nil {
 				return generateError(err)()

@@ -5,7 +5,6 @@ package chat
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -19,7 +18,6 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/chains"
-	"golang.org/x/term"
 
 	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/MohammadBnei/go-ai-cli/service"
@@ -93,9 +91,6 @@ func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
 	ta.Prompt = "┃ "
 	ta.CharLimit = 0
 
-	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
-
-	ta.SetWidth(w)
 	ta.SetHeight(2)
 
 	// Remove cursor line styling
@@ -105,7 +100,7 @@ func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
 	ta.KeyMap.InsertNewline.SetEnabled(false)
 	ta.ShowLineNumbers = false
 
-	vp := viewport.New(w, 0)
+	vp := viewport.New(10, 0)
 	vp.MouseWheelDelta = 1
 
 	mdRenderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
@@ -371,7 +366,7 @@ func (m chatModel) View() string {
 }
 
 func (m chatModel) LoadingTitle() {
-	m.loading = len(m.promptConfig.Contexts) != 0
+	m.loading = m.promptConfig.Contexts.Length() != 0
 	if m.loading {
 		style.TitleStyle = style.TitleStyle.Background(style.LoadingBackgroundColor)
 	} else {

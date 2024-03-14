@@ -100,7 +100,11 @@ func (c *ChatMessages) SaveChatInModelfileFormat(filename string) error {
 			continue
 		}
 
-		builder.WriteString(fmt.Sprintf("%s\n\n", strings.ReplaceAll(m.Content, "\"", "\\\"")))
+		content := m.Content
+		content = strings.ReplaceAll(m.Content, "\\\"", "\"")
+		content = strings.ReplaceAll(m.Content, "\"", "\\\"")
+
+		builder.WriteString(fmt.Sprintf("\"\"\"\n%s\"\"\"\n\n", content))
 	}
 
 	return tool.SaveToFile([]byte(builder.String()), filename, false)
