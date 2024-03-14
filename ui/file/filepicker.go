@@ -63,7 +63,7 @@ type readDirMsg struct {
 }
 
 const (
-	marginBottom  = 5
+	marginBottom  = 2
 	fileSizeWidth = 7
 	paddingLeft   = 2
 )

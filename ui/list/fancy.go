@@ -1,11 +1,15 @@
 package list
 
 import (
-	"github.com/MohammadBnei/go-ai-cli/ui/style"
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/samber/lo"
+
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 )
 
 type Item struct {
@@ -193,5 +197,22 @@ func (m *Model) WithAddFn(addFn func(string) tea.Cmd) *Model {
 
 func (m *Model) WithRemoveFn(removeFn func(string) tea.Cmd) *Model {
 	m.DelegateFn.RemoveFn = removeFn
+	return nil
+}
+
+func (m *Model) Items() []Item {
+	return lo.Map(m.List.Items(), func(item list.Item, _ int) Item {
+		return item.(Item)
+	})
+}
+
+func (m *Model) RemoveItemById(id string) tea.Cmd {
+	_, index, ok := lo.FindIndexOf(m.List.Items(), func(item list.Item) bool {
+		return item.(Item).Id() == id
+	})
+	if !ok {
+		return event.Error(fmt.Errorf("item %s not found", id))
+	}
+	m.List.RemoveItem(index)
 	return nil
 }
