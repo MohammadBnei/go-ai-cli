@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/MohammadBnei/go-ai-cli/api"
 	"github.com/chromedp/chromedp"
 	"github.com/gocolly/colly/v2"
 	"github.com/tmc/langchaingo/chains"
@@ -16,6 +15,9 @@ import (
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/tools/scraper"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/MohammadBnei/go-ai-cli/api"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
 
 func NewWebSearchAgent(llm llms.Model, urls []string) (func(ctx context.Context, question string) (map[string]any, error), error) {
@@ -34,7 +36,7 @@ func NewWebSearchAgent(llm llms.Model, urls []string) (func(ctx context.Context,
 					return err
 				}
 
-				parsedData, err := parseHtml(context.Background(), data)
+				parsedData, err := parseHtml(godcontext.GodContext, data)
 				if err != nil {
 					return err
 				}
@@ -58,7 +60,7 @@ func NewWebSearchAgent(llm llms.Model, urls []string) (func(ctx context.Context,
 	stuffQAChain := chains.LoadStuffQA(llm)
 
 	callFunc := func(ctx context.Context, question string) (map[string]any, error) {
-		return chains.Call(context.Background(), stuffQAChain, map[string]any{
+		return chains.Call(godcontext.GodContext, stuffQAChain, map[string]any{
 			"input_documents": docs,
 			"question":        question,
 		})
@@ -79,12 +81,12 @@ func getHtmlContent(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return scrap.Call(context.Background(), url)
+	return scrap.Call(godcontext.GodContext, url)
 }
 
 func fetchHTML(url string) (string, error) {
 	// Initialize a new browser context
-	ctx, cancel := chromedp.NewContext(context.Background())
+	ctx, cancel := chromedp.NewContext(godcontext.GodContext)
 	defer cancel()
 
 	// Navigate to the URL and fetch the rendered HTML

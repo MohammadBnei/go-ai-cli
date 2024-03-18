@@ -5,18 +5,8 @@ package chat
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/audio"
-	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/helper"
-	"github.com/MohammadBnei/go-ai-cli/ui/list"
-	"github.com/MohammadBnei/go-ai-cli/ui/style"
-	"github.com/MohammadBnei/go-ai-cli/ui/transition"
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -28,7 +18,15 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
 	"github.com/tmc/langchaingo/chains"
-	"golang.org/x/term"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/audio"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/helper"
+	"github.com/MohammadBnei/go-ai-cli/ui/list"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
+	"github.com/MohammadBnei/go-ai-cli/ui/transition"
 )
 
 var (
@@ -93,20 +91,17 @@ func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
 	ta.Prompt = "┃ "
 	ta.CharLimit = 0
 
-	w, _, _ := term.GetSize(int(os.Stdout.Fd()))
-
-	ta.SetWidth(w)
 	ta.SetHeight(2)
 
 	// Remove cursor line styling
 	ta.FocusedStyle.CursorLine = lipgloss.NewStyle()
-
-	ta.ShowLineNumbers = false
-
-	vp := viewport.New(w, 0)
-	vp.MouseWheelDelta = 1
+	ta.Cursor.Blink = false
 
 	ta.KeyMap.InsertNewline.SetEnabled(false)
+	ta.ShowLineNumbers = false
+
+	vp := viewport.New(10, 0)
+	vp.MouseWheelDelta = 1
 
 	mdRenderer, err := glamour.NewTermRenderer(glamour.WithAutoStyle())
 	if err != nil {
@@ -153,11 +148,6 @@ func (m chatModel) Init() tea.Cmd {
 }
 
 func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	defer func() {
-		if r := recover(); r != nil {
-			m.err = fmt.Errorf("%v", r)
-		}
-	}()
 	m.LoadingTitle()
 	var (
 		tiCmd tea.Cmd
@@ -166,13 +156,6 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	cmds := []tea.Cmd{}
 	switch msg := msg.(type) {
-	case cursor.BlinkMsg:
-		if len(m.stack) != 0 {
-			m.textarea.Cursor.Blink = false
-			return m, nil
-		} else {
-			m.textarea.Cursor.Blink = true
-		}
 	case tea.WindowSizeMsg:
 		m.size.Height = msg.Height
 		m.size.Width = msg.Width
@@ -288,13 +271,15 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transition = msg.Title != ""
 		m.transitionModel.Title = msg.Title
 
-	case service.ChatMessage:
+	case *service.ChatMessage:
 		if m.currentChatMessages.user != nil && msg.Id == m.currentChatMessages.user.Id {
 			m.userPrompt = msg.Content
+			m.currentChatMessages.user = msg
 		}
 
 		if m.currentChatMessages.assistant != nil && msg.Id == m.currentChatMessages.assistant.Id {
 			m.aiResponse = msg.Content
+			m.currentChatMessages.assistant = msg
 		}
 
 		cmds = append(cmds, tea.Sequence(event.UpdateChatContent(m.userPrompt, m.aiResponse), waitForUpdate(m.promptConfig.UpdateChan)))
@@ -381,7 +366,7 @@ func (m chatModel) View() string {
 }
 
 func (m chatModel) LoadingTitle() {
-	m.loading = len(m.promptConfig.Contexts) != 0
+	m.loading = m.promptConfig.Contexts.Length() != 0
 	if m.loading {
 		style.TitleStyle = style.TitleStyle.Background(style.LoadingBackgroundColor)
 	} else {
@@ -391,9 +376,8 @@ func (m chatModel) LoadingTitle() {
 
 func (m chatModel) GetTitleView() string {
 	userPrompt := m.userPrompt
-	if m.currentChatMessages.user != nil {
-		_, index, _ := lo.FindIndexOf[service.ChatMessage](m.promptConfig.ChatMessages.Messages, func(c service.ChatMessage) bool { return c.Id == m.currentChatMessages.user.Id })
-		userPrompt = fmt.Sprintf("[%d] %s", index+1, userPrompt)
+	if m.currentChatMessages.user != nil && m.currentChatMessages.user.Order != 0 {
+		userPrompt = fmt.Sprintf("[%d] %s", m.currentChatMessages.user.Order, userPrompt)
 	}
 	if userPrompt == "" {
 		userPrompt = "Chat"
@@ -404,7 +388,7 @@ func (m chatModel) GetTitleView() string {
 	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }
 
-func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
+func waitForUpdate(updateChan chan *service.ChatMessage) tea.Cmd {
 	return func() tea.Msg {
 		return <-updateChan
 	}
@@ -418,8 +402,11 @@ func (m *chatModel) Resize() {
 	w, h := AppStyle.GetFrameSize()
 	style.TitleStyle.MaxWidth(m.size.Width - w)
 
+	m.textarea.SetWidth(m.size.Width)
+	
 	m.viewport.Width = m.size.Width - w
 	m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
+
 
 	m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
 }

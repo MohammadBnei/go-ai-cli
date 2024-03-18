@@ -7,13 +7,14 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/style"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/viper"
+
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/style"
 )
 
 type model struct {
@@ -23,7 +24,7 @@ type model struct {
 }
 
 func NewSaveChatModel(promptConfig *service.PromptConfig) tea.Model {
-	return model{promptConfig: promptConfig, form: constructForm(), title: "Saving chat"}
+	return model{promptConfig: promptConfig, form: constructForm(promptConfig.ChatMessages.Id), title: "Saving chat"}
 }
 
 func (m model) Init() tea.Cmd {
@@ -50,7 +51,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.form.GetBool("confirm") {
 			return m, event.RemoveStack(m)
 		}
-		return m, tea.Sequence(event.Error(saveChat(*m.promptConfig, m.form.GetString("name"))), event.RemoveStack(m))
+		filename := m.form.GetString("name")
+		saveFn := m.saveChat
+		if m.form.GetBool("modelfile") {
+			saveFn = m.promptConfig.ChatMessages.SaveChatInModelfileFormat
+		}
+		return m, tea.Sequence(event.Error(saveFn(filename)), event.RemoveStack(m))
 	}
 
 	return m, tea.Batch(cmds...)
@@ -66,10 +72,10 @@ func (m model) GetTitleView() string {
 
 var filenamePattern = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_. -]*(\.[a-zA-Z]{1,4})?$`)
 
-func constructForm() *huh.Form {
+func constructForm(name string) *huh.Form {
 	tRue := true
 	group := huh.NewGroup(
-		huh.NewInput().Key("name").Title("Saved chat name (leave blank for auto-load)").Validate(func(s string) error {
+		huh.NewInput().Key("name").Title("Saved chat name (leave blank for auto-load)").Value(&name).Validate(func(s string) error {
 			if s == "" {
 				return nil
 			}
@@ -78,16 +84,17 @@ func constructForm() *huh.Form {
 			}
 			return nil
 		}),
+		huh.NewConfirm().Key("modelfile").Title("Save as modelfile"),
 		huh.NewConfirm().Key("confirm").Title("Confirm").Value(&tRue),
 	)
 	return huh.NewForm(group)
 }
 
-func saveChat(pc service.PromptConfig, filename string) error {
+func (m model) saveChat(filename string) error {
 	if filename == "" {
 		filename = "last-chat"
 	}
-	chatMessages := *pc.ChatMessages
+	chatMessages := *m.promptConfig.ChatMessages
 	chatMessages.Id = filename
 	if chatMessages.Description == "" {
 		chatMessages.Description = "Saved at : " + time.Now().Format("2006-01-02 15:04:05")

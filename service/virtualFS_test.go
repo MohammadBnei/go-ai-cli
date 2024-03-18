@@ -1,13 +1,23 @@
 package service_test
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"go.uber.org/goleak"
+
 	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
+
+func TestMain(m *testing.M) {
+	godcontext.GodContext = context.Background()
+	goleak.VerifyTestMain(m)
+
+}
 
 func TestAppend(t *testing.T) {
 	fs, _ := service.NewFileService()

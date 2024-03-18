@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -11,11 +10,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/briandowns/spinner"
 	"github.com/c2h5oh/datasize"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/service/godcontext"
 )
 
 func AskImage(prompt string, size string) ([]byte, error) {
@@ -23,7 +24,7 @@ func AskImage(prompt string, size string) ([]byte, error) {
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
 	s.Start()
-	resp, err := c.CreateImage(context.Background(), openai.ImageRequest{
+	resp, err := c.CreateImage(godcontext.GodContext, openai.ImageRequest{
 		Prompt: prompt,
 		User:   "user",
 
@@ -91,7 +92,7 @@ func EditImage(filePath, prompt, size string) ([]byte, error) {
 
 	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
 	s.Start()
-	resp, err := c.CreateEditImage(context.Background(), openai.ImageEditRequest{
+	resp, err := c.CreateEditImage(godcontext.GodContext, openai.ImageEditRequest{
 		Prompt: prompt,
 
 		Image:          tmpPng,

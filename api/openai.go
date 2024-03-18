@@ -7,10 +7,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
 )
 
 func SpeechToText(ctx context.Context, filename string, lang string) (string, error) {
