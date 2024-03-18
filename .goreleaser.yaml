@@ -10,6 +10,8 @@ version: 1
 
 project_name: go-ai-cli
 
+release:
+  mode: replace
 
 
 before:
@@ -61,6 +63,7 @@ dockers:
   - dockerfile: Dockerfile
 
 changelog:
+  use: github
   sort: asc
   filters:
     exclude:

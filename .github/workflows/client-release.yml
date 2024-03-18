@@ -1,9 +1,9 @@
 name: goreleaser
 
 on:
-  release:
-    types: [released]
-  workflow_dispatch:
+  push:
+    tags:
+      - "*"
 
 permissions:
   contents: write
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: stable
-          
+
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v6
         with:

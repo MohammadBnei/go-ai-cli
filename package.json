@@ -1,7 +1,7 @@
 {
   "name": "go-ai-cli",
   "version": "0.18.0",
-  "description": "This project provides command-line access to OpenAI's GPT-3 language generation service. The \"prompt\" command in this CLI sends a prompt to OpenAI's API and receives a generated response, which can be printed on the command-line or saved to a markdown file with the \"--md\" flag. This project can be used to quickly generate text for various purposes such as creative writing, chatbots, virtual assistants, or content generation for websites.",
+  "description": "go-ai-cli is a versatile command-line interface that enables users to interact with various AI models for text generation, speech-to-text conversion, image generation, and web scraping. It is designed to be extensible with any AI service. This tool is ideal for developers, content creators, and anyone interested in leveraging AI capabilities directly from their terminal. This tool works well with Ollama.",
   "author": "Mohammad-Amine BANAEI",
   "license": "MIT",
   "scripts": {
@@ -18,7 +18,7 @@
       }
     },
     "github": {
-      "release": true
+      "release": false
     }
   },
   "devDependencies": {

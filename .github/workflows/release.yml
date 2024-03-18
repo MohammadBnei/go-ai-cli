@@ -5,7 +5,9 @@ on:
     branches:
       - main
     paths:
-      - '**/*.go'
+      - "**/*.go"
+      - ".github/workflows/release.yml"
+      - "package.json"
   workflow_dispatch:
 
 jobs:
