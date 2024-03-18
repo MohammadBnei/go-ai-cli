@@ -1,5 +1,12 @@
 
 
+## [0.18.8](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.7...0.18.8) (2024-03-18)
+
+
+### Bug Fixes
+
+* **goreleaser:** fixing docker build issue ([120d51f](https://github.com/MohammadBnei/go-ai-cli/commit/120d51faee5b52d264869a726914b4dc275ce82e))
+
 ## [0.18.7](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.6...0.18.7) (2024-03-18)
 
 
