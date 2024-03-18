@@ -34,7 +34,12 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-          # Uncomment and set GORELEASER_KEY if using GoReleaser Pro
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
+
+      - uses: Nats-ji/delete-old-releases@v1
+        with:
+          token: ${{ secrets.RELEASE_TOKEN }}
+          keep-count: 5
+          keep-old-minor-releases: true
+          keep-old-minor-releases-count: 1
 
           
