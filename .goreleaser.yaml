@@ -59,8 +59,12 @@ signs:
       ]
 
 dockers:
-  - use: docker
-  - dockerfile: Dockerfile
+  - use: buildx
+  - image_templates:
+      - "mohammadbnei/{{.ProjectName}}:{{ .Tag }}"
+      - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}"
+      - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}"
+      - "mohammadbnei/{{.ProjectName}}:latest"
 
 changelog:
   use: github
