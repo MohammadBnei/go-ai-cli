@@ -1,5 +1,12 @@
 
 
+## [0.18.1](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.0...0.18.1) (2024-03-18)
+
+
+### Bug Fixes
+
+* **release:** fixing release process ([1bfb689](https://github.com/MohammadBnei/go-ai-cli/commit/1bfb689127d7a33aa5b68ed03e87a2c3d5eb3710))
+
 # [0.18.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.3...0.18.0) (2024-03-18)
 
 
