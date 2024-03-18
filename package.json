@@ -1,6 +1,6 @@
 {
   "name": "go-ai-cli",
-  "version": "0.18.4",
+  "version": "0.18.5",
   "description": "go-ai-cli is a versatile command-line interface that enables users to interact with various AI models for text generation, speech-to-text conversion, image generation, and web scraping. It is designed to be extensible with any AI service. This tool is ideal for developers, content creators, and anyone interested in leveraging AI capabilities directly from their terminal. This tool works well with Ollama.",
   "author": "Mohammad-Amine BANAEI",
   "license": "MIT",
