@@ -1,5 +1,12 @@
 
 
+## [0.18.7](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.6...0.18.7) (2024-03-18)
+
+
+### Bug Fixes
+
+* **release-docker:** fixed a docker issue where template names was not correctly set. Other minor fixes ([d5d9cfc](https://github.com/MohammadBnei/go-ai-cli/commit/d5d9cfc97331a5000586ce78561446e2f97ea137))
+
 ## [0.18.6](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.5...0.18.6) (2024-03-18)
 
 
