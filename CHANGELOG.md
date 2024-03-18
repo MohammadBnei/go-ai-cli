@@ -1,5 +1,12 @@
 
 
+## [0.18.6](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.5...0.18.6) (2024-03-18)
+
+
+### Bug Fixes
+
+* **release:** removed package.json from the triggering files for the release workflow to prevent infinite loop ([9b16dce](https://github.com/MohammadBnei/go-ai-cli/commit/9b16dcebb48ba5bf9d2f051affe11637cb9c302d))
+
 ## [0.18.5](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.4...0.18.5) (2024-03-18)
 
 ## [0.18.4](https://github.com/MohammadBnei/go-ai-cli/compare/0.18.3...0.18.4) (2024-03-18)
