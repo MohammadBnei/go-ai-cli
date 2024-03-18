@@ -402,8 +402,11 @@ func (m *chatModel) Resize() {
 	w, h := AppStyle.GetFrameSize()
 	style.TitleStyle.MaxWidth(m.size.Width - w)
 
+	m.textarea.SetWidth(m.size.Width)
+	
 	m.viewport.Width = m.size.Width - w
 	m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
+
 
 	m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
 }

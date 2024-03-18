@@ -3,11 +3,12 @@ package file
 import "github.com/charmbracelet/bubbles/key"
 
 type keyMap struct {
-	submit       key.Binding
-	changeCwd    key.Binding
-	changeFocus  key.Binding
-	toggleHidden key.Binding
-	addDir       key.Binding
+	submit           key.Binding
+	changeCwd        key.Binding
+	changeFocus      key.Binding
+	toggleHidden     key.Binding
+	addDir           key.Binding
+	toggleTextFilter key.Binding
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
@@ -41,6 +42,10 @@ func newKeyMap() *keyMap {
 		addDir: key.NewBinding(
 			key.WithKeys("ctrl+a"),
 			key.WithHelp("ctrl+a", "add dir"),
+		),
+		toggleTextFilter: key.NewBinding(
+			key.WithKeys("ctrl+f"),
+			key.WithHelp("ctrl+f", "toggle text filter"),
 		),
 	}
 }

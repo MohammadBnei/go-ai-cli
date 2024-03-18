@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,8 +12,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
-	"golang.org/x/tools/godoc/util"
-	"golang.org/x/tools/godoc/vfs"
 
 	"github.com/MohammadBnei/go-ai-cli/service"
 	"github.com/MohammadBnei/go-ai-cli/ui/event"
@@ -21,14 +20,15 @@ import (
 )
 
 type PickFileModel struct {
-	filepicker   Model
-	multiMode    bool
-	keys         *keyMap
-	help         help.Model
-	title        string
-	width        int
-	selectedList *list.Model
-	fileFocus    bool
+	filepicker    Model
+	multiMode     bool
+	keys          *keyMap
+	help          help.Model
+	title         string
+	width         int
+	selectedList  *list.Model
+	fileFocus     bool
+	textFiltering bool
 }
 
 // NewFilesPicker New creates a new instance of the UI.
@@ -47,12 +47,13 @@ func NewFilesPicker(allowedTypes []string) PickFileModel {
 	})
 
 	return PickFileModel{
-		filepicker:   fp,
-		keys:         newKeyMap(),
-		help:         help.New(),
-		title:        "File Picker",
-		selectedList: fileList,
-		fileFocus:    true,
+		filepicker:    fp,
+		keys:          newKeyMap(),
+		help:          help.New(),
+		title:         "File Picker",
+		selectedList:  fileList,
+		fileFocus:     true,
+		textFiltering: true,
 	}
 }
 
@@ -102,6 +103,8 @@ func (m PickFileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.toggleHidden):
 			m.filepicker.ShowHidden = !m.filepicker.ShowHidden
 			return m, m.filepicker.readDir(m.filepicker.CurrentDirectory, m.filepicker.ShowHidden)
+		case key.Matches(msg, m.keys.toggleTextFilter):
+			m.textFiltering = !m.textFiltering
 		case key.Matches(msg, m.keys.addDir):
 			var addFileSequence []tea.Cmd
 			if err := filepath.Walk(m.filepicker.CurrentDirectory, func(path string, info os.FileInfo, err error) error {
@@ -139,7 +142,7 @@ func (m PickFileModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				return m, event.Error(err)
 			}
-			if !util.IsTextFile(vfs.OS("/"), msg.file) {
+			if !strings.Contains(http.DetectContentType(f), "text/plain") && m.textFiltering {
 				return m, event.Error(fmt.Errorf("file %s is not a text file", msg.file))
 			}
 			tokens, err := service.CountTokens(string(f))
