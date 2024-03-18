@@ -1,5 +1,19 @@
 
 
+# [0.18.0](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.3...0.18.0) (2024-03-18)
+
+
+### Bug Fixes
+
+* **chat.go:** using a pointer to the updated chat message instead of the value. Updating the whole currentChatMessages (user & assistant) instead of just the content. Fixed a bug on order where I frogot to add +1 to the length of the array ([b8731b2](https://github.com/MohammadBnei/go-ai-cli/commit/b8731b2fab79a258a640053503ccabf727bf7a59))
+
+
+### Features
+
+* **file:** added an option to add all text files from the current directory. Added a proper list of selected files ([43e9379](https://github.com/MohammadBnei/go-ai-cli/commit/43e9379f23e88ab0afc4c3b2133611b0fa8cb3fc))
+* **filepicker:** added an option to disable plain text filtering ([bc8c895](https://github.com/MohammadBnei/go-ai-cli/commit/bc8c895d85941e1afd0544499deb4048d1f61b53))
+* **godcontext:** added godcontext to gracefully end all contexts before quitting ([e2903a1](https://github.com/MohammadBnei/go-ai-cli/commit/e2903a1a903820eb104f2f34ed0514e9f8e1acbd))
+
 ## [0.17.3](https://github.com/MohammadBnei/go-ai-cli/compare/0.17.2...0.17.3) (2024-03-01)
 
 
