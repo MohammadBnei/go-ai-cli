@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
+	"net/http"
+	"slices"
 	"strings"
 
+	"github.com/samber/lo"
 	"github.com/sashabaranov/go-openai"
 	"github.com/spf13/viper"
 	"golang.org/x/sync/errgroup"
@@ -133,4 +137,76 @@ func TextToSpeech(ctx context.Context, content string) (io.ReadCloser, error) {
 	}
 
 	return response, nil
+}
+
+func SendImageToOpenAI(ctx context.Context, prompt string, images ...[]byte) (chan string, error) {
+	respChan := make(chan string)
+
+	imagesData := []string{}
+
+	for _, img := range images {
+		contentType := http.DetectContentType(img)
+		allowedTypes := []string{"image/jpeg", "image/jpg", "image/png"}
+		if !slices.Contains(allowedTypes, contentType) {
+			return nil, fmt.Errorf("invalid image type: %s", contentType)
+		}
+
+		imageStr := ""
+		switch contentType {
+		case "image/jpeg":
+			imageStr = "data:image/jpeg;base64,"
+		case "image/jpg":
+			imageStr = "data:image/jpeg;base64,"
+		case "image/png":
+			imageStr = "data:image/png;base64,"
+		}
+
+		imageStr += base64.StdEncoding.EncodeToString(img)
+
+		imagesData = append(imagesData, imageStr)
+	}
+
+	messages := append([]openai.ChatMessagePart{
+		{
+			Type: openai.ChatMessagePartTypeText,
+			Text: prompt,
+		},
+	}, lo.Map(imagesData, func(imageStr string, _ int) openai.ChatMessagePart {
+		return openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeImageURL,
+			ImageURL: &openai.ChatMessageImageURL{
+				URL:    imageStr,
+				Detail: openai.ImageURLDetailAuto,
+			},
+		}
+	})...)
+
+	c := openai.NewClient(viper.GetString(config.AI_OPENAI_KEY))
+	resp, err := c.CreateChatCompletionStream(ctx, openai.ChatCompletionRequest{
+		Model: viper.GetString(config.AI_MODEL_NAME),
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:         openai.ChatMessageRoleUser,
+				MultiContent: messages,
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		defer close(respChan)
+		for {
+			resp, err := resp.Recv()
+			if err != nil {
+				respChan <- fmt.Sprintf("\nerror: %s", err.Error())
+				return
+			}
+			respChan <- resp.Choices[0].Delta.Content
+		}
+	}()
+
+	return respChan, nil
 }

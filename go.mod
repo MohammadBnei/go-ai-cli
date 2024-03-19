@@ -15,7 +15,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/glamour v0.6.0
 	github.com/charmbracelet/huh v0.3.0
-	github.com/charmbracelet/lipgloss v0.9.1
+	github.com/charmbracelet/lipgloss v0.10.0
 	github.com/chromedp/chromedp v0.9.5
 	github.com/dustin/go-humanize v1.0.1
 	github.com/faiface/beep v1.1.0
@@ -28,10 +28,10 @@ require (
 	github.com/muesli/reflow v0.3.0
 	github.com/pkoukk/tiktoken-go v0.1.6
 	github.com/samber/lo v1.39.0
-	github.com/sashabaranov/go-openai v1.20.2
+	github.com/sashabaranov/go-openai v1.20.4
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tmc/langchaingo v0.1.5
 	go.uber.org/goleak v1.3.0
 	golang.org/x/sync v0.6.0
@@ -53,7 +53,7 @@ require (
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/catppuccin/go v0.2.0 // indirect
 	github.com/charmbracelet/harmonica v0.2.0 // indirect
-	github.com/chromedp/cdproto v0.0.0-20240226204813-532e667d868f // indirect
+	github.com/chromedp/cdproto v0.0.0-20240312231614-1e5096e63154 // indirect
 	github.com/chromedp/sysutil v1.0.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
 	github.com/containerd/console v1.0.4 // indirect
@@ -69,7 +69,7 @@ require (
 	github.com/gobwas/ws v1.3.2 // indirect
 	github.com/gocolly/colly v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
 	github.com/gordonklaus/portaudio v0.0.0-20230709114228-aafa478834f5 // indirect
@@ -122,20 +122,20 @@ require (
 	github.com/yargevad/filepathx v1.0.0 // indirect
 	github.com/yuin/goldmark v1.7.0 // indirect
 	github.com/yuin/goldmark-emoji v1.0.2 // indirect
-	go.starlark.net v0.0.0-20240123142251-f86470692795 // indirect
+	go.starlark.net v0.0.0-20240314022150-ee8ed142361c // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.20.0 // indirect
-	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
-	golang.org/x/exp/shiny v0.0.0-20240222234643-814bf88cf225 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81 // indirect
+	golang.org/x/exp/shiny v0.0.0-20240318143956-a85f2c67cd81 // indirect
 	golang.org/x/image v0.15.0 // indirect
-	golang.org/x/mobile v0.0.0-20240213143359-d1f7d3436075 // indirect
-	golang.org/x/mod v0.15.0 // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
-	golang.org/x/term v0.17.0 // indirect
+	golang.org/x/mobile v0.0.0-20240319015410-c58ccf4b0c87 // indirect
+	golang.org/x/mod v0.16.0 // indirect
+	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/protobuf v1.32.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
