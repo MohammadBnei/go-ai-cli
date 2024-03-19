@@ -8,9 +8,15 @@ on:
 permissions:
   contents: write
 
+env:
+  GO_VERSION: "1.22"
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    
+    container: ghcr.io/goreleaser/goreleaser-cross:${{ env.GO_VERSION }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +31,9 @@ jobs:
         uses: crazy-max/ghaction-import-gpg@v6
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5

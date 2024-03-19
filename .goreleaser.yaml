@@ -23,7 +23,7 @@ before:
 
 builds:
   - env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - linux
       - windows
@@ -59,12 +59,25 @@ signs:
       ]
 
 dockers:
-  - use: buildx
   - image_templates:
-      - "mohammadbnei/{{.ProjectName}}:{{ .Tag }}"
-      - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}"
-      - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}"
+      - "mohammadbnei/{{.ProjectName}}:{{ .Tag }}-amd64"
+      - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}-amd64"
+      - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}-amd64"
       - "mohammadbnei/{{.ProjectName}}:latest"
+    use: buildx
+    build_flag_templates:
+    - "--pull"
+    - "--platform=linux/amd64"
+  - image_templates:
+    - "mohammadbnei/{{.ProjectName}}:{{ .Tag }}-arm64"
+    - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}-arm64"
+    - "mohammadbnei/{{.ProjectName}}:v{{ .Major }}.{{ .Minor }}-arm64"
+    - "mohammadbnei/{{.ProjectName}}:latest-arm64"
+    use: buildx
+    build_flag_templates:
+    - "--pull"
+    - "--platform=linux/arm64"
+    goarch: arm64
 
 changelog:
   use: github
