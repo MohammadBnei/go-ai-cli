@@ -6,45 +6,44 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MohammadBnei/go-ai-cli/config"
-	"github.com/MohammadBnei/go-ai-cli/service"
-	"github.com/MohammadBnei/go-ai-cli/ui/event"
-	"github.com/MohammadBnei/go-ai-cli/ui/form"
-	"github.com/MohammadBnei/go-ai-cli/ui/helper"
-	uiList "github.com/MohammadBnei/go-ai-cli/ui/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/golang-module/carbon"
 	"github.com/samber/lo"
 	"github.com/spf13/viper"
+
+	"github.com/MohammadBnei/go-ai-cli/config"
+	"github.com/MohammadBnei/go-ai-cli/service"
+	"github.com/MohammadBnei/go-ai-cli/ui/event"
+	"github.com/MohammadBnei/go-ai-cli/ui/form"
+	"github.com/MohammadBnei/go-ai-cli/ui/helper"
+	uiList "github.com/MohammadBnei/go-ai-cli/ui/list"
 )
 
-func NewSystemModel(promptConfig *service.PromptConfig) tea.Model {
+func NewSystemModel(services *service.Services) tea.Model {
 	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	if savedDefaultSystemPrompt == nil {
 		savedDefaultSystemPrompt = make(map[string]string)
 		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
-	items := getItemsAsUIList(promptConfig)
+	items := getItemsAsUIList(services)
 
-	delegateFn := getDelegateFn(promptConfig)
+	delegateFn := getDelegateFn(services)
 
 	return uiList.NewFancyListModel("system", items, delegateFn)
 }
 
-func getItemsAsUIList(promptConfig *service.PromptConfig) []uiList.Item {
+func getItemsAsUIList(services *service.Services) []uiList.Item {
 	savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
 	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 
 	res := lo.MapToSlice[string, string, uiList.Item](savedSystemPrompt, func(k string, v string) uiList.Item {
 		_, isDefault := savedDefaultSystemPrompt[k]
 		found := true
-		if _, err := promptConfig.ChatMessages.FindMessageByContent(v); err != nil {
-			if errors.Is(err, service.ErrNotFound) {
-				found = false
-			}
+		if m := services.ChatMessages.FindMessageByContent(v); m == nil {
+			found = false
 		}
 
 		return uiList.Item{
@@ -62,7 +61,7 @@ func getItemsAsUIList(promptConfig *service.PromptConfig) []uiList.Item {
 	return res
 }
 
-func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions {
+func getDelegateFn(services *service.Services) *uiList.DelegateFunctions {
 	return &uiList.DelegateFunctions{
 		ChooseFn: func(s string) tea.Cmd {
 			savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
@@ -73,10 +72,10 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 			}
 			newItem := uiList.Item{ItemId: s, ItemTitle: v}
 			_, isDefault := savedDefaultSystemPrompt[s]
-			exists, err := promptConfig.ChatMessages.AddMessage(v, service.RoleSystem)
+			exists, err := services.ChatMessages.AddMessage(v, service.RoleSystem)
 			if err != nil {
 				if errors.Is(err, service.ErrAlreadyExist) {
-					promptConfig.ChatMessages.DeleteMessage(exists.Id.Int64())
+					services.ChatMessages.DeleteMessage(exists.Id.Int64())
 					newItem.ItemDescription = lipgloss.JoinHorizontal(lipgloss.Center, "Added: "+helper.CheckedStringHelper(false), " | Default: "+helper.CheckedStringHelper(isDefault), " | Date: "+s)
 					return func() tea.Msg {
 						return newItem
@@ -112,7 +111,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				addIt := form.GetBool("add")
 
 				if addIt {
-					promptConfig.ChatMessages.AddMessage(content, service.RoleSystem)
+					services.ChatMessages.AddMessage(content, service.RoleSystem)
 				}
 
 				UpdateFromSystemList(s, content)
@@ -131,10 +130,8 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 
 				return func() tea.Msg {
 					found := true
-					if _, err := promptConfig.ChatMessages.FindMessageByContent(v); err != nil {
-						if errors.Is(err, service.ErrNotFound) {
-							found = false
-						}
+					if m := services.ChatMessages.FindMessageByContent(v); m == nil {
+						found = false
 					}
 					dft := "❌"
 					if isDefault {
@@ -165,7 +162,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *uiList.DelegateFunctions
 				addIt := form.GetBool("add")
 
 				if addIt {
-					promptConfig.ChatMessages.AddMessage(content, service.RoleSystem)
+					services.ChatMessages.AddMessage(content, service.RoleSystem)
 				}
 
 				if !saveIt {

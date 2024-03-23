@@ -6,7 +6,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/bwmarrin/snowflake"
 	"github.com/jinzhu/copier"
@@ -35,38 +34,38 @@ const (
 	TypeUser TYPE = "user"
 )
 
-type ChatMessages struct {
+type MessagesService struct {
 	Id          string
 	Description string
-	Messages    []ChatMessage
+	Messages    CMessages
 	TotalTokens int
 
 	node *snowflake.Node
 }
 
-func NewChatMessages(id string) *ChatMessages {
+func NewChatMessages(id string) *MessagesService {
 	node, _ := snowflake.NewNode(1)
-	return &ChatMessages{
+	return &MessagesService{
 		Id:          id,
-		Messages:    []ChatMessage{},
+		Messages:    make(CMessages, 0),
 		TotalTokens: 0,
 
 		node: node,
 	}
 }
 
-func (c *ChatMessages) SetId(id string) *ChatMessages {
+func (c *MessagesService) SetId(id string) *MessagesService {
 	c.Id = id
 
 	return c
 }
-func (c *ChatMessages) SetDescription(description string) *ChatMessages {
+func (c *MessagesService) SetDescription(description string) *MessagesService {
 	c.Description = description
 
 	return c
 }
 
-func (c *ChatMessages) SaveToFile(filename string) error {
+func (c *MessagesService) SaveToFile(filename string) error {
 	if filename == "" {
 		return errors.New("filename cannot be empty")
 	}
@@ -85,7 +84,7 @@ func (c *ChatMessages) SaveToFile(filename string) error {
 	return tool.SaveToFile(data, filename, false)
 }
 
-func (c *ChatMessages) SaveChatInModelfileFormat(filename string) error {
+func (c *MessagesService) SaveChatInModelfileFormat(filename string) error {
 	builder := strings.Builder{}
 
 	builder.WriteString(fmt.Sprintf("FROM %s\n\n", viper.GetString(config.AI_MODEL_NAME)))
@@ -110,7 +109,7 @@ func (c *ChatMessages) SaveChatInModelfileFormat(filename string) error {
 	return tool.SaveToFile([]byte(builder.String()), filename, false)
 }
 
-func (c *ChatMessages) LoadFromFile(filename string) (err error) {
+func (c *MessagesService) LoadFromFile(filename string) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = r.(error)
@@ -122,7 +121,7 @@ func (c *ChatMessages) LoadFromFile(filename string) (err error) {
 		return err
 	}
 
-	marshalledC := &ChatMessages{}
+	marshalledC := &MessagesService{}
 
 	if err := yaml.Unmarshal(content, marshalledC); err != nil {
 		return err
@@ -145,45 +144,21 @@ func (c *ChatMessages) LoadFromFile(filename string) (err error) {
 	return nil
 }
 
-func (c *ChatMessages) FindById(id int64) *ChatMessage {
-	_, index, ok := lo.FindIndexOf(c.Messages, func(item ChatMessage) bool {
-		return item.Id == snowflake.ParseInt64(id)
-	})
-	if !ok {
-		return nil
-	}
-
-	return &c.Messages[index]
+func (c *MessagesService) FindById(id int64) *ChatMessage {
+	return c.Messages.FindById(id)
 }
 
-func (c *ChatMessages) FindByOrder(order uint) *ChatMessage {
-	_, index, ok := lo.FindIndexOf(c.Messages, func(item ChatMessage) bool {
-		return item.Order == order
-	})
-	if !ok {
-		return nil
-	}
-
-	return &c.Messages[index]
+func (c *MessagesService) FindByOrder(order uint) *ChatMessage {
+	return c.Messages.FindByOrder(order)
 }
 
-var ErrNotFound = errors.New("not found")
-
-func (c *ChatMessages) FindMessageByContent(content string) (*ChatMessage, error) {
-	exists, ok := lo.Find(c.Messages, func(item ChatMessage) bool {
-		return item.Content == content
-	})
-
-	if !ok {
-		return nil, ErrNotFound
-	}
-
-	return &exists, nil
+func (c *MessagesService) FindMessageByContent(content string) *ChatMessage {
+	return c.Messages.FindMessageByContent(content)
 }
 
 var ErrAlreadyExist = errors.New("already exists")
 
-func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, error) {
+func (c *MessagesService) AddMessage(content string, role ROLES) (*ChatMessage, error) {
 	if role == "" {
 		return nil, errors.New("role cannot be empty")
 	}
@@ -199,19 +174,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 		return &exists, ErrAlreadyExist
 	}
 
-	msg := &ChatMessage{
-		Id:                  c.node.Generate(),
-		Role:                role,
-		Content:             content,
-		Date:                time.Now(),
-		Type:                TypeUser,
-		AssociatedMessageId: -1,
-		Meta: Meta{
-			ApiType: viper.GetString(config.AI_API_TYPE),
-			Model:   viper.GetString(config.AI_MODEL_NAME),
-		},
-		Order: uint(len(c.Messages)) + 1,
-	}
+	msg := c.Messages.NewMessage(c.node.Generate(), content, role)
 
 	msg.Tokens = tokenCount
 
@@ -230,7 +193,7 @@ func (c *ChatMessages) AddMessage(content string, role ROLES) (*ChatMessage, err
 
 // AddMessageFromFile reads the content of a file using os.ReadFile, then adds a new message with the file content and filename to the ChatMessages using the AddMessage method.
 // If there's an error reading the file, it returns the error.
-func (c *ChatMessages) AddMessageFromFile(filename string) (*ChatMessage, error) {
+func (c *MessagesService) AddMessageFromFile(filename string) (*ChatMessage, error) {
 	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -239,7 +202,7 @@ func (c *ChatMessages) AddMessageFromFile(filename string) (*ChatMessage, error)
 	return c.AddMessage(fmt.Sprintf("(Filename : %s)\n\n%s", filename, content), RoleUser)
 }
 
-func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int64) error {
+func (c *MessagesService) SetAssociatedId(idUser, idAssistant int64) error {
 	msgUser := c.FindById(idUser)
 	if msgUser == nil {
 		return errors.New("user message not found")
@@ -256,7 +219,29 @@ func (c *ChatMessages) SetAssociatedId(idUser, idAssistant int64) error {
 	return nil
 }
 
-func (c *ChatMessages) UpdateMessage(m ChatMessage) error {
+// AppendToMessageContent appends the given appendix to the content of the message with the specified ID.
+//
+// Parameters:
+// - id: The ID of the message to append to.
+// - appendix: The string to append to the message content.
+//
+// Returns:
+// - ChatMessage: The updated chat message with the appended content.
+// - error: An error if the message with the specified ID is not found.
+func (c *MessagesService) AppendToMessageContent(id int64, appendix string) (ChatMessage, error) {
+	msg := c.FindById(id)
+	if msg == nil {
+		return ChatMessage{}, errors.New("message not found")
+	}
+
+	msg.Content += appendix
+
+	c.RecountTokens()
+
+	return *msg, nil
+}
+
+func (c *MessagesService) UpdateMessage(m ChatMessage) error {
 	if m.Content == "" {
 		return errors.New("content cannot be empty")
 	}
@@ -285,7 +270,7 @@ func (c *ChatMessages) UpdateMessage(m ChatMessage) error {
 	return nil
 }
 
-func (c *ChatMessages) DeleteMessage(id int64) error {
+func (c *MessagesService) DeleteMessage(id int64) error {
 	message, ok := lo.Find[ChatMessage](c.Messages, func(item ChatMessage) bool {
 		return item.Id == snowflake.ParseInt64(id)
 	})
@@ -304,7 +289,7 @@ func (c *ChatMessages) DeleteMessage(id int64) error {
 	return nil
 }
 
-func (c *ChatMessages) ToLangchainMessage() []llms.MessageContent {
+func (c *MessagesService) ToLangchainMessage() []llms.MessageContent {
 	return lo.Map[ChatMessage, llms.MessageContent](c.FilterByOpenAIRoles(), func(item ChatMessage, index int) llms.MessageContent {
 		switch item.Role {
 		case RoleSystem:
@@ -318,12 +303,12 @@ func (c *ChatMessages) ToLangchainMessage() []llms.MessageContent {
 	})
 }
 
-func (c *ChatMessages) ClearMessages() {
+func (c *MessagesService) ClearMessages() {
 	c.Messages = []ChatMessage{}
 	c.TotalTokens = 0
 }
 
-func (c *ChatMessages) LastMessage(role ROLES) *ChatMessage {
+func (c *MessagesService) LastMessage(role ROLES) *ChatMessage {
 	messages := c.Messages
 	if role != "" {
 		messages = lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
@@ -337,7 +322,7 @@ func (c *ChatMessages) LastMessage(role ROLES) *ChatMessage {
 	return &messages[len(messages)-1]
 }
 
-func (c *ChatMessages) FilterMessages(role ROLES) (messages []ChatMessage, tokens int) {
+func (c *MessagesService) FilterMessages(role ROLES) (messages []ChatMessage, tokens int) {
 	messages = lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
 		return item.Role == role
 	})
@@ -354,7 +339,7 @@ func (c *ChatMessages) FilterMessages(role ROLES) (messages []ChatMessage, token
 	return
 }
 
-func (c *ChatMessages) FilterByOpenAIRoles() []ChatMessage {
+func (c *MessagesService) FilterByOpenAIRoles() []ChatMessage {
 	return lo.Filter(c.Messages, func(item ChatMessage, _ int) bool {
 		return lo.Contains([]ROLES{
 			openai.ChatMessageRoleUser,
@@ -364,7 +349,7 @@ func (c *ChatMessages) FilterByOpenAIRoles() []ChatMessage {
 	})
 }
 
-func (c *ChatMessages) RecountTokens() *ChatMessages {
+func (c *MessagesService) RecountTokens() *MessagesService {
 	c.TotalTokens = 0
 	for _, msg := range c.Messages {
 		msg.Tokens, _ = CountTokens(msg.Content)
@@ -382,7 +367,7 @@ func CountTokens(content string) (int, error) {
 	return len(tkm.Encode(content, nil, nil)), nil
 }
 
-func (c *ChatMessages) SetMessagesOrder() *ChatMessages {
+func (c *MessagesService) SetMessagesOrder() *MessagesService {
 	c.Messages = lo.Map(c.Messages, func(item ChatMessage, order int) ChatMessage {
 		item.Order = uint(order + 1)
 		return item

@@ -26,7 +26,7 @@ const (
 	EXIT           = "exit"
 )
 
-func NewOptionsModel(pc *service.PromptConfig) tea.Model {
+func NewOptionsModel(pc *service.Services) tea.Model {
 	items := getItemsAsUiList(pc)
 
 	return list.NewFancyListModel("Options", items, &list.DelegateFunctions{
@@ -57,7 +57,7 @@ func NewOptionsModel(pc *service.PromptConfig) tea.Model {
 
 }
 
-func getItemsAsUiList(pc *service.PromptConfig) []list.Item {
+func getItemsAsUiList(pc *service.Services) []list.Item {
 	return []list.Item{
 		{ItemId: CONFIG, ItemTitle: "Config"},
 		{ItemId: MESSAGES, ItemTitle: "Messages"},

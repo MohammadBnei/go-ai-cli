@@ -12,7 +12,7 @@ import (
 	"github.com/MohammadBnei/go-ai-cli/ui/list"
 )
 
-func getFilesAsItem(files []service.FileMetadata, pc *service.PromptConfig) []bList.Item {
+func getFilesAsItem(files []service.FileMetadata, pc *service.Services) []bList.Item {
 	items := lo.Map(files, func(file service.FileMetadata, _ int) list.Item {
 		item := list.Item{
 			ItemId:          file.ID,
@@ -34,7 +34,7 @@ func getFilesAsItem(files []service.FileMetadata, pc *service.PromptConfig) []bL
 	return lo.Map(items, func(i list.Item, _ int) bList.Item { return i })
 }
 
-func getDelegateFn(pc *service.PromptConfig) *list.DelegateFunctions {
+func getDelegateFn(pc *service.Services) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
 		ChooseFn: func(id string) tea.Cmd {
 			return SelectAudioFile(id)

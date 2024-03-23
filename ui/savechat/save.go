@@ -18,13 +18,13 @@ import (
 )
 
 type model struct {
-	promptConfig *service.PromptConfig
-	form         *huh.Form
-	title        string
+	services *service.Services
+	form     *huh.Form
+	title    string
 }
 
-func NewSaveChatModel(promptConfig *service.PromptConfig) tea.Model {
-	return model{promptConfig: promptConfig, form: constructForm(promptConfig.ChatMessages.Id), title: "Saving chat"}
+func NewSaveChatModel(services *service.Services) tea.Model {
+	return model{services: services, form: constructForm(services.ChatMessages.Id), title: "Saving chat"}
 }
 
 func (m model) Init() tea.Cmd {
@@ -54,7 +54,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		filename := m.form.GetString("name")
 		saveFn := m.saveChat
 		if m.form.GetBool("modelfile") {
-			saveFn = m.promptConfig.ChatMessages.SaveChatInModelfileFormat
+			saveFn = m.services.ChatMessages.SaveChatInModelfileFormat
 		}
 		return m, tea.Sequence(event.Error(saveFn(filename)), event.RemoveStack(m))
 	}
@@ -94,7 +94,7 @@ func (m model) saveChat(filename string) error {
 	if filename == "" {
 		filename = "last-chat"
 	}
-	chatMessages := *m.promptConfig.ChatMessages
+	chatMessages := *m.services.ChatMessages
 	chatMessages.Id = filename
 	if chatMessages.Description == "" {
 		chatMessages.Description = "Saved at : " + time.Now().Format("2006-01-02 15:04:05")

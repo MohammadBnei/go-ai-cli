@@ -19,13 +19,13 @@ type chatModel struct {
 }
 
 const (
-	SAVE = "save"
+	SAVE           = "save"
 	SAVE_MODELFILE = "save as modelfile"
-	LOAD  = "load"
-	CLEAR = "clear"
+	LOAD           = "load"
+	CLEAR          = "clear"
 )
 
-func NewChatOptionsModel(pc *service.PromptConfig) tea.Model {
+func NewChatOptionsModel(pc *service.Services) tea.Model {
 	items := getCOItemsAsUiList(pc)
 
 	return list.NewFancyListModel("Options > Chat", items, &list.DelegateFunctions{
@@ -47,7 +47,7 @@ func NewChatOptionsModel(pc *service.PromptConfig) tea.Model {
 
 }
 
-func getCOItemsAsUiList(pc *service.PromptConfig) []list.Item {
+func getCOItemsAsUiList(pc *service.Services) []list.Item {
 	return []list.Item{
 		{ItemId: SAVE, ItemTitle: "Save"},
 		{ItemId: LOAD, ItemTitle: "Load"},

@@ -28,7 +28,7 @@ var promptCmd = &cobra.Command{
 			return
 		}
 
-		promptConfig := &service.PromptConfig{
+		services := &service.Services{
 			ChatMessages: service.NewChatMessages("default"),
 			Files:        fileService,
 			Contexts:     service.NewContextService(),
@@ -36,7 +36,7 @@ var promptCmd = &cobra.Command{
 
 		defer func() {
 			if err := recover(); err != nil {
-				promptConfig.ChatMessages.SaveToFile(filepath.Dir(viper.ConfigFileUsed()) + "/error-chat.yml")
+				services.ChatMessages.SaveToFile(filepath.Dir(viper.ConfigFileUsed()) + "/error-chat.yml")
 				fmt.Println(err)
 			}
 		}()
@@ -44,24 +44,24 @@ var promptCmd = &cobra.Command{
 		defaulSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 		savedSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM)
 		for k := range defaulSystemPrompt {
-			promptConfig.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
+			services.ChatMessages.AddMessage(savedSystemPrompt[k], service.RoleSystem)
 		}
 
 		if viper.GetBool(config.C_AUTOLOAD) {
 			fmt.Println("Loading last chat...")
 			configFolder := filepath.Dir(viper.ConfigFileUsed())
-			err := promptConfig.ChatMessages.LoadFromFile(configFolder + "/last-chat.yml")
+			err := services.ChatMessages.LoadFromFile(configFolder + "/last-chat.yml")
 			if err != nil {
 				fmt.Printf("An error occured trying to get the last chat : %s\nPress enter to continue", err)
 				fmt.Scanln()
 			}
 		}
 
-		updateChan := make(chan *service.ChatMessage)
+		updateChan := make(chan service.ChatMessage)
 		defer close(updateChan)
-		promptConfig.UpdateChan = updateChan
+		services.UpdateChan = updateChan
 
-		chatModel, err := chat.NewChatModel(promptConfig)
+		chatModel, err := chat.NewChatModel(services)
 		if err != nil {
 			log.Fatal(err)
 		}

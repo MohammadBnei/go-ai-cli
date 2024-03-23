@@ -51,29 +51,30 @@ type currentChatMessages struct {
 	user, assistant *service.ChatMessage
 }
 type chatModel struct {
-	viewport            viewport.Model
-	textarea            textarea.Model
-	promptConfig        *service.PromptConfig
-	err                 error
-	spinner             spinner.Model
-	userPrompt          string
-	aiResponse          string
-	currentChatMessages *currentChatMessages
-	size                tea.WindowSizeMsg
-
-	history *helper.HistoryManager
-
-	stack     []tea.Model
-	errorList []error
-
+	// Pure UI
+	viewport   viewport.Model
+	textarea   textarea.Model
+	err        error
+	title      string
+	content    string
 	mdRenderer *glamour.TermRenderer
+	spinner    spinner.Model
+	loading    bool
 	keys       *listKeyMap
 	help       help.Model
 
+	stack []tea.Model
+
+	size     tea.WindowSizeMsg
+	services *service.Services
+	history  *helper.HistoryManager
+
+	errorList []error
+
+	currentChatMessages *currentChatMessages
+
 	transition      bool
 	transitionModel *transition.Model
-
-	loading bool
 
 	audioPlayer *audio.AudioPlayerModel
 
@@ -81,7 +82,7 @@ type chatModel struct {
 	chainName string
 }
 
-func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
+func NewChatModel(pc *service.Services) (*chatModel, error) {
 	var err error
 
 	ta := textarea.New()
@@ -114,13 +115,13 @@ func NewChatModel(pc *service.PromptConfig) (*chatModel, error) {
 	}
 
 	modelStruct := chatModel{
-		textarea:     ta,
-		promptConfig: pc,
-		viewport:     vp,
-		err:          err,
-		spinner:      spinner.New(),
-		aiResponse:   "",
-		userPrompt:   "",
+		textarea: ta,
+		services: pc,
+		viewport: vp,
+		err:      err,
+		spinner:  spinner.New(),
+		content:  "",
+		title:    "",
 		currentChatMessages: &currentChatMessages{
 			user:      nil,
 			assistant: nil,
@@ -177,9 +178,9 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.stack) == 0 {
 				switch {
 				case m.currentChatMessages.user != nil && m.currentChatMessages.user.Role == service.RoleUser:
-					m.userPrompt = m.currentChatMessages.user.Content
+					m.title = m.currentChatMessages.user.Content
 				case m.currentChatMessages.assistant != nil:
-					m.aiResponse = m.currentChatMessages.assistant.Content
+					m.content = m.currentChatMessages.assistant.Content
 				}
 			}
 			cmds = append(cmds, tea.Sequence(event.Transition("clear"), event.UpdateChatContent("", ""), event.Transition("")))
@@ -217,16 +218,16 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case event.UpdateChatContentEvent:
 		if msg.UserPrompt != "" {
-			m.userPrompt = msg.UserPrompt
+			m.title = msg.UserPrompt
 		}
 
 		if msg.Content != "" {
-			m.aiResponse = msg.Content
-			cmds = append(cmds, event.UpdateAiResponse(m.aiResponse))
+			m.content = msg.Content
+			cmds = append(cmds, event.UpdateAiResponse(m.content))
 		}
-		if m.userPrompt != "" {
-			aiRes := m.aiResponse
-			if viper.GetBool(config.UI_MARKDOWN_MODE) && m.userPrompt != "Infos" {
+		if m.title != "" {
+			aiRes := m.content
+			if viper.GetBool(config.UI_MARKDOWN_MODE) && m.title != "Infos" {
 				str, err := m.mdRenderer.Render(aiRes)
 				if err != nil {
 					return m, event.Error(err)
@@ -256,33 +257,33 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.stack) == 0 {
 			switch {
 			case m.currentChatMessages.user != nil:
-				m.currentChatMessages.user = m.promptConfig.ChatMessages.FindById(m.currentChatMessages.user.Id.Int64())
+				m.currentChatMessages.user = m.services.ChatMessages.FindById(m.currentChatMessages.user.Id.Int64())
 			case m.currentChatMessages.assistant != nil:
-				m.currentChatMessages.assistant = m.promptConfig.ChatMessages.FindById(m.currentChatMessages.assistant.Id.Int64())
+				m.currentChatMessages.assistant = m.services.ChatMessages.FindById(m.currentChatMessages.assistant.Id.Int64())
 			}
 			return m, tea.Sequence(event.Transition("..."), m.Init(), event.Transition(""), m.resize)
 		}
 		return m, nil
 	case event.AddStackEvent:
 		m.stack = append(m.stack, msg.Stack)
-		return m, tea.Sequence(event.Transition(msg.Title), m.stack[len(m.stack)-1].Init(), event.Transition(""), m.resize, event.UpdateChatContent(m.userPrompt, m.aiResponse))
+		return m, tea.Sequence(event.Transition(msg.Title), m.stack[len(m.stack)-1].Init(), event.Transition(""), m.resize, event.UpdateChatContent(m.title, m.content))
 
 	case event.TransitionEvent:
 		m.transition = msg.Title != ""
 		m.transitionModel.Title = msg.Title
 
-	case *service.ChatMessage:
+	case service.ChatMessage:
 		if m.currentChatMessages.user != nil && msg.Id == m.currentChatMessages.user.Id {
-			m.userPrompt = msg.Content
-			m.currentChatMessages.user = msg
+			m.title = msg.Content
+			m.currentChatMessages.user = &msg
 		}
 
 		if m.currentChatMessages.assistant != nil && msg.Id == m.currentChatMessages.assistant.Id {
-			m.aiResponse = msg.Content
-			m.currentChatMessages.assistant = msg
+			m.content = msg.Content
+			m.currentChatMessages.assistant = &msg
 		}
 
-		cmds = append(cmds, tea.Sequence(event.UpdateChatContent(m.userPrompt, m.aiResponse), waitForUpdate(m.promptConfig.UpdateChan)))
+		cmds = append(cmds, tea.Sequence(event.UpdateChatContent(m.title, m.content), waitForUpdate(m.services.UpdateChan)))
 
 	case event.StartSpinnerEvent:
 		return m, nil
@@ -290,7 +291,7 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case event.FileSelectionEvent:
 		if len(m.stack) == 0 {
 			for _, item := range msg.Files {
-				_, err := m.promptConfig.ChatMessages.AddMessageFromFile(item)
+				_, err := m.services.ChatMessages.AddMessageFromFile(item)
 				if err != nil {
 					return m, event.Error(err)
 				}
@@ -326,15 +327,15 @@ func (m chatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea, tiCmd = m.textarea.Update(msg)
 		m.viewport, vpCmd = m.viewport.Update(msg)
 
-		m.promptConfig.UserPrompt = m.textarea.Value()
+		m.services.UserPrompt = m.textarea.Value()
 
 		cmds = append(cmds, tiCmd, vpCmd)
 	}
 
 	if m.currentChatMessages.assistant == nil &&
 		m.currentChatMessages.user == nil &&
-		m.userPrompt == "" &&
-		m.aiResponse == "" {
+		m.title == "" &&
+		m.content == "" {
 		m.Intro()
 	}
 
@@ -366,7 +367,7 @@ func (m chatModel) View() string {
 }
 
 func (m chatModel) LoadingTitle() {
-	m.loading = m.promptConfig.Contexts.Length() != 0
+	m.loading = m.services.Contexts.Length() != 0
 	if m.loading {
 		style.TitleStyle = style.TitleStyle.Background(style.LoadingBackgroundColor)
 	} else {
@@ -375,7 +376,7 @@ func (m chatModel) LoadingTitle() {
 }
 
 func (m chatModel) GetTitleView() string {
-	userPrompt := m.userPrompt
+	userPrompt := m.title
 	if m.currentChatMessages.user != nil && m.currentChatMessages.user.Order != 0 {
 		userPrompt = fmt.Sprintf("[%d] %s", m.currentChatMessages.user.Order, userPrompt)
 	}
@@ -388,7 +389,7 @@ func (m chatModel) GetTitleView() string {
 	return style.TitleStyle.Render(wordwrap.String(userPrompt, m.size.Width-8))
 }
 
-func waitForUpdate(updateChan chan *service.ChatMessage) tea.Cmd {
+func waitForUpdate(updateChan chan service.ChatMessage) tea.Cmd {
 	return func() tea.Msg {
 		return <-updateChan
 	}
@@ -403,10 +404,9 @@ func (m *chatModel) Resize() {
 	style.TitleStyle.MaxWidth(m.size.Width - w)
 
 	m.textarea.SetWidth(m.size.Width)
-	
+
 	m.viewport.Width = m.size.Width - w
 	m.viewport.Height = m.size.Height - lipgloss.Height(m.GetTitleView()) - m.textarea.Height() - lipgloss.Height(m.help.View(m.keys)) - h
-
 
 	m.mdRenderer, _ = glamour.NewTermRenderer(glamour.WithAutoStyle(), glamour.WithWordWrap(m.viewport.Width-2))
 }

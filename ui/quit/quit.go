@@ -18,14 +18,14 @@ import (
 )
 
 type model struct {
-	promptConfig *service.PromptConfig
-	form         *huh.Form
-	title        string
-	keys         *keyMap
+	services *service.Services
+	form     *huh.Form
+	title    string
+	keys     *keyMap
 }
 
-func NewQuitModel(promptConfig *service.PromptConfig) tea.Model {
-	return model{promptConfig: promptConfig, form: constructForm(), title: "Quitting", keys: newKeyMap()}
+func NewQuitModel(services *service.Services) tea.Model {
+	return model{services: services, form: constructForm(), title: "Quitting", keys: newKeyMap()}
 }
 
 func (m model) Init() tea.Cmd {
@@ -57,7 +57,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, event.RemoveStack(m)
 		}
 		if m.form.GetBool("save") {
-			err := saveChat(*m.promptConfig, m.form.GetString("name"))
+			err := saveChat(*m.services, m.form.GetString("name"))
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -96,7 +96,7 @@ func constructForm() *huh.Form {
 	return huh.NewForm(group)
 }
 
-func saveChat(pc service.PromptConfig, filename string) error {
+func saveChat(pc service.Services, filename string) error {
 	if filename == "" {
 		filename = "last-chat"
 	}

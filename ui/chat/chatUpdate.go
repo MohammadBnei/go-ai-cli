@@ -31,8 +31,8 @@ func getInfoContent(m chatModel) string {
 		lipgloss.NewStyle().AlignVertical(lipgloss.Center).Height(m.viewport.Height).Render(
 			"Api : "+smallTitleStyle.Render(viper.GetString(config.AI_API_TYPE))+"\n"+
 				"Model : "+smallTitleStyle.Render(viper.GetString(config.AI_MODEL_NAME))+"\n"+
-				"Messages : "+smallTitleStyle.Render(fmt.Sprintf("%d", len(m.promptConfig.ChatMessages.Messages)))+"\n"+
-				"Tokens : "+smallTitleStyle.Render(fmt.Sprintf("%d", m.promptConfig.ChatMessages.TotalTokens))+"\n",
+				"Messages : "+smallTitleStyle.Render(fmt.Sprintf("%d", len(m.services.ChatMessages.Messages)))+"\n"+
+				"Tokens : "+smallTitleStyle.Render(fmt.Sprintf("%d", m.services.ChatMessages.TotalTokens))+"\n",
 		)
 }
 
@@ -45,20 +45,20 @@ func closeContext(m chatModel) (chatModel, tea.Cmd) {
 		m.err = nil
 		return m, nil
 	}
-	if err := m.promptConfig.Contexts.CloseContextById(m.currentChatMessages.user.Id.Int64()); err != nil {
+	if err := m.services.Contexts.CloseContextById(m.currentChatMessages.user.Id.Int64()); err != nil {
 		m.err = err
 	}
 	return m, nil
 }
 
 func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
-	if len(m.promptConfig.ChatMessages.Messages) == 0 {
+	if len(m.services.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
 
 	var msg *service.ChatMessage
 	if m.currentChatMessages.user == nil && m.currentChatMessages.assistant == nil {
-		msg = &m.promptConfig.ChatMessages.Messages[0]
+		msg = &m.services.ChatMessages.Messages[0]
 	} else {
 		order := 0
 		if m.currentChatMessages.user == nil {
@@ -71,9 +71,9 @@ func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 		}
 
 		if order == 1 {
-			msg = &m.promptConfig.ChatMessages.Messages[len(m.promptConfig.ChatMessages.Messages)-1]
+			msg = &m.services.ChatMessages.Messages[len(m.services.ChatMessages.Messages)-1]
 		} else {
-			msg = m.promptConfig.ChatMessages.FindByOrder(uint(order - 1))
+			msg = m.services.ChatMessages.FindByOrder(uint(order - 1))
 		}
 	}
 
@@ -83,13 +83,13 @@ func changeResponseUp(m chatModel) (chatModel, tea.Cmd) {
 }
 
 func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
-	if len(m.promptConfig.ChatMessages.Messages) == 0 {
+	if len(m.services.ChatMessages.Messages) == 0 {
 		return m, nil
 	}
 
 	var msg *service.ChatMessage
 	if m.currentChatMessages.user == nil && m.currentChatMessages.assistant == nil {
-		msg = &m.promptConfig.ChatMessages.Messages[0]
+		msg = &m.services.ChatMessages.Messages[0]
 	} else {
 		order := 0
 		if m.currentChatMessages.user == nil {
@@ -101,10 +101,10 @@ func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 			order = int(m.currentChatMessages.assistant.Order)
 		}
 
-		if order >= len(m.promptConfig.ChatMessages.Messages) {
-			msg = &m.promptConfig.ChatMessages.Messages[0]
+		if order >= len(m.services.ChatMessages.Messages) {
+			msg = &m.services.ChatMessages.Messages[0]
 		} else {
-			msg = m.promptConfig.ChatMessages.FindByOrder(uint(order + 1))
+			msg = m.services.ChatMessages.FindByOrder(uint(order + 1))
 		}
 	}
 
@@ -114,13 +114,13 @@ func changeResponseDown(m chatModel) (chatModel, tea.Cmd) {
 }
 
 func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
-	m.userPrompt = m.textarea.Value()
+	m.title = m.textarea.Value()
 
-	userMsg, err := m.promptConfig.ChatMessages.AddMessage(m.userPrompt, service.RoleUser)
+	userMsg, err := m.services.ChatMessages.AddMessage(m.title, service.RoleUser)
 	if err != nil {
 		return m, event.Error(err)
 	}
-	assistantMessage, err := m.promptConfig.ChatMessages.AddMessage("", service.RoleAssistant)
+	assistantMessage, err := m.services.ChatMessages.AddMessage("", service.RoleAssistant)
 	if err != nil {
 		return m, event.Error(err)
 	}
@@ -128,7 +128,7 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 	m.currentChatMessages.user = userMsg
 	m.currentChatMessages.assistant = assistantMessage
 
-	err = m.promptConfig.ChatMessages.SetAssociatedId(userMsg.Id.Int64(), assistantMessage.Id.Int64())
+	err = m.services.ChatMessages.SetAssociatedId(userMsg.Id.Int64(), assistantMessage.Id.Int64())
 	if err != nil {
 		return m, event.Error(err)
 	}
@@ -138,16 +138,16 @@ func promptSend(m *chatModel) (tea.Model, tea.Cmd) {
 		go sendAgentPrompt(*m, *m.currentChatMessages)
 		m.chain = nil
 	default:
-		go sendPrompt(m.promptConfig, *m.currentChatMessages)
+		go sendPrompt(m.services, *m.currentChatMessages)
 	}
 
 	m.textarea.Reset()
-	m.aiResponse = ""
+	m.content = ""
 
 	m.viewport.SetContent("")
 
 	m.viewport.GotoBottom()
-	return m, tea.Sequence(event.Transition(m.userPrompt), waitForUpdate(m.promptConfig.UpdateChan), event.Transition(""))
+	return m, tea.Sequence(event.Transition(m.title), waitForUpdate(m.services.UpdateChan), event.Transition(""))
 }
 
 func (m *chatModel) changeCurrentChatHelper(msg *service.ChatMessage) {
@@ -159,14 +159,14 @@ func (m *chatModel) changeCurrentChatHelper(msg *service.ChatMessage) {
 		switch msg.Role {
 		case service.RoleUser:
 			m.currentChatMessages.user = msg
-			m.currentChatMessages.assistant = m.promptConfig.ChatMessages.FindById(msg.AssociatedMessageId)
+			m.currentChatMessages.assistant = m.services.ChatMessages.FindById(msg.AssociatedMessageId)
 		case service.RoleAssistant:
 			m.currentChatMessages.assistant = msg
-			m.currentChatMessages.user = m.promptConfig.ChatMessages.FindById(msg.AssociatedMessageId)
+			m.currentChatMessages.user = m.services.ChatMessages.FindById(msg.AssociatedMessageId)
 		case service.RoleSystem:
-			m.userPrompt = "System / File | " + msg.Date.String()
+			m.title = "System / File | " + msg.Date.String()
 			m.currentChatMessages.user = msg
-			m.aiResponse = msg.Content
+			m.content = msg.Content
 			m.currentChatMessages.assistant = nil
 			return
 		}
@@ -175,16 +175,16 @@ func (m *chatModel) changeCurrentChatHelper(msg *service.ChatMessage) {
 	}
 
 	if m.currentChatMessages.assistant != nil && m.currentChatMessages.user != nil {
-		m.aiResponse = m.currentChatMessages.assistant.Content
-		m.userPrompt = m.currentChatMessages.user.Content
+		m.content = m.currentChatMessages.assistant.Content
+		m.title = m.currentChatMessages.user.Content
 	} else {
-		m.aiResponse = msg.Content
-		m.userPrompt = carbon.FromStdTime(msg.Date).String()
+		m.content = msg.Content
+		m.title = carbon.FromStdTime(msg.Date).String()
 	}
 
 }
 
-func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) error {
+func sendPrompt(pc *service.Services, currentChatMsgs currentChatMessages) error {
 	llm, err := api.GetLlmModel()
 	if err != nil {
 		return err
@@ -195,26 +195,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 	defer pc.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
 
 	options := []llms.CallOption{
-		llms.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
-			if err := ctx.Err(); err != nil {
-				pc.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
-				if err == io.EOF {
-					return nil
-				}
-				return err
-			}
-			previous := pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
-			if previous == nil {
-				pc.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
-				return errors.New("previous message not found")
-			}
-			previous.Content += string(chunk)
-			pc.ChatMessages.UpdateMessage(*previous)
-			if pc.UpdateChan != nil {
-				pc.UpdateChan <- previous
-			}
-			return nil
-		}),
+		llms.WithStreamingFunc(MakeStreamingFunc(currentChatMsgs.user.Id.Int64(), currentChatMsgs.assistant.Id.Int64(), pc)),
 	}
 
 	if v := viper.GetFloat64(config.AI_TEMPERATURE); v >= 0 {
@@ -229,7 +210,7 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 	}
 
 	if pc.UpdateChan != nil {
-		pc.UpdateChan <- pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
+		pc.UpdateChan <- *pc.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
 	}
 
 	if viper.GetBool(config.C_COMPLETION_MODE) {
@@ -252,39 +233,23 @@ func sendPrompt(pc *service.PromptConfig, currentChatMsgs currentChatMessages) e
 
 func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	ctx, cancel := context.WithCancel(godcontext.GodContext)
-	m.promptConfig.Contexts.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
-	defer m.promptConfig.Contexts.CloseContext(ctx)
+	m.services.Contexts.AddContextWithId(ctx, cancel, currentChatMsgs.user.Id.Int64())
+	defer m.services.Contexts.CloseContext(ctx)
 
-	if m.promptConfig.UpdateChan != nil {
-		m.promptConfig.UpdateChan <- m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
+	assitantMsgID := currentChatMsgs.assistant.Id.Int64()
+	userID := currentChatMsgs.user.Id.Int64()
+
+	if m.services.UpdateChan != nil {
+		m.services.UpdateChan <- *m.services.ChatMessages.FindById(assitantMsgID)
 	}
 
-	userMessages, _ := m.promptConfig.ChatMessages.FilterMessages(service.RoleUser)
+	userMessages, _ := m.services.ChatMessages.FilterMessages(service.RoleUser)
 	last, err := lo.Last(userMessages)
 	if err != nil {
 		return err
 	}
 
-	output, err := chains.Run(ctx, m.chain, last.Content, chains.WithStreamingFunc(func(ctx context.Context, chunk []byte) error {
-		if err := ctx.Err(); err != nil {
-			m.promptConfig.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-		previous := m.promptConfig.ChatMessages.FindById(currentChatMsgs.assistant.Id.Int64())
-		if previous == nil {
-			m.promptConfig.Contexts.CloseContextById(currentChatMsgs.user.Id.Int64())
-			return errors.New("previous message not found")
-		}
-		previous.Content += string(chunk)
-		m.promptConfig.ChatMessages.UpdateMessage(*previous)
-		if m.promptConfig.UpdateChan != nil {
-			m.promptConfig.UpdateChan <- previous
-		}
-		return nil
-	}))
+	output, err := chains.Run(ctx, m.chain, last.Content, chains.WithStreamingFunc(MakeStreamingFunc(userID, assitantMsgID, m.services)))
 
 	if err != nil {
 		ChatProgram.Send(err)
@@ -294,10 +259,34 @@ func sendAgentPrompt(m chatModel, currentChatMsgs currentChatMessages) error {
 	currentChatMsgs.assistant.Content = output
 	currentChatMsgs.assistant.Meta.Agent = m.chainName
 	currentChatMsgs.user.Meta.Agent = m.chainName
-	m.promptConfig.ChatMessages.UpdateMessage(*currentChatMsgs.assistant)
-	if m.promptConfig.UpdateChan != nil {
-		m.promptConfig.UpdateChan <- currentChatMsgs.assistant
+	m.services.ChatMessages.UpdateMessage(*currentChatMsgs.assistant)
+	if m.services.UpdateChan != nil {
+		m.services.UpdateChan <- *currentChatMsgs.assistant
 	}
 
 	return nil
+}
+
+func MakeStreamingFunc(userMsgID, assistantMsgID int64, services *service.Services) func(ctx context.Context, chunk []byte) error {
+	handleErr := func(err error) error {
+		services.Contexts.CloseContextById(userMsgID)
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+	return func(ctx context.Context, chunk []byte) error {
+
+		if err := ctx.Err(); err != nil {
+			return handleErr(err)
+		}
+		updated, err := services.ChatMessages.AppendToMessageContent(assistantMsgID, string(chunk))
+		if err != nil {
+			return handleErr(err)
+		}
+		if services.UpdateChan != nil {
+			services.UpdateChan <- updated
+		}
+		return nil
+	}
 }

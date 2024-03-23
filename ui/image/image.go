@@ -33,8 +33,8 @@ const (
 )
 
 type model struct {
-	promptConfig *service.PromptConfig
-	title        string
+	services *service.Services
+	title    string
 
 	editForm *huh.Form
 
@@ -50,18 +50,18 @@ type model struct {
 	filepicker file.PickFileModel
 }
 
-func NewImageModel(pc *service.PromptConfig) tea.Model {
+func NewImageModel(pc *service.Services) tea.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Moon
 	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
 	return model{
-		promptConfig: pc,
-		title:        "Image",
-		filepicker:   file.NewFilesPicker([]string{"jpg", "jpeg"}),
-		editForm:     constructPromptForm(pc.UserPrompt),
-		state:        PROMPT,
-		spinner:      s,
+		services:   pc,
+		title:      "Image",
+		filepicker: file.NewFilesPicker([]string{"jpg", "jpeg"}),
+		editForm:   constructPromptForm(pc.UserPrompt),
+		state:      PROMPT,
+		spinner:    s,
 	}
 }
 
@@ -88,8 +88,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.editForm = constructFilepickerForm()
 		return m, tea.Sequence(m.editForm.Init(), m.spinner.Tick, func() tea.Msg {
 			ctx, cancel := context.WithCancel(godcontext.GodContext)
-			m.promptConfig.Contexts.AddContext(ctx, cancel)
-			defer m.promptConfig.Contexts.CloseContext(ctx)
+			m.services.Contexts.AddContext(ctx, cancel)
+			defer m.services.Contexts.CloseContext(ctx)
 			data, err := api.GenerateImage(ctx, m.prompt, m.size)
 			if err != nil {
 				return generateError(err)()

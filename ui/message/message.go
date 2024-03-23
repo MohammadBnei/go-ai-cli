@@ -22,15 +22,15 @@ var (
 	assistantColor = titleStyle.Background(lipgloss.Color("#243333"))
 )
 
-func NewMessageModel(promptConfig *service.PromptConfig) tea.Model {
-	items := getItemsAslist(promptConfig)
+func NewMessageModel(services *service.Services) tea.Model {
+	items := getItemsAslist(services)
 
-	delegateFn := getDelegateFn(promptConfig)
+	delegateFn := getDelegateFn(services)
 
 	return list.NewFancyListModel("message", items, delegateFn)
 }
 
-func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
+func getDelegateFn(services *service.Services) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
 		AddFn: func(s string) tea.Cmd {
 			editModel := form.NewEditModel("Creating message", huh.NewForm(huh.NewGroup(
@@ -39,7 +39,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			)), func(form *huh.Form) tea.Cmd {
 				content := form.GetString("content")
 				role := form.Get("role").(service.ROLES)
-				msg, err := promptConfig.ChatMessages.AddMessage(content, role)
+				msg, err := services.ChatMessages.AddMessage(content, role)
 				if err != nil {
 					return event.Error(err)
 				}
@@ -51,7 +51,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			return event.AddStack(editModel, "Creating Message...")
 		},
 		ChooseFn: func(s string) tea.Cmd {
-			message, err := getMessage(promptConfig, s)
+			message, err := getMessage(services, s)
 			if err != nil {
 				return event.Error(err)
 			}
@@ -64,7 +64,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 				role := form.Get("role").(service.ROLES)
 				message.Content = content
 				message.Role = role
-				err := promptConfig.ChatMessages.UpdateMessage(*message)
+				err := services.ChatMessages.UpdateMessage(*message)
 				if err != nil {
 					return event.Error(err)
 				}
@@ -81,7 +81,7 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 			if err != nil {
 				return event.Error(err)
 			}
-			err = promptConfig.ChatMessages.DeleteMessage(id.Int64())
+			err = services.ChatMessages.DeleteMessage(id.Int64())
 			if err != nil {
 				return event.Error(err)
 			}
@@ -91,12 +91,12 @@ func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
 	}
 }
 
-func getMessage(promptConfig *service.PromptConfig, id string) (*service.ChatMessage, error) {
+func getMessage(services *service.Services, id string) (*service.ChatMessage, error) {
 	intId, err := snowflake.ParseBase64(id)
 	if err != nil {
 		return nil, err
 	}
-	message := promptConfig.ChatMessages.FindById(intId.Int64())
+	message := services.ChatMessages.FindById(intId.Int64())
 	if message == nil {
 		return nil, err
 	}
@@ -104,8 +104,8 @@ func getMessage(promptConfig *service.PromptConfig, id string) (*service.ChatMes
 	return message, nil
 }
 
-func getItemsAslist(promptConfig *service.PromptConfig) []list.Item {
-	messages := promptConfig.ChatMessages.FilterByOpenAIRoles()
+func getItemsAslist(services *service.Services) []list.Item {
+	messages := services.ChatMessages.FilterByOpenAIRoles()
 
 	res := lo.Map(messages, func(m service.ChatMessage, _ int) list.Item {
 		return toItem(m)

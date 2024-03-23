@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewConfigModel(promptConfig *service.PromptConfig) tea.Model {
+func NewConfigModel(services *service.Services) tea.Model {
 
 	savedDefaultSystemPrompt := viper.GetStringMapString(config.PR_SYSTEM_DEFAULT)
 	if savedDefaultSystemPrompt == nil {
@@ -25,15 +25,15 @@ func NewConfigModel(promptConfig *service.PromptConfig) tea.Model {
 		viper.Set(config.PR_SYSTEM_DEFAULT, savedDefaultSystemPrompt)
 	}
 
-	items := getItemsAsUiList(promptConfig)
+	items := getItemsAsUiList(services)
 
-	delegateFn := getDelegateFn(promptConfig)
+	delegateFn := getDelegateFn(services)
 
 	return list.NewFancyListModel("config", items, delegateFn)
 
 }
 
-func getDelegateFn(promptConfig *service.PromptConfig) *list.DelegateFunctions {
+func getDelegateFn(services *service.Services) *list.DelegateFunctions {
 	return &list.DelegateFunctions{
 		ChooseFn: func(id string) tea.Cmd {
 			value := viper.Get(id)
@@ -208,7 +208,7 @@ func getFloatItem(key string, value float64) list.Item {
 	return list.Item{ItemId: key, ItemTitle: key, ItemDescription: fmt.Sprintf("%.2f", value)}
 }
 
-func getItemsAsUiList(promptConfig *service.PromptConfig) []list.Item {
+func getItemsAsUiList(services *service.Services) []list.Item {
 	items := []list.Item{}
 	for k, v := range viper.AllSettings() {
 		switch t := v.(type) {

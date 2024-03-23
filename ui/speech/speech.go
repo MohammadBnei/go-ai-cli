@@ -42,10 +42,10 @@ type model struct {
 	langSelect      *huh.Form
 }
 
-func NewSpeechModel(promptConfig *service.PromptConfig) tea.Model {
+func NewSpeechModel(services *service.Services) tea.Model {
 	ta := textarea.New()
 	ta.Placeholder = "Recort a message"
-	ta.SetValue(promptConfig.UserPrompt)
+	ta.SetValue(services.UserPrompt)
 	ta.Focus()
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false

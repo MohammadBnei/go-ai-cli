@@ -106,27 +106,27 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 			case len(m.stack) > 0:
 				return m, tea.Sequence(event.Cancel, event.RemoveStack(m.stack[len(m.stack)-1]))
 			case msg.String() == "esc":
-				return m, event.AddStack(options.NewOptionsModel(m.promptConfig), "Loading Options...")
+				return m, event.AddStack(options.NewOptionsModel(m.services), "Loading Options...")
 
 			case m.help.ShowAll:
 				m.help.ShowAll = false
 				return m, func() tea.Msg { return m.size }
 
-			case m.currentChatMessages.user != nil && m.promptConfig.Contexts.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
+			case m.currentChatMessages.user != nil && m.services.Contexts.FindContextWithId(m.currentChatMessages.user.Id.Int64()) != nil:
 				return closeContext(m)
 
 			}
 
 		case key.Matches(msg, m.keys.quit):
-			return m, event.AddStack(quit.NewQuitModel(m.promptConfig), "Quitting...")
+			return m, event.AddStack(quit.NewQuitModel(m.services), "Quitting...")
 
 		case key.Matches(msg, m.keys.toggleHelpMenu):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, func() tea.Msg { return m.size }
 
 		case key.Matches(msg, m.keys.copy):
-			if len(m.stack) == 0 && m.aiResponse != "" {
-				err := clipboard.WriteAll(m.aiResponse)
+			if len(m.stack) == 0 && m.content != "" {
+				err := clipboard.WriteAll(m.content)
 				if err != nil {
 					return m, event.Error(err)
 				}
@@ -144,7 +144,7 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.options):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(options.NewOptionsModel(m.promptConfig), "Loading Options...")
+				return m, event.AddStack(options.NewOptionsModel(m.services), "Loading Options...")
 			}
 
 		case key.Matches(msg, m.keys.showInfo):
@@ -154,17 +154,17 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 
 		case key.Matches(msg, m.keys.speechToText):
 			if len(m.stack) == 0 {
-				return m, event.AddStack(speech.NewSpeechModel(m.promptConfig), "Loading speech...")
+				return m, event.AddStack(speech.NewSpeechModel(m.services), "Loading speech...")
 			}
 
 		case key.Matches(msg, m.keys.textToSpeech):
-			if m.aiResponse != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
+			if m.content != "" && m.currentChatMessages.assistant != nil && len(m.stack) == 0 {
 				msgID := m.currentChatMessages.assistant.Id.Int64()
 				ctx, cancel := context.WithCancel(godcontext.GodContext)
-				m.promptConfig.Contexts.AddContextWithId(ctx, cancel, msgID)
+				m.services.Contexts.AddContextWithId(ctx, cancel, msgID)
 				return m, tea.Sequence(func() tea.Msg {
-					defer m.promptConfig.Contexts.CloseContext(ctx)
-					msg := m.promptConfig.ChatMessages.FindById(msgID)
+					defer m.services.Contexts.CloseContext(ctx)
+					msg := m.services.ChatMessages.FindById(msgID)
 					if msg == nil {
 						return event.Error(errors.New("message not found"))
 					}
@@ -177,15 +177,15 @@ func keyMapUpdate(msg tea.Msg, m chatModel) (chatModel, tea.Cmd) {
 					if err != nil {
 						return err
 					}
-					fm, err := m.promptConfig.Files.Append(service.Audio, msg.Content, "", msg.Id.Int64(), data)
+					fm, err := m.services.Files.Append(service.Audio, msg.Content, "", msg.Id.Int64(), data)
 					if err != nil {
 						return err
 					}
 					msg.AudioFileId = fm.ID
-					m.promptConfig.ChatMessages.UpdateMessage(*msg)
+					m.services.ChatMessages.UpdateMessage(*msg)
 					return m.audioPlayer.InitSpeaker(fm.ID)
 				}, func() tea.Msg {
-					m.promptConfig.Contexts.CloseContextById(msgID)
+					m.services.Contexts.CloseContextById(msgID)
 					return event.Transition("")
 				})
 			}

@@ -21,7 +21,7 @@ import (
 )
 
 type AudioPlayerModel struct {
-	promptConfig *service.PromptConfig
+	services *service.Services
 
 	keys *keyMap
 
@@ -47,14 +47,14 @@ type AudioPlayerModel struct {
 	size tea.WindowSizeMsg
 }
 
-func NewPlayerModel(pc *service.PromptConfig) (*AudioPlayerModel, error) {
+func NewPlayerModel(pc *service.Services) (*AudioPlayerModel, error) {
 	m := &AudioPlayerModel{
-		title:        "Audio controller",
-		promptConfig: pc,
-		keys:         newKeyMap(),
-		help:         help.New(),
-		viewport:     viewport.New(0, 0),
-		fileList:     list.NewFancyListModel("Audio files", []list.Item{}, getDelegateFn(pc)),
+		title:    "Audio controller",
+		services: pc,
+		keys:     newKeyMap(),
+		help:     help.New(),
+		viewport: viewport.New(0, 0),
+		fileList: list.NewFancyListModel("Audio files", []list.Item{}, getDelegateFn(pc)),
 	}
 
 	m.RefreshFileList()
@@ -212,7 +212,7 @@ func (m *AudioPlayerModel) Clear() {
 }
 
 func (m *AudioPlayerModel) InitSpeaker(id string) tea.Cmd {
-	file, _, err := m.promptConfig.Files.Get(id)
+	file, _, err := m.services.Files.Get(id)
 	if err != nil {
 		return event.Error(err)
 	}
@@ -245,11 +245,11 @@ func (m *AudioPlayerModel) InitSpeaker(id string) tea.Cmd {
 }
 
 func (m *AudioPlayerModel) RefreshFileList() tea.Cmd {
-	files, err := m.promptConfig.Files.List(service.Audio)
+	files, err := m.services.Files.List(service.Audio)
 	if err != nil {
 		return event.Error(err)
 	}
-	items := getFilesAsItem(files, m.promptConfig)
+	items := getFilesAsItem(files, m.services)
 	return m.fileList.List.SetItems(items)
 }
 

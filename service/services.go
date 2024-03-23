@@ -6,11 +6,12 @@ import (
 	"github.com/blang/vfs"
 )
 
-type PromptConfig struct {
-	ChatMessages   *ChatMessages
+type Services struct {
+	Messages       []ChatMessage
+	ChatMessages   *MessagesService
 	PreviousPrompt string
 	UserPrompt     string
-	UpdateChan     chan *ChatMessage
+	UpdateChan     chan ChatMessage
 	Contexts       IContextService
 	Files          IFileService
 }

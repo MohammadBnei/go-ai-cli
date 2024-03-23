@@ -15,15 +15,15 @@ import (
 )
 
 type model struct {
-	filepicker   filepicker.Model
-	help         help.Model
-	title        string
-	width        int
-	promptConfig *service.PromptConfig
+	filepicker filepicker.Model
+	help       help.Model
+	title      string
+	width      int
+	services   *service.Services
 }
 
 // New creates a new instance of the UI.
-func NewLoadChatModel(pc *service.PromptConfig) model {
+func NewLoadChatModel(pc *service.Services) model {
 	fp := filepicker.New()
 	fp.CurrentDirectory = filepath.Dir(viper.GetViper().ConfigFileUsed())
 	fp.ShowHidden = true
@@ -31,10 +31,10 @@ func NewLoadChatModel(pc *service.PromptConfig) model {
 	fp.AllowedTypes = []string{"yml", "yaml"}
 
 	return model{
-		filepicker:   fp,
-		promptConfig: pc,
-		help:         help.New(),
-		title:        "Chat Loader",
+		filepicker: fp,
+		services:   pc,
+		help:       help.New(),
+		title:      "Chat Loader",
 	}
 }
 
@@ -62,7 +62,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Did the user select a file?
 	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
-		if err := m.promptConfig.ChatMessages.LoadFromFile(path); err != nil {
+		if err := m.services.ChatMessages.LoadFromFile(path); err != nil {
 			return m, event.Error(err)
 		} else {
 			return m, event.RemoveStack(m)

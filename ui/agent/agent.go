@@ -18,7 +18,7 @@ const (
 	WEB_SEARCH = "Web Search"
 )
 
-func NewAgentModel(promptConfig *service.PromptConfig) (tea.Model, error) {
+func NewAgentModel(services *service.Services) (tea.Model, error) {
 	agentMap := map[string]*agents.Executor{}
 
 	llm, err := api.GetLlmModel()

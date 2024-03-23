@@ -22,7 +22,7 @@ const (
 	SETTINGS    = "settings"
 )
 
-func NewConfigOptionsModel(pc *service.PromptConfig) tea.Model {
+func NewConfigOptionsModel(pc *service.Services) tea.Model {
 	items := getConfOItemsAsUiList(pc)
 
 	return list.NewFancyListModel("Options > Config", items, &list.DelegateFunctions{
@@ -44,7 +44,7 @@ func NewConfigOptionsModel(pc *service.PromptConfig) tea.Model {
 
 }
 
-func getConfOItemsAsUiList(pc *service.PromptConfig) []list.Item {
+func getConfOItemsAsUiList(pc *service.Services) []list.Item {
 	return []list.Item{
 		{ItemId: SETTINGS, ItemTitle: "Settings"},
 		{ItemId: SAVE_CONFIG, ItemTitle: "Save Config"},
